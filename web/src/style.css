@@ -232,43 +232,74 @@ h1 {
   margin: auto;
   max-width: 100%;
 }
-.editing-grid {
+.editing-grid .grid-container {
   background-image: radial-gradient(var(--line) 0.8px, transparent 0.8px);
-  background-size: 16px 16px;
-  border-radius: 14px;
+  background-size: 8px 8px;
+  background-position: -4px -4px;
+  min-height: 440px;
+}
+.pane-frame {
+  height: 100%;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+/* RGL supplies raw pointer dimensions during a resize. Keep the visible frame
+   and its handles on the accepted slot dimensions, including blocked moves. */
+.react-grid-item.pane-grid-item {
+  width: var(--pane-frame-width) !important;
+  height: var(--pane-frame-height) !important;
+  transition-property: transform;
 }
 .pane {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   background: var(--panel);
   border-radius: 14px;
   box-shadow: inset 0 0 0 1px var(--line);
   overflow: hidden;
   transition: box-shadow 0.15s;
 }
-.pane.focused {
+.pane-frame.focused .pane {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 .pane-header {
-  height: 40px;
-  padding: 0 12px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0 4px 4px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
 }
-.pane-header h2 {
+.pane-title {
   font-size: 12px;
   font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 7px;
+  display: block;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  flex: 1;
   margin: 0;
   color: var(--muted);
   min-width: 0;
 }
-.pane-header h2 span {
+.pane-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.pane-title-input {
+  min-width: 0;
+  flex: 1;
+  height: 26px;
+  padding: 2px 6px;
+}
+.pane-header > .pane-controls:last-child {
+  margin-left: auto;
+}
+.pane-move {
+  cursor: grab;
 }
 .pane-drag {
   cursor: grab;
@@ -341,14 +372,29 @@ h1 {
   line-height: 16px;
 }
 .empty-slot {
-  border: 1px dashed var(--line);
+  border: 0;
   border-radius: 11px;
   color: var(--muted);
   background: transparent;
-  margin: 4px;
-  opacity: 0.65;
+  margin: 0;
+  padding: 4px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-direction: column;
+  width: var(--cell-width);
+  height: var(--cell-height);
 }
-.empty-slot.drop-ready {
+.placeholder-artwork {
+  width: var(--icon-size);
+  height: var(--icon-size);
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--muted);
+  border-radius: 15px;
+  opacity: 0.6;
+}
+.empty-slot.drop-ready .placeholder-artwork {
   border-color: var(--accent);
   background: #a2cbbb0a;
 }
@@ -362,6 +408,57 @@ h1 {
 }
 .react-resizable-handle::after {
   border-color: var(--accent);
+}
+.react-grid-item > .react-resizable-handle {
+  z-index: 5;
+  background: none;
+}
+.react-grid-item > .react-resizable-handle-e {
+  right: 4px;
+  width: 12px;
+  height: 32px;
+  margin-top: 0;
+}
+.react-grid-item > .react-resizable-handle-e::after {
+  width: 3px;
+  height: 24px;
+  border: 0;
+  background: var(--accent);
+  transform: none;
+  top: 4px;
+  right: 4px;
+  border-radius: 3px;
+}
+.react-grid-item > .react-resizable-handle-s {
+  bottom: 4px;
+  width: 32px;
+  height: 12px;
+}
+.react-grid-item > .react-resizable-handle-s::after {
+  width: 24px;
+  height: 3px;
+  border: 0;
+  background: var(--accent);
+  transform: none;
+  bottom: 4px;
+  right: 4px;
+  border-radius: 3px;
+}
+.react-grid-item > .react-resizable-handle-se {
+  right: 6px;
+  bottom: 6px;
+}
+.react-grid-item > .react-resizable-handle-se::after {
+  width: 9px;
+  height: 9px;
+  border-width: 0 3px 3px 0;
+}
+.mobile-panes .pane-frame {
+  padding: 8px;
+  height: auto;
+}
+.mobile-panes .pane {
+  flex: auto;
 }
 .empty-dashboard {
   min-height: 430px;

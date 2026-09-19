@@ -144,6 +144,8 @@ Keep the same folder/project name so Compose reuses the existing volume. There i
 
 ## Quick troubleshooting
 
+This update uses tile-based pane sizes and fixed 80 px icons. **Add → Pane** creates a 4 × 1 pane immediately; resize its edges/corner and click **Add title** above it if wanted. Existing configurations upgrade automatically with an original `pane.yaml.v1-*.bak` backup in the same config directory. Reload open tabs after upgrading. See [upgrade details](README.md#upgrading-existing-dashboards) for rollback.
+
 | Problem | Fix |
 | --- | --- |
 | `web/dist` is missing | Run `npm ci` and `npm run build` inside `web` before running Go. |

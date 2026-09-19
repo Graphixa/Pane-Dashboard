@@ -24,7 +24,7 @@ type Dashboard struct {
 	Width     int    `json:"width" yaml:"width"`
 }
 type Appearance struct {
-	AppSize          string `json:"appSize" yaml:"appSize"`
+	AppSize          string `json:"appSize,omitempty" yaml:"appSize,omitempty"` // Legacy schema 1 only.
 	ShowAppLabels    bool   `json:"showAppLabels" yaml:"showAppLabels"`
 	ShowButtonLabels bool   `json:"showButtonLabels" yaml:"showButtonLabels"`
 	Theme            string `json:"theme" yaml:"theme"`
@@ -61,7 +61,7 @@ var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,100}$`)
 var iconPattern = regexp.MustCompile(`^dashboard-icons:[a-z0-9][a-z0-9-]{0,100}$`)
 
 func defaultConfig() Config {
-	return Config{Version: 1, Dashboard: Dashboard{Title: "Home", WidthMode: "fixed", Width: 960}, Appearance: Appearance{AppSize: "medium", ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"}, Items: []Pane{}}
+	return Config{Version: 2, Dashboard: Dashboard{Title: "Home", WidthMode: "fixed", Width: 960}, Appearance: Appearance{ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"}, Items: []Pane{}}
 }
 func validURL(s string, empty bool) bool {
 	if s == "" {
@@ -85,16 +85,20 @@ func capacity(g Geometry, width int, size string) (int, int) {
 func overlaps(a, b Geometry) bool {
 	return a.X < b.X+b.W && a.X+a.W > b.X && a.Y < b.Y+b.H && a.Y+a.H > b.Y
 }
+func frame(g Geometry) Geometry { return Geometry{X: g.X, Y: g.Y, W: 4 + 14*g.W, H: 8 + 16*g.H} }
 func validate(c Config) error {
 	fail := func(s string) error { return fmt.Errorf("invalid configuration: %s", s) }
-	if c.Version != 1 {
+	if c.Version != 1 && c.Version != 2 {
 		return fail("unsupported version")
 	}
 	if len(c.Dashboard.Title) > 100 || (c.Dashboard.WidthMode != "fixed" && c.Dashboard.WidthMode != "full") || c.Dashboard.Width < 768 || c.Dashboard.Width > 3840 {
 		return fail("dashboard settings")
 	}
-	if c.Appearance.AppSize != "small" && c.Appearance.AppSize != "medium" && c.Appearance.AppSize != "large" {
+	if c.Version == 1 && c.Appearance.AppSize != "small" && c.Appearance.AppSize != "medium" && c.Appearance.AppSize != "large" {
 		return fail("app size")
+	}
+	if c.Version == 2 && c.Appearance.AppSize != "" {
+		return fail("tile size is fixed in schema 2")
 	}
 	if c.Appearance.Theme != "dark" && c.Appearance.Theme != "light" {
 		return fail("theme")
@@ -110,15 +114,25 @@ func validate(c Config) error {
 		}
 		ids[p.ID] = true
 		g := p.Layout
-		if g.X < 0 || g.Y < 0 || g.W < 1 || g.H < 1 || g.X > 24 || g.W > 24 || g.X+g.W > 24 || g.Y > 256 || g.H > 256 || g.Y+g.H > 256 {
+		if c.Version == 1 && (g.X < 0 || g.Y < 0 || g.W < 1 || g.H < 1 || g.X > 24 || g.W > 24 || g.X+g.W > 24 || g.Y > 256 || g.H > 256 || g.Y+g.H > 256) {
+			return fail("pane bounds")
+		}
+		if c.Version == 2 && (g.X < 0 || g.X > 479 || g.Y < 0 || g.Y >= 4096 || g.W < 1 || g.W > 32 || g.H < 1 || g.H > 32 || (g.X+frame(g).W)*8 > c.Dashboard.Width || g.Y+frame(g).H > 4096) {
 			return fail("pane bounds")
 		}
 		for j := 0; j < i; j++ {
-			if overlaps(g, c.Items[j].Layout) {
+			a, b := g, c.Items[j].Layout
+			if c.Version == 2 {
+				a, b = frame(a), frame(b)
+			}
+			if overlaps(a, b) {
 				return fail("panes overlap")
 			}
 		}
 		cols, rows := capacity(g, c.Dashboard.Width, c.Appearance.AppSize)
+		if c.Version == 2 {
+			cols, rows = g.W, g.H
+		}
 		if cols < 1 || rows < 1 {
 			return fail("pane too small for one app cell")
 		}

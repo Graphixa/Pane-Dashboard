@@ -257,18 +257,18 @@ export function PaneEditor({
           />
         </label>
         <p className="hint">
-          Exact grid placement. Existing panes and occupied app slots are
+          Resize in whole app slots. Occupied slots and neighbouring panes are
           protected.
         </p>
         <div className="fields">
-          {(["x", "y", "w", "h"] as const).map((k) => (
+          {(["w", "h"] as const).map((k) => (
             <label key={k}>
-              {{ x: "Left", y: "Top", w: "Width", h: "Height" }[k]}
+              {{ w: "Columns", h: "Rows" }[k]}
               <input
                 type="number"
                 required
-                min={k === "w" || k === "h" ? 1 : 0}
-                max={k === "x" || k === "w" ? 24 : 256}
+                min={1}
+                max={32}
                 value={draft.layout[k]}
                 onChange={(e) =>
                   setDraft({
@@ -296,9 +296,8 @@ export function PaneEditor({
               });
               download("pane-template.yaml", {
                 type: "pane-layout",
-                version: 1,
+                version: 2,
                 pane: p,
-                appSize: config.appearance.appSize,
                 width: config.dashboard.width,
               });
             }}

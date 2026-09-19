@@ -25,10 +25,9 @@ it("measures the real grid after asynchronous config loading and locks narrow la
       async () =>
         new Response(
           JSON.stringify({
-            version: 1,
+            version: 2,
             dashboard: { title: "Home", widthMode: "fixed", width: 960 },
             appearance: {
-              appSize: "medium",
               showAppLabels: true,
               showButtonLabels: true,
               theme: "dark",
@@ -38,7 +37,7 @@ it("measures the real grid after asynchronous config loading and locks narrow la
                 id: "media",
                 type: "pane",
                 title: "Media",
-                layout: { x: 0, y: 0, w: 11, h: 10 },
+                layout: { x: 0, y: 0, w: 4, h: 1 },
                 apps: [
                   {
                     id: "plex",
@@ -65,6 +64,30 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   expect(
     result.container.querySelector(".react-resizable-handle-e"),
   ).not.toBeNull();
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(3);
+  const south = result.container.querySelector(".react-resizable-handle-s")!;
+  fireEvent.mouseDown(south, { clientX: 240, clientY: 184, button: 0 });
+  fireEvent.mouseMove(document, { clientX: 240, clientY: 312, buttons: 1 });
+  // The live callback exposes a second row before releasing the pointer.
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(7);
+  fireEvent.mouseUp(document, { clientX: 240, clientY: 312 });
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(7);
+  const east = result.container.querySelector(".react-resizable-handle-e")!;
+  fireEvent.mouseDown(east, { clientX: 472, clientY: 100, button: 0 });
+  fireEvent.mouseMove(document, { clientX: 250, clientY: 100, buttons: 1 });
+  fireEvent.mouseUp(document, { clientX: 250, clientY: 100 });
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(7);
+  fireEvent.click(screen.getByRole("button", { name: "Add" }));
+  fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
+    11,
+  );
+  fireEvent.mouseDown(east, { clientX: 472, clientY: 100, button: 0 });
+  fireEvent.mouseMove(document, { clientX: 600, clientY: 100, buttons: 1 });
+  fireEvent.mouseUp(document, { clientX: 600, clientY: 100 });
+  expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
+    11,
+  );
   cleanup();
   width = 390;
   const mobile = render(<Dashboard />);

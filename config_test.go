@@ -13,7 +13,7 @@ import (
 
 func populated() Config {
 	c := defaultConfig()
-	c.Items = []Pane{{ID: "media", Type: "pane", Title: "Media", Layout: Geometry{W: 11, H: 10}, Apps: []App{{ID: "plex", Name: "Plex", URL: "https://plex.example.com", Icon: "dashboard-icons:plex", Col: 3, Row: 0, OpenInNewTab: true}}}}
+	c.Items = []Pane{{ID: "media", Type: "pane", Title: "Media", Layout: Geometry{W: 4, H: 1}, Apps: []App{{ID: "plex", Name: "Plex", URL: "https://plex.example.com", Icon: "dashboard-icons:plex", Col: 3, Row: 0, OpenInNewTab: true}}}}
 	return c
 }
 func TestValidation(t *testing.T) {
@@ -21,12 +21,12 @@ func TestValidation(t *testing.T) {
 		name   string
 		mutate func(*Config)
 	}{
-		{"clipped app", func(c *Config) { c.Items[0].Layout.W = 8 }},
+		{"clipped app", func(c *Config) { c.Items[0].Layout.W = 3 }},
 		{"unsafe URL", func(c *Config) { c.Items[0].Apps[0].URL = "javascript:alert(1)" }},
 		{"overlap", func(c *Config) { p := c.Items[0]; p.ID = "other"; p.Apps = []App{}; c.Items = append(c.Items, p) }},
 		{"occupied slot", func(c *Config) { a := c.Items[0].Apps[0]; a.ID = "other"; c.Items[0].Apps = append(c.Items[0].Apps, a) }},
 		{"global size", func(c *Config) { c.Appearance.AppSize = "large" }},
-		{"schema version", func(c *Config) { c.Version = 2 }},
+		{"schema version", func(c *Config) { c.Version = 3 }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			c := populated()
@@ -42,7 +42,7 @@ func TestValidation(t *testing.T) {
 }
 func TestStrictDecoding(t *testing.T) {
 	b, _ := json.Marshal(defaultConfig())
-	b = bytes.Replace(b, []byte(`"version":1`), []byte(`"version":1,"unknown":true`), 1)
+	b = bytes.Replace(b, []byte(`"version":2`), []byte(`"version":2,"unknown":true`), 1)
 	if _, e := decodeJSON(b); e == nil {
 		t.Fatal("unknown field accepted")
 	}

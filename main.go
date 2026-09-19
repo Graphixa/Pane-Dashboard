@@ -48,6 +48,10 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 			apiError(w, 400, e.Error())
 			return
 		}
+		if c.Version != 2 {
+			apiError(w, 400, "This layout uses the old schema. Reload Pane or use Settings > Import.")
+			return
+		}
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		if r.Header.Get("If-Match") == "" {
@@ -67,6 +71,26 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 		s.revision = revision(c)
 		w.Header().Set("ETag", s.revision)
 		respond(w, 200, map[string]bool{"saved": true})
+	})
+	mux.HandleFunc("POST /api/import/preview", func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+			apiError(w, 415, "Use application/json")
+			return
+		}
+		b, e := io.ReadAll(http.MaxBytesReader(w, r.Body, 2<<20))
+		if e != nil {
+			apiError(w, 413, "Import exceeds 2 MiB")
+			return
+		}
+		c, e := decodeJSON(b)
+		if e == nil {
+			c, e = upgrade(c)
+		}
+		if e != nil {
+			apiError(w, 400, e.Error())
+			return
+		}
+		respond(w, 200, c)
 	})
 	mux.HandleFunc("GET /api/discovery/docker", func(w http.ResponseWriter, r *http.Request) {
 		if d == nil {

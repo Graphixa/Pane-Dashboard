@@ -18,6 +18,17 @@ type Candidate = {
   ports: { ip: string; port: number; privatePort: number }[];
 };
 type Selection = Candidate & { selected: boolean; url: string; icon: string };
+async function previewConfig(data: unknown): Promise<Config> {
+  const res = await fetch("/api/import/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const body = await res.json();
+  if (!res.ok) throw Error(body.error || "Import could not be validated");
+  validate(body);
+  return body;
+}
 function address(host: string, port: number) {
   const h = host.trim();
   if (!h || /[\s/?#@]/.test(h)) return "";
@@ -103,7 +114,7 @@ export default function ImportPanel({
                   const data = parse(await f.text(), { maxAliasCount: 0 });
                   if (data?.type === "pane-layout") {
                     if (
-                      data.version !== 1 ||
+                      ![1, 2].includes(data.version) ||
                       Object.keys(data).some(
                         (k) =>
                           ![
@@ -116,12 +127,19 @@ export default function ImportPanel({
                       )
                     )
                       throw Error("Unsupported pane template.");
-                    const test = clone(config);
-                    test.items = [data.pane];
-                    test.dashboard.width = data.width;
-                    test.appearance.appSize = data.appSize;
-                    validate(test);
-                    const p: Pane = clone(data.pane);
+                    const test = await previewConfig({
+                      ...config,
+                      version: data.version,
+                      dashboard: { ...config.dashboard, width: data.width },
+                      appearance: {
+                        ...config.appearance,
+                        ...(data.version === 1
+                          ? { appSize: data.appSize }
+                          : {}),
+                      },
+                      items: [data.pane],
+                    });
+                    const p: Pane = clone(test.items[0]);
                     p.id = uid();
                     p.apps = p.apps.map((a) => ({
                       ...a,
@@ -132,6 +150,7 @@ export default function ImportPanel({
                       config.items,
                       p.layout.w,
                       p.layout.h,
+                      config.dashboard.width,
                     );
                     const n = clone(config);
                     n.items.push(p);
@@ -139,8 +158,7 @@ export default function ImportPanel({
                     setPreview(n);
                     setReplacement(false);
                   } else {
-                    validate(data);
-                    setPreview(data);
+                    setPreview(await previewConfig(data));
                     setReplacement(true);
                   }
                 } catch (e) {

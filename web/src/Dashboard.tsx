@@ -1,6 +1,6 @@
 import { CSSProperties, useEffect, useState } from "react";
 import GridLayout, { useContainerWidth, type Layout } from "react-grid-layout";
-import { getCompactor } from "react-grid-layout/core";
+import { getCompactor, defaultConstraints } from "react-grid-layout/core";
 import {
   Plus,
   Hammer,
@@ -24,8 +24,14 @@ import {
   minimum,
   moveApp,
   newPane,
-  sizes,
+  tileSize,
+  frame,
+  slotsFromFrame,
+  GRID,
+  MAX_ROWS,
 } from "./model";
+import { tileResize, gridWidth } from "./layout";
+import PaneTitle from "./PaneTitle";
 import { iconURL } from "./icons";
 import { useConfig } from "./useConfig";
 import { AppEditor, PaneEditor } from "./Editors";
@@ -83,14 +89,15 @@ function DashboardView({
     [message, setMessage] = useState(""),
     [selected, setSelected] = useState(""),
     [dragged, setDragged] = useState<string | null>(null);
-  const width = config
-    ? config.dashboard.widthMode === "full"
-      ? Math.max(config.dashboard.width, availableWidth)
-      : config.dashboard.width
-    : 960;
+  const [preview, setPreview] = useState<Layout | null>(null);
+  const width = gridWidth(
+    config.dashboard.widthMode === "full"
+      ? availableWidth
+      : config.dashboard.width,
+  );
   const mobile =
     !!config &&
-    (availableWidth < config.dashboard.width ||
+    ((config.dashboard.widthMode === "fixed" && availableWidth < width) ||
       availableWidth < 768 ||
       !canPresent(config, width));
   const editing = edit && !mobile && status !== "Conflict";
@@ -108,6 +115,17 @@ function DashboardView({
     }
   }, [config?.appearance.theme, config?.dashboard.title]);
   const apply = (next: Config) => {
+    if (
+      config.dashboard.widthMode === "full" &&
+      next.dashboard.widthMode === "full"
+    )
+      next = {
+        ...next,
+        dashboard: {
+          ...next.dashboard,
+          width: Math.max(next.dashboard.width, width),
+        },
+      };
     change(next);
     setMessage("");
   };
@@ -119,25 +137,26 @@ function DashboardView({
     }
   };
   const labels = config.appearance.showButtonLabels,
-    size = sizes[config.appearance.appSize];
+    size = tileSize;
   const add = () =>
     attempt(() => {
       const n = clone(config);
+      if (n.dashboard.widthMode === "full") n.dashboard.width = width;
       const pane = newPane(n);
       n.items.push(pane);
       apply(n);
       setEdit(true);
       setSelected(pane.id);
       setAddMenu(false);
-      setEditor({ type: "pane", pane });
     });
   const updateLayout = (layout: Layout) => {
+    setPreview(null);
     if (!editing) return;
     attempt(() => {
       const n = clone(config);
       for (const p of n.items) {
         const l = layout.find((l) => l.i === p.id);
-        if (l) p.layout = { x: l.x, y: l.y, w: l.w, h: l.h };
+        if (l) p.layout = slotsFromFrame({ x: l.x, y: l.y, w: l.w, h: l.h });
       }
       if (JSON.stringify(n) !== JSON.stringify(config)) apply(n);
     });
@@ -193,21 +212,60 @@ function DashboardView({
     </div>
   );
   const paneContent = (p: Pane) => {
-    const cap = capacity(
-      p.layout,
-      Math.min(width, config.dashboard.width),
-      config.appearance.appSize,
-    );
+    const live = preview?.find((l) => l.i === p.id);
+    const cap = capacity(live ? slotsFromFrame(live) : p.layout);
     return (
       <section
-        className={`pane ${selected === p.id && editing ? "focused" : ""}`}
+        className={`pane-frame ${selected === p.id && editing ? "focused" : ""}`}
         aria-label={p.title || "Untitled pane"}
+        onPointerDown={() => {
+          if (editing) setSelected(p.id);
+        }}
+        onFocusCapture={() => {
+          if (editing) setSelected(p.id);
+        }}
       >
         <div className={`pane-header ${editing ? "pane-drag" : ""}`}>
-          <h2>
-            {editing && <Grip size={15} />}
-            <span>{p.title || (editing ? "Untitled pane" : "")}</span>
-          </h2>
+          {editing && (
+            <button
+              className="icon-button pane-move"
+              aria-label={`Move ${p.title || "untitled pane"}`}
+              title="Drag to move; arrow keys nudge"
+              onKeyDown={(e) => {
+                const delta: Record<string, [number, number]> = {
+                  ArrowLeft: [-1, 0],
+                  ArrowRight: [1, 0],
+                  ArrowUp: [0, -1],
+                  ArrowDown: [0, 1],
+                };
+                if (!delta[e.key]) return;
+                e.preventDefault();
+                attempt(() => {
+                  const n = clone(config);
+                  const target = n.items.find((x) => x.id === p.id)!;
+                  target.layout.x += delta[e.key][0];
+                  target.layout.y += delta[e.key][1];
+                  apply(n);
+                });
+              }}
+            >
+              <Grip size={16} />
+            </button>
+          )}
+          <PaneTitle
+            title={p.title}
+            editable={editing}
+            save={(title) =>
+              attempt(() =>
+                apply({
+                  ...config,
+                  items: config.items.map((x) =>
+                    x.id === p.id ? { ...x, title } : x,
+                  ),
+                }),
+              )
+            }
+          />
           {editing && (
             <button
               className="icon-button pane-controls"
@@ -218,55 +276,59 @@ function DashboardView({
             </button>
           )}
         </div>
-        <div
-          className={`app-grid ${mobile ? "mobile-apps" : ""}`}
-          style={
-            mobile
-              ? undefined
-              : {
-                  gridTemplateColumns: `repeat(${cap.cols}, ${size.w}px)`,
-                  gridAutoRows: `${size.h}px`,
-                }
-          }
-        >
-          {editing &&
-            Array.from({ length: cap.cols * cap.rows }, (_, i) => {
-              const col = i % cap.cols,
-                row = Math.floor(i / cap.cols);
-              if (p.apps.some((a) => a.col === col && a.row === row))
-                return null;
-              return (
-                <button
-                  key={`slot-${i}`}
-                  className={`empty-slot ${dragged ? "drop-ready" : ""}`}
-                  aria-label={`Add app at column ${col + 1}, row ${row + 1}`}
-                  style={{ gridColumn: col + 1, gridRow: row + 1 }}
-                  onClick={() =>
-                    setEditor({ type: "app", paneId: p.id, col, row })
+        <div className="pane">
+          <div
+            className={`app-grid ${mobile ? "mobile-apps" : ""}`}
+            style={
+              mobile
+                ? undefined
+                : {
+                    gridTemplateColumns: `repeat(${cap.cols}, ${size.w}px)`,
+                    gridAutoRows: `${size.h}px`,
                   }
-                  onDragOver={(e) => {
-                    if (dragged) {
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "move";
+            }
+          >
+            {editing &&
+              Array.from({ length: cap.cols * cap.rows }, (_, i) => {
+                const col = i % cap.cols,
+                  row = Math.floor(i / cap.cols);
+                if (p.apps.some((a) => a.col === col && a.row === row))
+                  return null;
+                return (
+                  <button
+                    key={`slot-${i}`}
+                    className={`empty-slot ${dragged ? "drop-ready" : ""}`}
+                    aria-label={`Add app at column ${col + 1}, row ${row + 1}`}
+                    style={{ gridColumn: col + 1, gridRow: row + 1 }}
+                    onClick={() =>
+                      setEditor({ type: "app", paneId: p.id, col, row })
                     }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (dragged)
-                      attempt(() =>
-                        apply(moveApp(config, dragged, p.id, col, row)),
-                      );
-                    setDragged(null);
-                  }}
-                >
-                  <Plus size={18} />
-                </button>
-              );
-            })}
-          {[...p.apps]
-            .sort((a, b) => a.row - b.row || a.col - b.col)
-            .map((a) => tile(p, a))}
+                    onDragOver={(e) => {
+                      if (dragged) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (dragged)
+                        attempt(() =>
+                          apply(moveApp(config, dragged, p.id, col, row)),
+                        );
+                      setDragged(null);
+                    }}
+                  >
+                    <span className="placeholder-artwork">
+                      <Plus size={20} />
+                    </span>
+                  </button>
+                );
+              })}
+            {[...p.apps]
+              .sort((a, b) => a.row - b.row || a.col - b.col)
+              .map((a) => tile(p, a))}
+          </div>
         </div>
       </section>
     );
@@ -457,25 +519,18 @@ function DashboardView({
                   width={width}
                   layout={config.items.map((p) => ({
                     i: p.id,
-                    ...p.layout,
-                    minW: minimum(
-                      p,
-                      config.dashboard.width,
-                      config.appearance.appSize,
-                    ).w,
-                    minH: minimum(
-                      p,
-                      config.dashboard.width,
-                      config.appearance.appSize,
-                    ).h,
+                    ...frame(p.layout),
+                    minW: frame({ ...p.layout, ...minimum(p) }).w,
+                    minH: frame({ ...p.layout, ...minimum(p) }).h,
                   }))}
                   compactor={compactor}
+                  constraints={[...defaultConstraints, tileResize]}
                   gridConfig={{
-                    cols: 24,
-                    rowHeight: 24,
-                    margin: [8, 8],
+                    cols: width / GRID,
+                    rowHeight: GRID,
+                    margin: [0, 0],
                     containerPadding: [0, 0],
-                    maxRows: 256,
+                    maxRows: MAX_ROWS,
                   }}
                   dragConfig={{
                     enabled: editing,
@@ -485,10 +540,28 @@ function DashboardView({
                   }}
                   resizeConfig={{ enabled: editing, handles: ["e", "s", "se"] }}
                   onDragStop={updateLayout}
+                  onDragStart={(_layout, _old, item) => {
+                    if (item) setSelected(item.i);
+                  }}
+                  onResizeStart={(_layout, _old, item) => {
+                    if (item) setSelected(item.i);
+                  }}
+                  onResize={(layout) => setPreview(layout)}
                   onResizeStop={updateLayout}
                 >
                   {config.items.map((p) => (
-                    <div key={p.id}>{paneContent(p)}</div>
+                    <div
+                      key={p.id}
+                      className="pane-grid-item"
+                      style={
+                        {
+                          "--pane-frame-width": `${(preview?.find((l) => l.i === p.id)?.w ?? frame(p.layout).w) * GRID}px`,
+                          "--pane-frame-height": `${(preview?.find((l) => l.i === p.id)?.h ?? frame(p.layout).h) * GRID}px`,
+                        } as CSSProperties
+                      }
+                    >
+                      {paneContent(p)}
+                    </div>
                   ))}
                 </GridLayout>
               </div>

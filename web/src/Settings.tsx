@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Config, Size, clone, sanitiseExport, validate } from "./model";
+import { Config, clone, sanitiseExport, validate } from "./model";
 import Modal from "./Modal";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
@@ -107,7 +107,7 @@ export default function Settings({
               </label>
               <label>
                 {draft.dashboard.widthMode === "full"
-                  ? "Reference width (px)"
+                  ? "Saved workspace width (px)"
                   : "Width (px)"}
                 <input
                   type="number"
@@ -128,29 +128,11 @@ export default function Settings({
               </label>
             </div>
             <p className="hint">
-              Full width expands to the available desktop space. The reference
-              width is the minimum editing width.
+              Full width gives you more workspace without stretching tiles.
+              Narrow screens use a read-only presentation. Tile size is fixed at
+              80 px.
             </p>
             <div className="fields">
-              <label>
-                App size
-                <select
-                  value={draft.appearance.appSize}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      appearance: {
-                        ...draft.appearance,
-                        appSize: e.target.value as Size,
-                      },
-                    })
-                  }
-                >
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
-              </label>
               <label>
                 Theme
                 <select

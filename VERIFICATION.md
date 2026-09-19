@@ -1,5 +1,13 @@
 # V1 implementation verification
 
+## Tile-based redesign
+
+- Preserved the updated dependency manifest and lockfile from main at `599b0fa`.
+- `npm ci`, all 26 frontend tests, strict TypeScript checking and the Vite production build passed.
+- The real React Grid Layout integration test exercises live row resizing, occupied-slot shrink prevention, neighbour collision blocking and narrow-screen locking. DOM tests cover immediate creation, attached title editing/cancellation, square placeholders and keyboard selection/movement.
+- `go test -race ./...` and `go vet ./...` passed, including original-byte legacy backup, migration idempotence, read-only import preview and rejection of old-schema saves.
+- Visual browser QA remains outstanding: the cloud browser could not access the local preview. Docker builds are verified by repository CI; a running deployment still needs the target-host checks below.
+
 ## Passed during initial implementation
 
 - 20 frontend tests: validation, intentional gaps, occupied slots, cross-pane moves, minimum dimensions, import atomicity, privacy-preserving export, read/edit boundaries, autosave revision headers, accessible tile names, actual grid mounting after asynchronous loading and narrow-screen locking.
@@ -20,9 +28,9 @@
 
 1. Confirm GitHub Actions is green, then run `docker compose up -d --build`.
 2. Create two adjacent panes. Verify dragging/resizing never pushes neighbours and gaps survive reload.
-3. Put an app in column four. Verify shrinking to three columns is blocked until the app is moved.
+3. Add a pane: expect four columns and one row without a dialog. Put an app in column four. Verify shrinking to three columns is blocked until the app is moved; live placeholders follow whole-slot resizing.
 4. Drag apps between empty slots/panes; reject occupied targets. Check east, south and south-east handles.
-5. Check read-mode locking, hidden-label accessible names, keyboard editor controls, themes and narrow-screen presentation.
+5. Check read-mode locking, hidden-label accessible names, keyboard editor controls, themes and narrow-screen presentation. Edit an attached title inline; check Enter/blur save, Escape cancels and Done causes no panel jump. Check 16 px gutters and matching 80 px icons/placeholders.
 6. Reload after saves. Test two-tab conflicts, server disconnection/retry, full backup restore and shared template import.
 7. Test Docker import with multiple ports, loopback bindings, already-imported Compose services and a full destination pane.
 

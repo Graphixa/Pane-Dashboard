@@ -22,10 +22,9 @@ vi.mock("react-grid-layout", () => ({
   }),
 }));
 const initial = (): Config => ({
-  version: 1,
+  version: 2,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
   appearance: {
-    appSize: "medium",
     showAppLabels: true,
     showButtonLabels: true,
     theme: "dark",
@@ -35,7 +34,7 @@ const initial = (): Config => ({
       id: "media",
       type: "pane",
       title: "Media",
-      layout: { x: 0, y: 0, w: 11, h: 10 },
+      layout: { x: 0, y: 0, w: 4, h: 1 },
       apps: [
         {
           id: "plex",
@@ -87,6 +86,68 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("interaction boundary", () => {
+  it("edits the external title inline without consuming slots", async () => {
+    const result = render(<Dashboard />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Edit dashboard" }),
+    );
+    expect(result.container.querySelector(".pane .pane-title")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit title: Media" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Pane title" }), {
+      target: { value: "My dock" },
+    });
+    fireEvent.blur(screen.getByRole("textbox", { name: "Pane title" }));
+    expect(
+      screen.getByRole("button", { name: "Edit title: My dock" }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
+      3,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Edit title: My dock" }),
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Pane title" }), {
+      target: { value: "Cancelled" },
+    });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "Pane title" }), {
+      key: "Escape",
+    });
+    expect(
+      screen.getByRole("button", { name: "Edit title: My dock" }),
+    ).toBeTruthy();
+  });
+  it("keeps placeholders square and removes position/size preset settings", async () => {
+    const result = render(<Dashboard />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Edit dashboard" }),
+    );
+    expect(
+      result.container.querySelectorAll(".empty-slot .placeholder-artwork"),
+    ).toHaveLength(3);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Media" }));
+    expect(screen.getByLabelText("Columns")).toBeTruthy();
+    expect(screen.queryByLabelText("Left")).toBeNull();
+    expect(screen.queryByLabelText("Top")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.queryByLabelText("App size")).toBeNull();
+  });
+  it("moves the selected highlight and supports keyboard pane movement", async () => {
+    const result = render(<Dashboard />);
+    fireEvent.click(await screen.findByRole("button", { name: "Add" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
+    expect(
+      result.container.querySelector(".focused")?.getAttribute("aria-label"),
+    ).toBe("Untitled pane");
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Move Media" }));
+    expect(
+      result.container.querySelector(".focused")?.getAttribute("aria-label"),
+    ).toBe("Media");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Move Media" }), {
+      key: "ArrowRight",
+    });
+    expect(screen.getByRole("alert").textContent).toContain("overlap");
+  });
   it("read mode launches links and hides all app slots", async () => {
     render(<Dashboard />);
     await screen.findByRole("link", { name: "Plex" });
@@ -117,7 +178,10 @@ describe("interaction boundary", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Add" }));
     fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
     expect(screen.getByRole("button", { name: "Done editing" })).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Edit pane" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
+      7,
+    );
     await waitFor(() =>
       expect(
         vi.mocked(fetch).mock.calls.some(([, o]) => o?.method === "PUT"),
@@ -136,8 +200,8 @@ describe("interaction boundary", () => {
       await screen.findByRole("button", { name: "Edit dashboard" }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Edit Media" }));
-    fireEvent.change(screen.getByLabelText("Width"), {
-      target: { value: "8" },
+    fireEvent.change(screen.getByLabelText("Columns"), {
+      target: { value: "3" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save pane" }));
     expect(screen.getByRole("alert").textContent).toContain("clip");

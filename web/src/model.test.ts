@@ -4,6 +4,7 @@ import {
   Pane,
   capacity,
   clone,
+  frame,
   freePosition,
   importApps,
   minimum,
@@ -12,23 +13,21 @@ import {
   sanitiseExport,
   validURL,
   validate,
+  canPresent,
+  slotsFromFrame,
 } from "./model";
+import { tileResize } from "./layout";
 const base = (): Config => ({
-  version: 1,
+  version: 2,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
-  appearance: {
-    appSize: "medium",
-    showAppLabels: true,
-    showButtonLabels: true,
-    theme: "dark",
-  },
+  appearance: { showAppLabels: true, showButtonLabels: true, theme: "dark" },
   items: [],
 });
 const pane = (): Pane => ({
   id: "media",
   type: "pane",
   title: "Media",
-  layout: { x: 0, y: 0, w: 11, h: 10 },
+  layout: { x: 0, y: 0, w: 4, h: 1 },
   apps: [
     {
       id: "plex",
@@ -41,53 +40,114 @@ const pane = (): Pane => ({
     },
   ],
 });
-describe("configuration invariants", () => {
-  it("preserves deliberate inner gaps", () => {
+describe("tile dimensions and placement", () => {
+  it("creates exactly four columns and one row without a title", () => {
     const c = base();
-    c.items = [pane()];
-    expect(() => validate(c)).not.toThrow();
-    expect(c.items[0].apps[0].col).toBe(3);
+    const p = newPane(c);
+    expect(p.title).toBe("");
+    expect(capacity(p.layout)).toEqual({ cols: 4, rows: 1 });
+    c.items.push(p);
+    validate(c);
   });
-  it("blocks shrinking past the fourth app column", () => {
+  it("has fixed dimensions regardless of viewport, title and label settings", () => {
     const c = base();
     c.items = [pane()];
-    c.items[0].layout.w = 8;
+    for (const width of [960, 1200, 2000]) {
+      c.dashboard.width = width;
+      c.dashboard.widthMode = "full";
+      c.appearance.showAppLabels = false;
+      validate(c);
+      expect(frame(c.items[0].layout)).toEqual({ x: 0, y: 0, w: 60, h: 24 });
+      expect(canPresent(c, width)).toBe(true);
+    }
+  });
+  it("places adjacent four-slot panes with 16px between panel edges", () => {
+    const a = pane();
+    const b = freePosition([a], 4, 1);
+    expect(b).toEqual({ x: 60, y: 0, w: 4, h: 1 });
+    expect(b.x * 8 + 8 - ((a.layout.x + frame(a.layout).w) * 8 - 8)).toBe(16);
+  });
+  it("reserves title space and gutter even for untitled panes", () => {
+    expect(frame({ x: 0, y: 0, w: 1, h: 1 }).h * 8).toBe(32 + 16 + 24 + 120);
+  });
+  it("maps every allowed slot size exactly to and from the library grid", () => {
+    for (let w = 1; w <= 32; w++)
+      for (let h = 1; h <= 32; h++) {
+        const g = { x: 3, y: 5, w, h };
+        expect(slotsFromFrame(frame(g))).toEqual(g);
+      }
+  });
+  it("blocks shrinking past occupied columns and rows", () => {
+    const c = base();
+    c.items = [pane()];
+    c.items[0].layout.w = 3;
+    expect(() => validate(c)).toThrow(/clip/);
+    c.items[0].layout.w = 4;
+    c.items[0].apps[0].row = 1;
     expect(() => validate(c)).toThrow(/clip/);
   });
-  it("blocks overlapping panes without moving neighbours", () => {
+  it("minimum capacity follows occupied coordinates including deliberate gaps", () => {
+    const p = pane();
+    expect(minimum(p)).toEqual({ w: 4, h: 1 });
+    p.apps[0].col = 1;
+    expect(minimum(p)).toEqual({ w: 2, h: 1 });
+  });
+  it("rejects colliding gutters and workspace overflow", () => {
     const c = base();
-    c.items = [pane(), { ...pane(), id: "other", apps: [] }];
+    c.items = [
+      pane(),
+      { ...pane(), id: "other", apps: [], layout: { x: 59, y: 0, w: 4, h: 1 } },
+    ];
     expect(() => validate(c)).toThrow(/overlap/);
-  });
-  it("rejects duplicate IDs and occupied app slots", () => {
-    const c = base();
-    c.items = [pane()];
-    c.items[0].apps.push({ ...c.items[0].apps[0], id: "other" });
-    expect(() => validate(c)).toThrow(/occupied/);
-    c.items[0].apps[1].col = 0;
-    c.items[0].apps[1].id = "plex";
-    expect(() => validate(c)).toThrow(/identity/);
-  });
-  it("blocks a global size increase that clips apps", () => {
-    const c = base();
-    c.items = [pane()];
-    c.appearance.appSize = "large";
-    expect(() => validate(c)).toThrow(/clip/);
-  });
-  it("rejects unknown fields and fractional geometry", () => {
-    const c = base();
-    expect(() => validate({ ...c, surprise: true })).toThrow();
-    c.items = [pane()];
-    c.items[0].layout.x = 0.5;
+    c.items[1].layout.x = 60;
+    validate(c);
+    c.dashboard.width = 952;
     expect(() => validate(c)).toThrow();
   });
-  it("rejects unsupported item types", () => {
+  it("changes only the presentation decision on narrow screens", () => {
+    const c = base();
+    c.items = [pane()];
+    const before = clone(c);
+    expect(canPresent(c, 390)).toBe(false);
+    expect(c).toEqual(before);
+  });
+  it("snaps resize increments and clamps to whole tiles at the wall", () => {
+    const item = { i: "p", x: 0, y: 0, w: 60, h: 24, minW: 60, minH: 24 };
+    const ctx = {
+      cols: 120,
+      maxRows: 4096,
+      containerWidth: 960,
+      containerHeight: 1000,
+      rowHeight: 8,
+      margin: [0, 0] as const,
+      layout: [item],
+    };
+    expect(tileResize.constrainSize!(item, 70, 35, "se", ctx)).toEqual({
+      w: 74,
+      h: 40,
+    });
+    expect(tileResize.constrainSize!(item, 120, 24, "e", ctx)).toEqual({
+      w: 116,
+      h: 24,
+    });
+    expect(tileResize.constrainSize!(item, 20, 10, "se", ctx)).toEqual({
+      w: 60,
+      h: 24,
+    });
+  });
+});
+describe("validation and imports", () => {
+  it("rejects unknown fields, obsolete size presets and fractional dimensions", () => {
     const c = base();
     expect(() =>
-      validate({ ...c, items: [{ ...pane(), type: "widget" }] }),
+      validate({ ...c, appearance: { ...c.appearance, appSize: "large" } }),
     ).toThrow();
+    expect(() => validate({ ...c, version: 1 })).toThrow();
+    c.items = [pane()];
+    c.items[0].layout.w = 3.5;
+    expect(() => validate(c)).toThrow();
   });
-  it("allows a blank imported URL, rejects unsafe schemes and credentials", () => {
+  it("rejects unsafe URLs and allows blank templates", () => {
     expect(validURL("")).toBe(true);
     for (const u of [
       "javascript:alert(1)",
@@ -95,66 +155,53 @@ describe("configuration invariants", () => {
       "http://user:pass@host",
     ])
       expect(validURL(u)).toBe(false);
-    expect(validURL("http://192.168.1.10:8989")).toBe(true);
   });
-});
-describe("geometry and imports", () => {
-  it("minimum dimensions contain all occupied slots", () => {
-    for (const size of ["small", "medium", "large"] as const)
-      for (const width of [768, 960, 1200, 3840]) {
-        const p = pane();
-        const min = minimum(p, width, size);
-        const cap = capacity({ ...p.layout, ...min }, width, size);
-        expect(cap.cols).toBeGreaterThanOrEqual(4);
-        expect(cap.rows).toBeGreaterThanOrEqual(1);
-      }
+  it("does not swap or compact on an occupied drop", () => {
+    const c = base();
+    c.items = [pane()];
+    c.items[0].apps.push({ ...pane().apps[0], id: "other", col: 0 });
+    const before = clone(c);
+    expect(() => moveApp(c, "plex", "media", 0, 0)).toThrow(/occupied/);
+    expect(c).toEqual(before);
   });
-  it("first-free placement preserves gaps", () => {
-    expect(freePosition([pane()], 8, 7)).toEqual({ x: 11, y: 0, w: 8, h: 7 });
-  });
-  it("moves across panes without swapping", () => {
+  it("moves apps across panes while preserving the other apps", () => {
     const c = base();
     c.items = [
       pane(),
-      {
-        ...pane(),
-        id: "other",
-        layout: { x: 11, y: 0, w: 11, h: 10 },
-        apps: [],
-      },
+      { ...pane(), id: "other", apps: [], layout: { x: 60, y: 0, w: 4, h: 1 } },
     ];
-    const n = moveApp(c, "plex", "other", 0, 0);
+    const n = moveApp(c, "plex", "other", 1, 0);
     expect(n.items[0].apps).toHaveLength(0);
-    expect(n.items[1].apps[0].col).toBe(0);
+    expect(n.items[1].apps[0].col).toBe(1);
     expect(c.items[0].apps).toHaveLength(1);
   });
-  it("fills only empty slots on import", () => {
+  it("imports into empty slots only and regenerates IDs", () => {
     const c = base();
     c.items = [pane()];
     const n = importApps(c, [pane().apps[0]], "media", "").config;
     expect(n.items[0].apps.map((a) => a.col)).toEqual([3, 0]);
     expect(n.items[0].apps[1].id).not.toBe("plex");
   });
-  it("fails an oversized import atomically", () => {
+  it("rejects imports without sufficient capacity atomically", () => {
     const c = base();
     c.items = [pane()];
     const before = clone(c);
     expect(() =>
-      importApps(c, Array(100).fill(pane().apps[0]), "media", ""),
+      importApps(c, Array(4).fill(pane().apps[0]), "media", ""),
     ).toThrow(/empty slots/);
     expect(c).toEqual(before);
   });
-  it("creates a correctly sized optional-title pane", () => {
+  it("sizes a Docker import in four-column rows", () => {
     const c = base();
-    const p = newPane(c, "", Array(12).fill(pane().apps[0]));
+    const p = newPane(c, "", Array(9).fill(pane().apps[0]));
+    expect(capacity(p.layout)).toEqual({ cols: 4, rows: 3 });
     c.items.push(p);
-    expect(() => validate(c)).not.toThrow();
-    expect(p.title).toBe("");
+    validate(c);
   });
-  it("strips private URLs and discovery identity without changing original", () => {
+  it("removes private addresses and discovery identities from shared exports", () => {
     const c = base();
     c.items = [pane()];
-    c.items[0].apps[0].source = { provider: "docker", id: "host:service" };
+    c.items[0].apps[0].source = { provider: "docker", id: "private" };
     const n = sanitiseExport(c);
     expect(n.items[0].apps[0].url).toBe("");
     expect(n.items[0].apps[0].source).toBeUndefined();

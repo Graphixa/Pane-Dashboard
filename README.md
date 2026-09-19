@@ -18,16 +18,24 @@ Open `http://localhost:8080`. Configuration persists in the `pane-config` volume
 
 ## Using Pane
 
-- **Add → Pane** creates a pane and enters edit mode. The title is optional.
-- **Edit / Done** unlocks and locks layout interactions. Drag a pane by its header. Resize from its right or bottom edges.
+- **Add → Pane** immediately creates an untitled 4-column × 1-row pane and selects it in edit mode.
+- **Edit / Done** unlocks and locks layout interactions. Drag the pane's move handle, or focus it and use arrow keys. Resize from the right, bottom or bottom-right corner in whole app slots; placeholders update while dragging.
+- Optional titles sit above their pane. Click **Add title** or an existing title in edit mode; Enter or clicking away saves, Escape cancels. Titles stay attached when moving the pane.
 - In edit mode, click an empty slot to add an app, or click an app to edit it. Drag apps into empty slots, including across panes. Numeric controls are available for keyboard users.
 - Panes never push neighbours, apps never swap, and resizing stops before occupied slots would be clipped.
-- **Settings** controls width, global app size, theme, app labels and navigation labels. Changes that clip apps are rejected.
+- Icons use a fixed 80 px size, with matching square placeholders, inner padding and 16 px gutters between panes. Pane settings specify app columns and rows.
+- **Settings** controls workspace width, theme, app labels and navigation labels. Changes that clip panes are rejected.
 - **Settings → Import** accepts YAML/JSON dashboard files, pane templates and Docker selections. Export a private backup before replacing a dashboard.
 - Shared exports remove app URLs and Docker identity. Review custom icon URLs before sharing. Blank-address tiles do not launch.
 - Mobile is read-only, with panes/apps shown in reading order; desktop coordinates remain unchanged.
 
 Autosave displays its state in the header. Save errors can be retried. A revision conflict requires reloading; save a backup first if you need to preserve the local draft.
+
+## Upgrading existing dashboards
+
+The layout format is now version 2; the product remains Pane v1. On first startup, the server converts an old configuration and saves its original bytes beside it as `pane.yaml.v1-*.bak`. App slots, IDs and intentional gaps are preserved. Pane positions are scaled consistently to accommodate the larger tiles and gutters, so the workspace may grow. Layouts beyond the supported limits fail safely without replacing the original file.
+
+Old dashboard and pane-template exports are converted during import preview. Reload any browser tabs left open during the upgrade. To roll back, stop Pane, restore the original backup and run the previous application version.
 
 ## Optional Docker import
 
@@ -72,4 +80,4 @@ Environment variables:
 
 The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. Icons are fetched directly from the [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) catalogue through jsDelivr, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. Trademarks belong to their owners. No icon artwork is bundled.
 
-The root [SPEC.md](SPEC.md) defines behaviour and scope. [AGENTS.md](AGENTS.md) gives coding-agent instructions. Widgets, mobile editing, accounts and multi-dashboard support are intentionally outside v1. Full-width layouts use a reference width for safe persisted capacity; wider screens may show extra space without creating slots that would disappear at the reference width.
+The root [SPEC.md](SPEC.md) defines behaviour and scope. [AGENTS.md](AGENTS.md) gives coding-agent instructions. Widgets, mobile editing, accounts and multi-dashboard support are intentionally outside v1. Full width adds workspace without stretching tiles. Narrow screens show a read-only layout without changing saved positions.
