@@ -8,7 +8,7 @@ V1 includes pane/app CRUD, spatial editing, appearance settings, icon search, co
 
 ## Invariants
 
-- Pane positions occupy an 8 px dashboard grid. Saved width/height are app columns/rows. No compaction, overlap or neighbour displacement.
+- New pane positions and movement snap to a 16 px dashboard grid. Stored positions retain 8 px units for compatibility; existing layouts do not shift on upgrade. Saved width/height are app columns/rows. No compaction, overlap or neighbour displacement.
 - Apps occupy explicit zero-based column/row slots within panes. Gaps are intentional. Occupied drop targets reject the move; no swapping.
 - Pane size determines capacity. A pane cannot shrink past its rightmost or lowest occupied slot.
 - The only resize handles are east, south and south-east; app origins never change during resize.
@@ -19,12 +19,13 @@ V1 includes pane/app CRUD, spatial editing, appearance settings, icon search, co
 
 | Measurement | Value |
 | --- | --- |
-| Placement grid | 8 px |
+| Visible placement / movement grid | 16 px (stored units remain 8 px) |
 | Gutter between adjacent panels | 16 px |
 | Maximum outer rows | 4096 |
 | Attached title band / inner padding | 32 px / 12 px per side |
 | Icon / cell | 80 px / 104 × 120 px |
 | App cell gap | 8 px |
+| Pane title / app label | Inter bold 18 px (global 14–22 px) / 13 px |
 | New pane / minimum / maximum | 4 × 1 / 1 × 1 / 32 × 32 app slots |
 
 Labels retain reserved cell height when hidden. Dashboard width supports full width, 960 px, 1200 px or a custom width (768–3840 px). Full width follows the available workspace, rounded down to 8 px, with a 3840 px ceiling; editing can expand its saved bounds. Browser resizing never saves geometry. Below 768 px, when fixed width cannot fit, or when saved panes exceed available width, use read-only presentation. The outer workspace grows vertically to fit content up to its finite row limit.
@@ -33,7 +34,9 @@ For C columns and R rows, the panel measures `(16 + 112*C)` × `(16 + 128*R)` px
 
 ## Interaction
 
-The header has round Add, tool-shaped Edit/Done and Settings buttons. A global navigation-label setting hides visible labels without removing accessible names or tooltips. Editing has a persistent highlighted state.
+The compact header shows the configured dashboard name and optional HTTP(S) logo image URL, plus round Add, tool-shaped Edit/Done and Settings buttons. A blank name uses `pane.`; a blank or failed logo uses the built-in grid icon. Names truncate gracefully and also set the browser tab title. Settings provides a branding preview. Remove the secondary dashboard heading, slogans, app/pane counts and footer copy. A global navigation-label setting hides visible labels without removing accessible names or tooltips. Editing has a persistent highlighted state.
+
+Titles use locally bundled Inter bold, default 18 px, adjustable globally from 14–22 px without changing pane geometry. App labels are 13 px. A four-arrow move icon distinguishes movement from the fainter dotted grid; edge/corner resize affordances appear on hover, keyboard focus or selection with larger hit areas. Empty-address app artwork stays at full brightness in read mode, with a non-launching link and explanatory tooltip.
 
 Read mode launches app links and hides slots, drag handles, resize handles and mutation controls. Edit mode reveals those controls; clicking an app edits it. Empty slots show square 80 px artwork placeholders with reserved label space matching app tiles. Apps may be dragged between panes or moved through explicit destination/slot fields for keyboard access. Pane settings provide Columns and Rows, without position fields. Arrow keys on a pane's move handle nudge it on the placement grid, subject to collision checks.
 
@@ -49,7 +52,7 @@ Add Pane immediately creates an untitled 4 × 1 pane without a dialog. Creation 
 
 Edits autosave after a short delay through a serialised queue. UI reports saving, saved, failure and conflict states. Unsaved changes trigger navigation protection; conflicts require explicit reload rather than blind retries. Unknown fields/schema versions and invalid coordinates, IDs, URLs, duplicate slots and overlaps are rejected. Limits bound file size, items and apps. Writes use a temporary file in the same directory, fsync and rename. Startup rejects invalid existing configuration without replacing it.
 
-Configuration version 2 has `dashboard` (title, widthMode, width), `appearance` (showAppLabels, showButtonLabels, theme), and `items`. Each item has `id`, `type: pane`, `title`, `layout: {x,y,w,h}`, and `apps`. x/y use 8 px units; w/h use app columns/rows. Each app has `id`, `name`, `url`, `icon`, `col`, `row`, `openInNewTab`, and optional Docker source identity. Empty URLs are permitted for imported templates and never launch.
+Configuration version 2 has `dashboard` (title, optional logo, widthMode, width), `appearance` (showAppLabels, showButtonLabels, theme, optional paneTitleSize), and `items`. The optional fields preserve compatibility with existing version 2 configurations. Each item has `id`, `type: pane`, `title`, `layout: {x,y,w,h}`, and `apps`. x/y use 8 px units; w/h use app columns/rows. Each app has `id`, `name`, `url`, `icon`, `col`, `row`, `openInNewTab`, and optional Docker source identity. Empty URLs are permitted for imported templates and never launch.
 
 Legacy version 1 is accepted only for startup migration and import preview. Convert old pixel capacity into explicit app dimensions; retain app coordinates, IDs and gaps. Scale pane positions by common horizontal/vertical factors to preserve ordering and separation, expanding workspace bounds as needed. Startup saves original bytes in a unique adjacent `.v1-*.bak` file before atomically writing version 2. Invalid or oversized migrations leave the original untouched. Version 2 startup is idempotent. Old browser PUT requests are rejected with a reload/import instruction.
 

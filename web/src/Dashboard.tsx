@@ -5,7 +5,7 @@ import {
   Plus,
   Hammer,
   Settings as Gear,
-  Grip,
+  Move,
   Ellipsis,
   LayoutGrid,
   ArrowUpRight,
@@ -29,8 +29,10 @@ import {
   slotsFromFrame,
   GRID,
   MAX_ROWS,
+  SNAP,
 } from "./model";
-import { tileResize, gridWidth } from "./layout";
+import { tileResize, gridWidth, paneSnap } from "./layout";
+import BrandLogo from "./BrandLogo";
 import PaneTitle from "./PaneTitle";
 import { iconURL } from "./icons";
 import { useConfig } from "./useConfig";
@@ -111,7 +113,7 @@ function DashboardView({
   useEffect(() => {
     if (config) {
       document.documentElement.dataset.theme = config.appearance.theme;
-      document.title = `${config.dashboard.title || "Home"} · Pane`;
+      document.title = config.dashboard.title.trim() || "pane.";
     }
   }, [config?.appearance.theme, config?.dashboard.title]);
   const apply = (next: Config) => {
@@ -243,13 +245,19 @@ function DashboardView({
                 attempt(() => {
                   const n = clone(config);
                   const target = n.items.find((x) => x.id === p.id)!;
-                  target.layout.x += delta[e.key][0];
-                  target.layout.y += delta[e.key][1];
+                  const [dx, dy] = delta[e.key];
+                  // Move to the next 16px line, including older half-grid positions.
+                  const nudge = (v: number, d: number) =>
+                    d > 0
+                      ? (Math.floor(v / SNAP) + 1) * SNAP
+                      : (Math.ceil(v / SNAP) - 1) * SNAP;
+                  if (dx) target.layout.x = nudge(target.layout.x, dx);
+                  if (dy) target.layout.y = nudge(target.layout.y, dy);
                   apply(n);
                 });
               }}
             >
-              <Grip size={16} />
+              <Move size={18} />
             </button>
           )}
           <PaneTitle
@@ -341,16 +349,22 @@ function DashboardView({
           "--icon-size": `${size.icon}px`,
           "--cell-width": `${size.w}px`,
           "--cell-height": `${size.h}px`,
+          "--pane-title-size": `${config.appearance.paneTitleSize ?? 18}px`,
         } as CSSProperties
       }
     >
       <header className="topbar">
-        <a href="#" className="brand" aria-label="Pane home">
-          <span className="brand-mark">
-            <LayoutGrid size={23} />
-          </span>
-          <span>
-            pane<span className="brand-dot">.</span>
+        <a
+          href="#"
+          className="brand"
+          aria-label={`${config.dashboard.title.trim() || "pane."} home`}
+        >
+          <BrandLogo url={config.dashboard.logo} />
+          <span
+            className="brand-name"
+            title={config.dashboard.title.trim() || "pane."}
+          >
+            {config.dashboard.title.trim() || "pane."}
           </span>
         </a>
         <div className="header-right">
@@ -427,30 +441,6 @@ function DashboardView({
         </div>
       </header>
       <main>
-        <div className="dashboard-heading">
-          <div>
-            <p className="eyebrow">YOUR SPACE, CONNECTED</p>
-            <h1>{config.dashboard.title || "Home"}</h1>
-            <p className="subtitle">
-              {editing
-                ? "Make room for what matters. Drag, resize and arrange your apps."
-                : "Everything you need, right where you left it."}
-            </p>
-          </div>
-          <span className={`mode-badge ${editing ? "editing" : ""}`}>
-            {editing ? (
-              <>
-                <Hammer size={13} />
-                Edit mode
-              </>
-            ) : (
-              <>
-                {config.items.reduce((n, p) => n + p.apps.length, 0)} apps{" "}
-                <span>·</span> {config.items.length} panes
-              </>
-            )}
-          </span>
-        </div>
         {(error || message) && (
           <div className="error banner" role="alert">
             {message || error}
@@ -479,12 +469,8 @@ function DashboardView({
               <span className="empty-symbol">
                 <LayoutGrid size={36} />
               </span>
-              <p className="eyebrow">A LITTLE SPACE FOR EVERYTHING</p>
-              <h2>Make yourself at home.</h2>
-              <p>
-                Create your first pane and give your favourite apps
-                <br />a place of their own.
-              </p>
+              <h2>No panes yet</h2>
+              <p>Add a pane or import a layout to get started.</p>
               <button className="primary" disabled={mobile} onClick={add}>
                 <Plus size={17} />
                 Create a pane
@@ -524,7 +510,7 @@ function DashboardView({
                     minH: frame({ ...p.layout, ...minimum(p) }).h,
                   }))}
                   compactor={compactor}
-                  constraints={[...defaultConstraints, tileResize]}
+                  constraints={[...defaultConstraints, paneSnap, tileResize]}
                   gridConfig={{
                     cols: width / GRID,
                     rowHeight: GRID,
@@ -552,7 +538,7 @@ function DashboardView({
                   {config.items.map((p) => (
                     <div
                       key={p.id}
-                      className="pane-grid-item"
+                      className={`pane-grid-item ${editing && selected === p.id ? "is-selected" : ""}`}
                       style={
                         {
                           "--pane-frame-width": `${(preview?.find((l) => l.i === p.id)?.w ?? frame(p.layout).w) * GRID}px`,
@@ -574,11 +560,6 @@ function DashboardView({
           </p>
         )}
       </main>
-      <footer>
-        <span className="footer-mark">pane.</span>
-        <span>A place for your digital world.</span>
-        <span className="local-dot">Self-hosted · Yours</span>
-      </footer>
       {editor?.type === "settings" && (
         <Settings
           config={config}

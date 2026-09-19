@@ -4,8 +4,9 @@ Read [SPEC.md](SPEC.md) before changing behaviour. Pane is a single-user self-ho
 
 - Keep the Go server small and the React state explicit. No database or second layout engine.
 - React Grid Layout owns outer dragging, resizing and collision handling. CSS Grid owns app slots.
-- Schema 2 stores x/y in 8 px placement units and w/h in app columns/rows; convert to library frame dimensions at the boundary only.
+- Schema 2 stores x/y in 8 px units and w/h in app columns/rows. New placement and movement snap to 16 px; preserve existing coordinates until moved. Convert to library frame dimensions at the boundary only.
 - Keep fixed 80 px icons, immediate 4 × 1 pane creation, attached external titles and 16 px gutters. Reserve title space in both modes.
+- Keep the header name/logo configurable, without promotional headings, counts or footer copy. Bundle Inter locally; title size defaults to 18 px, with a global 14–22 px setting. Missing app URLs must not dim artwork.
 - Preserve legacy configuration bytes in a unique backup before migration. Never silently truncate apps or overwrite an invalid configuration.
 - Never compact layouts, push neighbours, swap occupied app slots, or persist mobile presentation coordinates.
 - Read mode must not expose dashboard mutation controls. Edit mode is transient UI state, not authorisation.

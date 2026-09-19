@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Config, clone, sanitiseExport, validate } from "./model";
+import { Config, clone, sanitiseExport, validate, validURL } from "./model";
+import BrandLogo from "./BrandLogo";
 import Modal from "./Modal";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
@@ -58,7 +59,7 @@ export default function Settings({
         >
           <fieldset disabled={readOnly}>
             <label>
-              Dashboard title
+              Header name
               <input
                 maxLength={100}
                 value={draft.dashboard.title}
@@ -70,6 +71,37 @@ export default function Settings({
                 }
               />
             </label>
+            <label>
+              Logo image URL
+              <input
+                type="url"
+                maxLength={2048}
+                placeholder="https://example.com/logo.png"
+                value={draft.dashboard.logo ?? ""}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    dashboard: { ...draft.dashboard, logo: e.target.value },
+                  })
+                }
+              />
+            </label>
+            <p className="hint">
+              Use an HTTP(S) image URL your browser can reach. Clear it to
+              restore the default logo. A blank name uses pane.
+            </p>
+            <div className="brand brand-preview" aria-label="Header preview">
+              <BrandLogo
+                url={
+                  validURL(draft.dashboard.logo ?? "")
+                    ? draft.dashboard.logo
+                    : undefined
+                }
+              />
+              <span className="brand-name">
+                {draft.dashboard.title.trim() || "pane."}
+              </span>
+            </div>
             <div className="fields">
               <label>
                 Dashboard width
@@ -150,6 +182,26 @@ export default function Settings({
                   <option value="dark">Midnight</option>
                   <option value="light">Daylight</option>
                 </select>
+              </label>
+              <label>
+                Pane title size (px)
+                <input
+                  type="number"
+                  min={14}
+                  max={22}
+                  step={1}
+                  required
+                  value={draft.appearance.paneTitleSize ?? 18}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      appearance: {
+                        ...draft.appearance,
+                        paneTitleSize: Number(e.target.value),
+                      },
+                    })
+                  }
+                />
               </label>
             </div>
             {(["showAppLabels", "showButtonLabels"] as const).map((k) => (

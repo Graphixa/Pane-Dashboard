@@ -1,5 +1,17 @@
 import { type LayoutConstraint } from "react-grid-layout/core";
-import { GRID, MAX_ROWS } from "./model";
+import { GRID, MAX_ROWS, SNAP } from "./model";
+
+export const paneSnap: LayoutConstraint = {
+  name: "pane-placement",
+  constrainPosition(item, x, y, context) {
+    const snap = (v: number, max: number) =>
+      Math.max(
+        0,
+        Math.min(Math.floor(max / SNAP) * SNAP, Math.round(v / SNAP) * SNAP),
+      );
+    return { x: snap(x, context.cols - item.w), y: snap(y, MAX_ROWS - item.h) };
+  },
+};
 
 // Snap resize proposals to whole app rows/columns before RGL checks collisions.
 export const tileResize: LayoutConstraint = {

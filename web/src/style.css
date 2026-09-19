@@ -97,9 +97,22 @@ a {
   display: flex;
   gap: 11px;
   align-items: center;
-  font-weight: 750;
+  font-weight: 700;
   font-size: 30px;
   letter-spacing: -1.8px;
+  min-width: 0;
+  margin-right: 24px;
+}
+.brand-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brand-preview {
+  margin: 12px 0 24px;
+  font-size: 24px;
+  letter-spacing: -0.6px;
 }
 .brand-mark {
   display: flex;
@@ -109,15 +122,22 @@ a {
   padding: 8px;
   border: 1px solid #a2cbbb35;
   border-radius: 11px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  justify-content: center;
 }
-.brand-dot {
-  color: var(--accent);
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .header-right,
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-shrink: 0;
 }
 .nav-actions {
   gap: 14px;
@@ -226,6 +246,7 @@ h1 {
 }
 .workspace {
   min-height: 440px;
+  margin-top: 28px;
   padding-bottom: 32px;
 }
 .grid-container {
@@ -233,9 +254,12 @@ h1 {
   max-width: 100%;
 }
 .editing-grid .grid-container {
-  background-image: radial-gradient(var(--line) 0.8px, transparent 0.8px);
-  background-size: 8px 8px;
-  background-position: -4px -4px;
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--muted) 30%, transparent) 0.8px,
+    transparent 0.8px
+  );
+  background-size: 16px 16px;
+  background-position: -8px -8px;
   min-height: 440px;
 }
 .pane-frame {
@@ -272,8 +296,9 @@ h1 {
   gap: 4px;
 }
 .pane-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--pane-title-size, 18px);
+  font-weight: 700;
+  line-height: 24px;
   display: block;
   text-align: left;
   background: none;
@@ -281,7 +306,7 @@ h1 {
   padding: 2px 4px;
   flex: 1;
   margin: 0;
-  color: var(--muted);
+  color: var(--text);
   min-width: 0;
 }
 .pane-title {
@@ -294,12 +319,19 @@ h1 {
   flex: 1;
   height: 26px;
   padding: 2px 6px;
+  font-size: var(--pane-title-size, 18px);
+  font-weight: 700;
+}
+.pane-title:hover:not(:disabled) {
+  background: none;
+  color: var(--accent);
 }
 .pane-header > .pane-controls:last-child {
   margin-left: auto;
 }
 .pane-move {
   cursor: grab;
+  color: var(--muted);
 }
 .pane-drag {
   cursor: grab;
@@ -341,7 +373,6 @@ h1 {
   border: 0;
 }
 .app-link[aria-disabled="true"] {
-  opacity: 0.55;
   cursor: default;
 }
 .artwork {
@@ -363,13 +394,13 @@ h1 {
   object-fit: contain;
 }
 .app-name {
-  font-size: 11px;
+  font-size: 13px;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
   max-width: 100%;
   color: var(--text);
-  line-height: 16px;
+  line-height: 18px;
 }
 .empty-slot {
   border: 0;
@@ -412,12 +443,26 @@ h1 {
 .react-grid-item > .react-resizable-handle {
   z-index: 5;
   background: none;
+  padding: 0;
+  transform: none;
+}
+.react-grid-item > .react-resizable-handle::after {
+  content: "";
+  position: absolute;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.react-grid-item:hover > .react-resizable-handle::after,
+.react-grid-item:focus-within > .react-resizable-handle::after,
+.react-grid-item.is-selected > .react-resizable-handle::after {
+  opacity: 1;
 }
 .react-grid-item > .react-resizable-handle-e {
-  right: 4px;
-  width: 12px;
-  height: 32px;
-  margin-top: 0;
+  right: 0;
+  top: calc(50% + 16px);
+  width: 24px;
+  height: 40px;
+  margin-top: -20px;
 }
 .react-grid-item > .react-resizable-handle-e::after {
   width: 3px;
@@ -425,14 +470,15 @@ h1 {
   border: 0;
   background: var(--accent);
   transform: none;
-  top: 4px;
-  right: 4px;
+  top: 8px;
+  right: 7px;
   border-radius: 3px;
 }
 .react-grid-item > .react-resizable-handle-s {
-  bottom: 4px;
-  width: 32px;
-  height: 12px;
+  bottom: 0;
+  width: 40px;
+  height: 24px;
+  margin-left: -20px;
 }
 .react-grid-item > .react-resizable-handle-s::after {
   width: 24px;
@@ -440,18 +486,23 @@ h1 {
   border: 0;
   background: var(--accent);
   transform: none;
-  bottom: 4px;
-  right: 4px;
+  bottom: 7px;
+  right: 8px;
   border-radius: 3px;
 }
 .react-grid-item > .react-resizable-handle-se {
-  right: 6px;
-  bottom: 6px;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  height: 28px;
 }
 .react-grid-item > .react-resizable-handle-se::after {
   width: 9px;
   height: 9px;
   border-width: 0 3px 3px 0;
+  right: 9px;
+  bottom: 9px;
+  border-radius: 0 0 3px 0;
 }
 .mobile-panes .pane-frame {
   padding: 8px;
@@ -797,10 +848,16 @@ fieldset {
     line-height: 1.7;
   }
   .brand {
-    font-size: 27px;
+    font-size: 22px;
+    gap: 8px;
+    margin-right: 12px;
+    letter-spacing: -0.6px;
   }
   .brand-mark {
-    display: none;
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    padding: 5px;
   }
   .empty-dashboard {
     padding: 30px 15px;

@@ -88,6 +88,23 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
     11,
   );
+  const move = screen.getByRole("button", { name: "Move Media" });
+  // jsdom has no layout engine; supply the positioned parent used by RGL.
+  Object.defineProperty(
+    result.container.querySelector(".pane-grid-item"),
+    "offsetParent",
+    {
+      configurable: true,
+      value: result.container.querySelector(".react-grid-layout"),
+    },
+  );
+  fireEvent.mouseDown(move, { clientX: 50, clientY: 10, button: 0 });
+  fireEvent.mouseMove(document, { clientX: 50, clientY: 31, buttons: 1 });
+  fireEvent.mouseUp(document, { clientX: 50, clientY: 31 });
+  expect(
+    (result.container.querySelector(".pane-grid-item") as HTMLElement).style
+      .transform,
+  ).toContain("32px");
   cleanup();
   width = 390;
   const mobile = render(<Dashboard />);

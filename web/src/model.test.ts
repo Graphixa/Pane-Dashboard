@@ -16,7 +16,7 @@ import {
   canPresent,
   slotsFromFrame,
 } from "./model";
-import { tileResize } from "./layout";
+import { tileResize, paneSnap } from "./layout";
 const base = (): Config => ({
   version: 2,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
@@ -134,9 +134,42 @@ describe("tile dimensions and placement", () => {
       w: 60,
       h: 24,
     });
+    expect(paneSnap.constrainPosition!(item, 3, 5, ctx)).toEqual({
+      x: 4,
+      y: 6,
+    });
+    expect(paneSnap.constrainPosition!(item, 99, -2, ctx)).toEqual({
+      x: 60,
+      y: 0,
+    });
+    expect(
+      paneSnap.constrainPosition!(item, 99, 5000, { ...ctx, cols: 119 }),
+    ).toEqual({ x: 58, y: 4072 });
   });
 });
 describe("validation and imports", () => {
+  it("accepts optional branding and title sizes while validating image URLs", () => {
+    const c = base();
+    validate(c);
+    c.dashboard.logo = "https://example.com/logo.png";
+    c.appearance.paneTitleSize = 22;
+    validate(c);
+    expect(sanitiseExport(c).dashboard.logo).toBe(c.dashboard.logo);
+    for (const logo of [
+      "javascript:alert(1)",
+      "data:image/svg+xml,test",
+      "https://user:password@example.com/image.png",
+    ]) {
+      expect(() =>
+        validate({ ...c, dashboard: { ...c.dashboard, logo } }),
+      ).toThrow();
+    }
+    for (const paneTitleSize of [0, 13, 23, 18.5]) {
+      expect(() =>
+        validate({ ...c, appearance: { ...c.appearance, paneTitleSize } }),
+      ).toThrow();
+    }
+  });
   it("rejects unknown fields, obsolete size presets and fractional dimensions", () => {
     const c = base();
     expect(() =>

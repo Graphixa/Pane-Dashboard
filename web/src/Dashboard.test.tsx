@@ -86,6 +86,65 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("interaction boundary", () => {
+  it("saves custom branding and title sizing without the removed headings or footer", async () => {
+    const result = render(<Dashboard />);
+    await screen.findByRole("link", { name: "Home home" });
+    expect(
+      result.container.querySelector(".dashboard-heading, footer"),
+    ).toBeNull();
+    expect(screen.queryByText(/YOUR SPACE, CONNECTED/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText("Header name"), {
+      target: { value: "Akira" },
+    });
+    fireEvent.change(screen.getByLabelText("Logo image URL"), {
+      target: { value: "https://example.com/logo.png" },
+    });
+    fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    const brand = screen.getByRole("link", { name: "Akira home" });
+    expect(brand.querySelector("img")?.getAttribute("src")).toBe(
+      "https://example.com/logo.png",
+    );
+    expect(document.title).toBe("Akira");
+    expect(
+      (
+        result.container.querySelector(".shell") as HTMLElement
+      ).style.getPropertyValue("--pane-title-size"),
+    ).toBe("20px");
+    fireEvent.error(brand.querySelector("img")!);
+    expect(brand.querySelector("img")).toBeNull();
+    expect(brand.querySelector("svg")).not.toBeNull();
+    await waitFor(() =>
+      expect(
+        vi.mocked(fetch).mock.calls.some(([, o]) => o?.method === "PUT"),
+      ).toBe(true),
+    );
+    const saved = JSON.parse(
+      vi.mocked(fetch).mock.calls.find(([, o]) => o?.method === "PUT")![1]!
+        .body as string,
+    );
+    expect(saved.dashboard).toMatchObject({
+      title: "Akira",
+      logo: "https://example.com/logo.png",
+    });
+    expect(saved.appearance.paneTitleSize).toBe(20);
+  });
+  it("keeps addressless apps non-launching with a useful tooltip", async () => {
+    const c = initial();
+    c.items[0].apps[0].url = "";
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify(c)));
+    const result = render(<Dashboard />);
+    await screen.findByRole("link", { name: "Home home" });
+    const app = result.container.querySelector(
+      '.app-link[aria-disabled="true"]',
+    )!;
+    expect(app.getAttribute("href")).toBeNull();
+    expect(app.getAttribute("title")).toBe("Plex: address not configured");
+    expect(app.querySelector(".artwork")).not.toBeNull();
+  });
   it("edits the external title inline without consuming slots", async () => {
     const result = render(<Dashboard />);
     fireEvent.click(

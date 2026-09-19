@@ -27,6 +27,10 @@ func TestValidation(t *testing.T) {
 		{"occupied slot", func(c *Config) { a := c.Items[0].Apps[0]; a.ID = "other"; c.Items[0].Apps = append(c.Items[0].Apps, a) }},
 		{"global size", func(c *Config) { c.Appearance.AppSize = "large" }},
 		{"schema version", func(c *Config) { c.Version = 3 }},
+		{"unsafe logo", func(c *Config) { c.Dashboard.Logo = "javascript:alert(1)" }},
+		{"logo credentials", func(c *Config) { c.Dashboard.Logo = "https://user:pass@example.com/logo.png" }},
+		{"title too large", func(c *Config) { c.Appearance.PaneTitleSize = 23 }},
+		{"title too small", func(c *Config) { c.Appearance.PaneTitleSize = 13 }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			c := populated()
@@ -38,6 +42,30 @@ func TestValidation(t *testing.T) {
 	}
 	if e := validate(populated()); e != nil {
 		t.Fatal(e)
+	}
+}
+func TestBrandingPersistence(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pane.yaml")
+	s, err := openStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := defaultConfig()
+	c.Dashboard.Title = "Akira"
+	c.Dashboard.Logo = "https://example.com/logo.png"
+	c.Appearance.PaneTitleSize = 20
+	if err := validate(c); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.write(c); err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := openStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.config.Dashboard != c.Dashboard || reloaded.config.Appearance != c.Appearance {
+		t.Fatal("branding lost across restart")
 	}
 }
 func TestStrictDecoding(t *testing.T) {

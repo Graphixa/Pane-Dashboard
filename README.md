@@ -24,7 +24,9 @@ Open `http://localhost:8080`. Configuration persists in the `pane-config` volume
 - In edit mode, click an empty slot to add an app, or click an app to edit it. Drag apps into empty slots, including across panes. Numeric controls are available for keyboard users.
 - Panes never push neighbours, apps never swap, and resizing stops before occupied slots would be clipped.
 - Icons use a fixed 80 px size, with matching square placeholders, inner padding and 16 px gutters between panes. Pane settings specify app columns and rows.
-- **Settings** controls workspace width, theme, app labels and navigation labels. Changes that clip panes are rejected.
+- Movement snaps to a fainter 16 px grid. Existing saved positions stay unchanged until moved. Move controls use a four-arrow icon; resize grips appear on hover, focus or selection.
+- **Settings → Appearance** controls your header name and logo image URL, pane-title size (14–22 px, default 18 px), workspace width, theme and labels. Clear the logo to restore the built-in icon; a blank name uses `pane.`. Changes that clip panes are rejected.
+- Titles use locally bundled Inter bold and app labels are 13 px. Apps without addresses keep full-brightness artwork; their tooltip explains why they cannot launch.
 - **Settings → Import** accepts YAML/JSON dashboard files, pane templates and Docker selections. Export a private backup before replacing a dashboard.
 - Shared exports remove app URLs and Docker identity. Review custom icon URLs before sharing. Blank-address tiles do not launch.
 - Mobile is read-only, with panes/apps shown in reading order; desktop coordinates remain unchanged.

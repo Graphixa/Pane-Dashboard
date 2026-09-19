@@ -20,10 +20,12 @@ type Config struct {
 }
 type Dashboard struct {
 	Title     string `json:"title" yaml:"title"`
+	Logo      string `json:"logo,omitempty" yaml:"logo,omitempty"`
 	WidthMode string `json:"widthMode" yaml:"widthMode"`
 	Width     int    `json:"width" yaml:"width"`
 }
 type Appearance struct {
+	PaneTitleSize    int    `json:"paneTitleSize,omitempty" yaml:"paneTitleSize,omitempty"`
 	AppSize          string `json:"appSize,omitempty" yaml:"appSize,omitempty"` // Legacy schema 1 only.
 	ShowAppLabels    bool   `json:"showAppLabels" yaml:"showAppLabels"`
 	ShowButtonLabels bool   `json:"showButtonLabels" yaml:"showButtonLabels"`
@@ -61,7 +63,7 @@ var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,100}$`)
 var iconPattern = regexp.MustCompile(`^dashboard-icons:[a-z0-9][a-z0-9-]{0,100}$`)
 
 func defaultConfig() Config {
-	return Config{Version: 2, Dashboard: Dashboard{Title: "Home", WidthMode: "fixed", Width: 960}, Appearance: Appearance{ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"}, Items: []Pane{}}
+	return Config{Version: 2, Dashboard: Dashboard{Title: "pane.", WidthMode: "fixed", Width: 960}, Appearance: Appearance{ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"}, Items: []Pane{}}
 }
 func validURL(s string, empty bool) bool {
 	if s == "" {
@@ -96,6 +98,12 @@ func validate(c Config) error {
 	}
 	if c.Version == 1 && c.Appearance.AppSize != "small" && c.Appearance.AppSize != "medium" && c.Appearance.AppSize != "large" {
 		return fail("app size")
+	}
+	if !validURL(c.Dashboard.Logo, true) {
+		return fail("logo must be an HTTP(S) address without credentials")
+	}
+	if c.Appearance.PaneTitleSize != 0 && (c.Appearance.PaneTitleSize < 14 || c.Appearance.PaneTitleSize > 22) {
+		return fail("pane title size must be between 14 and 22 px")
 	}
 	if c.Version == 2 && c.Appearance.AppSize != "" {
 		return fail("tile size is fixed in schema 2")

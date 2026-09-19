@@ -64,6 +64,8 @@ Open **http://127.0.0.1:8080**. Keep the terminal running; press **Ctrl+C** to s
 
 Pane creates `config/pane.yaml` automatically and keeps your dashboard there. No database is needed. These commands bind the app to your computer only.
 
+Open **Settings → Appearance** to set your header name, paste a logo image URL, and adjust pane-title size. Fonts are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
+
 ### Optional: live frontend development
 
 Leave Go running above. Open a **second terminal** in the repository root:

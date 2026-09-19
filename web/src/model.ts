@@ -18,11 +18,17 @@ export type Pane = {
 };
 export type Config = {
   version: 2;
-  dashboard: { title: string; widthMode: "fixed" | "full"; width: number };
+  dashboard: {
+    title: string;
+    logo?: string;
+    widthMode: "fixed" | "full";
+    width: number;
+  };
   appearance: {
     showAppLabels: boolean;
     showButtonLabels: boolean;
     theme: "dark" | "light";
+    paneTitleSize?: number;
   };
   items: Pane[];
 };
@@ -30,6 +36,7 @@ export const tileSize = { icon: 80, w: 104, h: 120 };
 // An 8px placement grid is a library adapter, not stored pane capacity.
 // Frames include 8px on every edge, 32px for the external title, and 12px panel padding.
 export const GRID = 8;
+export const SNAP = 2; // 16px movement; retain schema-2 coordinates for existing layouts.
 export const MAX_ROWS = 4096;
 export const frame = (g: Geometry): Geometry => ({
   ...g,
@@ -63,8 +70,8 @@ export function freePosition(
   width = 960,
 ): Geometry {
   const footprint = frame({ x: 0, y: 0, w, h });
-  for (let y = 0; y <= MAX_ROWS - footprint.h; y++)
-    for (let x = 0; x <= Math.floor(width / GRID) - footprint.w; x++) {
+  for (let y = 0; y <= MAX_ROWS - footprint.h; y += SNAP)
+    for (let x = 0; x <= Math.floor(width / GRID) - footprint.w; x += SNAP) {
       const g = { x, y, w, h };
       if (!items.some((p) => overlaps(frame(p.layout), frame(g)))) return g;
     }
@@ -102,17 +109,26 @@ const text = (v: unknown, max: number) =>
 export function validate(value: unknown): asserts value is Config {
   keys(value, ["version", "dashboard", "appearance", "items"]);
   const c = value as Config;
-  keys(c.dashboard, ["title", "widthMode", "width"]);
-  keys(c.appearance, ["showAppLabels", "showButtonLabels", "theme"]);
+  keys(c.dashboard, ["title", "logo", "widthMode", "width"]);
+  keys(c.appearance, [
+    "showAppLabels",
+    "showButtonLabels",
+    "theme",
+    "paneTitleSize",
+  ]);
   if (
     c.version !== 2 ||
     !text(c.dashboard.title, 100) ||
+    (c.dashboard.logo !== undefined &&
+      (!text(c.dashboard.logo, 2048) || !validURL(c.dashboard.logo))) ||
     !["fixed", "full"].includes(c.dashboard.widthMode) ||
     !integer(c.dashboard.width, 768, 3840)
   )
     throw Error("Unsupported version or dashboard settings.");
   if (
     !["dark", "light"].includes(c.appearance.theme) ||
+    (c.appearance.paneTitleSize !== undefined &&
+      !integer(c.appearance.paneTitleSize, 14, 22)) ||
     typeof c.appearance.showAppLabels !== "boolean" ||
     typeof c.appearance.showButtonLabels !== "boolean"
   )
