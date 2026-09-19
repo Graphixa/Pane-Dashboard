@@ -7,10 +7,12 @@
 - Go tests, including race detection: configuration validation, strict decoding, file persistence, failed-save rollback, revision conflicts, cross-origin rejection and sanitised read-only Docker discovery against a mock daemon.
 - `go vet ./...`.
 - `npm audit --omit=dev`: no known vulnerabilities at the time of checking.
+- GitHub Actions passed all checks, including the Docker image build: [initial verification run](https://github.com/Graphixa/Pane-Dashboard/actions/runs/35428114546).
+- Local compiled-server smoke test: health, configuration with ETag, and embedded frontend all returned HTTP 200.
 
 ## Not yet verified
 
-- A real Docker image build and container deployment: the implementation environment did not have Docker. The GitHub Actions workflow includes a Docker build check.
+- A running container deployment on a real host: GitHub Actions built the image successfully, but deployment still needs testing in the target environment.
 - Visual browser QA and physical drag/resize interactions: the available cloud browser blocked access to the local development server. DOM integration tests are not a substitute for these checks.
 - Discovery against a live Docker daemon: backend tests use a mock daemon. Test your socket proxy and port mappings before enabling it for regular use.
 
