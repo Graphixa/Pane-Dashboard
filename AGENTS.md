@@ -1,6 +1,6 @@
 # Working on Pane
 
-Read SPEC.md before changing behaviour. Pane is a single-user self-hosted launcher, not a general-purpose canvas or Docker manager.
+Read [SPEC.md](SPEC.md) before changing behaviour. Pane is a single-user self-hosted launcher, not a general-purpose canvas or Docker manager.
 
 - Keep the Go server small and the React state explicit. No database or second layout engine.
 - React Grid Layout owns outer dragging, resizing and collision handling. CSS Grid owns app slots.
