@@ -85,8 +85,18 @@ a {
 .shell {
   margin: auto;
   padding: 0 48px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.shell > main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 .topbar {
+  flex-shrink: 0;
   height: 112px;
   display: flex;
   justify-content: space-between;
@@ -245,15 +255,24 @@ h1 {
   border-color: #a2cbbb66;
 }
 .workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   min-height: 440px;
   margin-top: 28px;
   padding-bottom: 32px;
 }
 .grid-container {
-  margin: auto;
+  margin: 0 auto;
   max-width: 100%;
 }
+.editing-grid {
+  padding-bottom: 0;
+}
 .editing-grid .grid-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   background-image: radial-gradient(
     color-mix(in srgb, var(--muted) 30%, transparent) 0.8px,
     transparent 0.8px
@@ -261,6 +280,9 @@ h1 {
   background-size: 16px 16px;
   background-position: -8px -8px;
   min-height: 440px;
+}
+.editing-grid .react-grid-layout {
+  flex: 1 0 auto;
 }
 .pane-frame {
   height: 100%;
@@ -288,6 +310,7 @@ h1 {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 .pane-header {
+  position: relative;
   height: 32px;
   flex: 0 0 32px;
   padding: 0 4px 4px;
@@ -330,13 +353,21 @@ h1 {
   margin-left: auto;
 }
 .pane-move {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 28px;
+  z-index: 1;
   cursor: grab;
   color: var(--muted);
 }
-.pane-drag {
-  cursor: grab;
+.pane-header-editing > .pane-title,
+.pane-header-editing > .pane-title-input {
+  max-width: calc(50% - 24px);
 }
-.pane-drag:active {
+.pane-move:active {
   cursor: grabbing;
 }
 .icon-button {
@@ -440,8 +471,9 @@ h1 {
 .react-resizable-handle::after {
   border-color: var(--accent);
 }
-.react-grid-item > .react-resizable-handle {
+.react-grid-item.pane-grid-item > .react-resizable-handle {
   z-index: 5;
+  opacity: 1;
   background: none;
   padding: 0;
   transform: none;
@@ -457,52 +489,59 @@ h1 {
 .react-grid-item.is-selected > .react-resizable-handle::after {
   opacity: 1;
 }
-.react-grid-item > .react-resizable-handle-e {
+.react-grid-item.pane-grid-item
+  > .react-resizable-handle.react-resizable-handle-e {
+  transform: none;
   right: 0;
   top: calc(50% + 16px);
   width: 24px;
-  height: 40px;
-  margin-top: -20px;
+  height: 56px;
+  margin-top: -28px;
 }
 .react-grid-item > .react-resizable-handle-e::after {
-  width: 3px;
-  height: 24px;
+  width: 2px;
+  height: 40px;
   border: 0;
   background: var(--accent);
   transform: none;
   top: 8px;
-  right: 7px;
+  right: 1px;
   border-radius: 3px;
 }
-.react-grid-item > .react-resizable-handle-s {
+.react-grid-item.pane-grid-item
+  > .react-resizable-handle.react-resizable-handle-s {
+  transform: none;
   bottom: 0;
-  width: 40px;
+  width: 56px;
   height: 24px;
-  margin-left: -20px;
+  margin-left: -28px;
 }
 .react-grid-item > .react-resizable-handle-s::after {
-  width: 24px;
-  height: 3px;
+  width: 40px;
+  height: 2px;
   border: 0;
   background: var(--accent);
   transform: none;
-  bottom: 7px;
+  bottom: 1px;
   right: 8px;
   border-radius: 3px;
 }
-.react-grid-item > .react-resizable-handle-se {
+.react-grid-item.pane-grid-item
+  > .react-resizable-handle.react-resizable-handle-se {
+  transform: none;
   right: 0;
   bottom: 0;
   width: 28px;
   height: 28px;
 }
 .react-grid-item > .react-resizable-handle-se::after {
-  width: 9px;
-  height: 9px;
-  border-width: 0 3px 3px 0;
-  right: 9px;
-  bottom: 9px;
-  border-radius: 0 0 3px 0;
+  width: 20px;
+  height: 20px;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  right: 1px;
+  bottom: 1px;
+  border-radius: 0 0 5px 0;
 }
 .mobile-panes .pane-frame {
   padding: 8px;

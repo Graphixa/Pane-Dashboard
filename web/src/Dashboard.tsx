@@ -5,7 +5,7 @@ import {
   Plus,
   Hammer,
   Settings as Gear,
-  Move,
+  Grip,
   Ellipsis,
   LayoutGrid,
   ArrowUpRight,
@@ -227,7 +227,7 @@ function DashboardView({
           if (editing) setSelected(p.id);
         }}
       >
-        <div className={`pane-header ${editing ? "pane-drag" : ""}`}>
+        <div className={`pane-header ${editing ? "pane-header-editing" : ""}`}>
           {editing && (
             <button
               className="icon-button pane-move"
@@ -257,7 +257,7 @@ function DashboardView({
                 });
               }}
             >
-              <Move size={18} />
+              <Grip size={18} />
             </button>
           )}
           <PaneTitle
@@ -520,7 +520,7 @@ function DashboardView({
                   }}
                   dragConfig={{
                     enabled: editing,
-                    handle: ".pane-drag",
+                    handle: ".pane-move",
                     cancel: ".pane-controls",
                     bounded: false,
                   }}
