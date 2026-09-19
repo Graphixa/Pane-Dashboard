@@ -2,6 +2,8 @@
 
 A quiet home for your self-hosted apps. Arrange app panes on a fixed grid, leave intentional gaps, and lock everything in place when you are done.
 
+**Start here: [Getting started](GETTING_STARTED.md)** — prerequisites, local testing without Docker (Windows/macOS/Linux), live development, Docker builds and remote deployment.
+
 ## Run with Docker
 
 ```sh
