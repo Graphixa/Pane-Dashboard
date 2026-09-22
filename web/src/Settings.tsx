@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Config, clone, sanitiseExport, validate, validURL } from "./model";
-import BrandLogo from "./BrandLogo";
+import { Config, clone, sanitiseExport, validate } from "./model";
+import AppearanceEditor from "./AppearanceEditor";
 import Modal from "./Modal";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
@@ -19,13 +19,15 @@ export default function Settings({
 }) {
   const [tab, setTab] = useState("appearance"),
     [draft, setDraft] = useState(clone(config)),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
   return (
     <Modal title="Settings" close={close}>
       <nav className="tabs" aria-label="Settings sections">
         {["appearance", "import", "export"].map((s) => (
           <button
             key={s}
+            disabled={busy}
             className={tab === s ? "active" : ""}
             onClick={() => setTab(s)}
           >
@@ -43,6 +45,7 @@ export default function Settings({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (busy) return;
             try {
               const n = {
                 ...config,
@@ -57,51 +60,12 @@ export default function Settings({
             }
           }}
         >
-          <fieldset disabled={readOnly}>
-            <label>
-              Header name
-              <input
-                maxLength={100}
-                value={draft.dashboard.title}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    dashboard: { ...draft.dashboard, title: e.target.value },
-                  })
-                }
-              />
-            </label>
-            <label>
-              Logo image URL
-              <input
-                type="url"
-                maxLength={2048}
-                placeholder="https://example.com/logo.png"
-                value={draft.dashboard.logo ?? ""}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    dashboard: { ...draft.dashboard, logo: e.target.value },
-                  })
-                }
-              />
-            </label>
-            <p className="hint">
-              Use an HTTP(S) image URL your browser can reach. Clear it to
-              restore the default logo. A blank name uses pane.
-            </p>
-            <div className="brand brand-preview" aria-label="Header preview">
-              <BrandLogo
-                url={
-                  validURL(draft.dashboard.logo ?? "")
-                    ? draft.dashboard.logo
-                    : undefined
-                }
-              />
-              <span className="brand-name">
-                {draft.dashboard.title.trim() || "pane."}
-              </span>
-            </div>
+          <fieldset disabled={readOnly || busy}>
+            <AppearanceEditor
+              draft={draft}
+              change={setDraft}
+              onBusy={setBusy}
+            />
             <div className="fields">
               <label>
                 Dashboard width
@@ -175,6 +139,7 @@ export default function Settings({
                       appearance: {
                         ...draft.appearance,
                         theme: e.target.value as "dark" | "light",
+                        palette: undefined,
                       },
                     })
                   }
@@ -234,7 +199,11 @@ export default function Settings({
             <button type="button" onClick={close}>
               Cancel
             </button>
-            <button type="submit" className="primary" disabled={readOnly}>
+            <button
+              type="submit"
+              className="primary"
+              disabled={readOnly || busy}
+            >
               Apply settings
             </button>
           </div>
@@ -255,7 +224,8 @@ export default function Settings({
           <h3>Share a layout</h3>
           <p>
             Exports structure and icons without app addresses or Docker
-            identities. Custom icon URLs remain: review them before sharing.
+            identities. Uploaded images and custom image URLs remain: review
+            them before sharing.
           </p>
           <button
             onClick={() => download("pane-layout.yaml", sanitiseExport(config))}
@@ -264,8 +234,8 @@ export default function Settings({
           </button>
           <h3>Private backup</h3>
           <p>
-            Includes all app addresses and Docker identities. Keep this file
-            private.
+            Includes uploaded images, appearance, app addresses and Docker
+            identities. Keep this file private.
           </p>
           <button onClick={() => download("pane-backup.yaml", config)}>
             Download full backup

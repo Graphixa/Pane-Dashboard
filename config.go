@@ -19,17 +19,22 @@ type Config struct {
 	Items      []Pane     `json:"items" yaml:"items"`
 }
 type Dashboard struct {
-	Title     string `json:"title" yaml:"title"`
-	Logo      string `json:"logo,omitempty" yaml:"logo,omitempty"`
-	WidthMode string `json:"widthMode" yaml:"widthMode"`
-	Width     int    `json:"width" yaml:"width"`
+	Branding    string `json:"branding,omitempty" yaml:"branding,omitempty"`
+	BuiltinIcon string `json:"builtinIcon,omitempty" yaml:"builtinIcon,omitempty"`
+	Title       string `json:"title" yaml:"title"`
+	Logo        string `json:"logo,omitempty" yaml:"logo,omitempty"`
+	WidthMode   string `json:"widthMode" yaml:"widthMode"`
+	Width       int    `json:"width" yaml:"width"`
 }
 type Appearance struct {
-	PaneTitleSize    int    `json:"paneTitleSize,omitempty" yaml:"paneTitleSize,omitempty"`
-	AppSize          string `json:"appSize,omitempty" yaml:"appSize,omitempty"` // Legacy schema 1 only.
-	ShowAppLabels    bool   `json:"showAppLabels" yaml:"showAppLabels"`
-	ShowButtonLabels bool   `json:"showButtonLabels" yaml:"showButtonLabels"`
-	Theme            string `json:"theme" yaml:"theme"`
+	Background       *Background `json:"background,omitempty" yaml:"background,omitempty"`
+	Glass            *Glass      `json:"glass,omitempty" yaml:"glass,omitempty"`
+	Palette          *Palette    `json:"palette,omitempty" yaml:"palette,omitempty"`
+	PaneTitleSize    int         `json:"paneTitleSize,omitempty" yaml:"paneTitleSize,omitempty"`
+	AppSize          string      `json:"appSize,omitempty" yaml:"appSize,omitempty"` // Legacy schema 1 only.
+	ShowAppLabels    bool        `json:"showAppLabels" yaml:"showAppLabels"`
+	ShowButtonLabels bool        `json:"showButtonLabels" yaml:"showButtonLabels"`
+	Theme            string      `json:"theme" yaml:"theme"`
 }
 type Geometry struct {
 	X int `json:"x" yaml:"x"`
@@ -99,8 +104,8 @@ func validate(c Config) error {
 	if c.Version == 1 && c.Appearance.AppSize != "small" && c.Appearance.AppSize != "medium" && c.Appearance.AppSize != "large" {
 		return fail("app size")
 	}
-	if !validURL(c.Dashboard.Logo, true) {
-		return fail("logo must be an HTTP(S) address without credentials")
+	if err := validateAppearance(c); err != nil {
+		return fail(err.Error())
 	}
 	if c.Appearance.PaneTitleSize != 0 && (c.Appearance.PaneTitleSize < 14 || c.Appearance.PaneTitleSize > 22) {
 		return fail("pane title size must be between 14 and 22 px")

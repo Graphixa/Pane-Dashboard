@@ -32,7 +32,9 @@ import {
   SNAP,
 } from "./model";
 import { tileResize, gridWidth, paneSnap } from "./layout";
-import BrandLogo from "./BrandLogo";
+import { HeaderBrand } from "./BrandLogo";
+import Background from "./Background";
+import { appearanceStyle } from "./appearance";
 import PaneTitle from "./PaneTitle";
 import { iconURL } from "./icons";
 import { useConfig } from "./useConfig";
@@ -344,8 +346,10 @@ function DashboardView({
   return (
     <div
       className="shell"
+      data-pane-style={config.appearance.glass?.mode ?? "solid"}
       style={
         {
+          ...appearanceStyle(config.appearance),
           "--icon-size": `${size.icon}px`,
           "--cell-width": `${size.w}px`,
           "--cell-height": `${size.h}px`,
@@ -353,19 +357,14 @@ function DashboardView({
         } as CSSProperties
       }
     >
+      <Background settings={config.appearance.background} />
       <header className="topbar">
         <a
           href="#"
           className="brand"
           aria-label={`${config.dashboard.title.trim() || "pane."} home`}
         >
-          <BrandLogo url={config.dashboard.logo} />
-          <span
-            className="brand-name"
-            title={config.dashboard.title.trim() || "pane."}
-          >
-            {config.dashboard.title.trim() || "pane."}
-          </span>
+          <HeaderBrand dashboard={config.dashboard} />
         </a>
         <div className="header-right">
           <span

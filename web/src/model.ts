@@ -1,3 +1,10 @@
+import {
+  type Background,
+  type Glass,
+  type Palette,
+  imageReference,
+  validateVisuals,
+} from "./appearance";
 export type Geometry = { x: number; y: number; w: number; h: number };
 export type App = {
   id: string;
@@ -21,6 +28,8 @@ export type Config = {
   dashboard: {
     title: string;
     logo?: string;
+    branding?: "icon" | "logo";
+    builtinIcon?: "grid" | "server" | "panels";
     widthMode: "fixed" | "full";
     width: number;
   };
@@ -29,6 +38,9 @@ export type Config = {
     showButtonLabels: boolean;
     theme: "dark" | "light";
     paneTitleSize?: number;
+    background?: Background;
+    glass?: Glass;
+    palette?: Palette;
   };
   items: Pane[];
 };
@@ -109,18 +121,31 @@ const text = (v: unknown, max: number) =>
 export function validate(value: unknown): asserts value is Config {
   keys(value, ["version", "dashboard", "appearance", "items"]);
   const c = value as Config;
-  keys(c.dashboard, ["title", "logo", "widthMode", "width"]);
+  keys(c.dashboard, [
+    "title",
+    "logo",
+    "branding",
+    "builtinIcon",
+    "widthMode",
+    "width",
+  ]);
   keys(c.appearance, [
     "showAppLabels",
     "showButtonLabels",
     "theme",
     "paneTitleSize",
+    "background",
+    "glass",
+    "palette",
   ]);
   if (
     c.version !== 2 ||
     !text(c.dashboard.title, 100) ||
-    (c.dashboard.logo !== undefined &&
-      (!text(c.dashboard.logo, 2048) || !validURL(c.dashboard.logo))) ||
+    (c.dashboard.logo !== undefined && !imageReference(c.dashboard.logo)) ||
+    (c.dashboard.branding !== undefined &&
+      !["icon", "logo"].includes(c.dashboard.branding)) ||
+    (c.dashboard.builtinIcon !== undefined &&
+      !["grid", "server", "panels"].includes(c.dashboard.builtinIcon)) ||
     !["fixed", "full"].includes(c.dashboard.widthMode) ||
     !integer(c.dashboard.width, 768, 3840)
   )
@@ -133,6 +158,7 @@ export function validate(value: unknown): asserts value is Config {
     typeof c.appearance.showButtonLabels !== "boolean"
   )
     throw Error("Invalid appearance settings.");
+  validateVisuals(c.appearance);
   if (!Array.isArray(c.items) || c.items.length > 100)
     throw Error("At most 100 panes are supported.");
   const ids = new Set<string>();

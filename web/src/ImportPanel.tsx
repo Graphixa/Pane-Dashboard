@@ -109,8 +109,8 @@ export default function ImportPanel({
                 const f = e.target.files?.[0];
                 if (!f) return;
                 try {
-                  if (f.size > 2 * 1024 * 1024)
-                    throw Error("File exceeds 2 MiB.");
+                  if (f.size > 8 * 1024 * 1024)
+                    throw Error("File exceeds 8 MiB.");
                   const data = parse(await f.text(), { maxAliasCount: 0 });
                   if (data?.type === "pane-layout") {
                     if (

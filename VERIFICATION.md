@@ -1,5 +1,13 @@
 # V1 implementation verification
 
+## Global appearance and portable uploads
+
+- 38 frontend tests pass, including image input preparation, URL/data-image validation, live global settings, cancelled drafts, logo failure fallback, motion-off state and rejection of per-pane overrides. TypeScript and the production build pass.
+- Go tests with race detection and `go vet` pass. Added coverage checks preparation without persistence, revision-protected saving of artwork, restart and YAML backup/restore, import preview, malformed/oversized images, cross-origin rejection and palette contrast validation.
+- No dependency versions or packages changed in this update.
+- Manual browser checks remain required: crop/fit of square and wide images, transparent logos, sticky preview, glass blur over photographs, both themes, long titles, reduced-motion/transparency preferences, upload cancellation and two-tab revision conflicts. The available browser environment has not provided visual QA of the local app.
+- Test backups on the target deployment, including uploaded images. Remote URLs are references, not embedded assets; check HTTPS/mixed-content behaviour and reverse-proxy request limits.
+
 ## Header and visual refinements
 
 - `npm ci`, all 29 frontend tests, TypeScript checking and the production build passed. Real-grid tests cover 16 px mouse snapping alongside live resizing and collision blocking.

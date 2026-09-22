@@ -42,17 +42,36 @@ Read mode launches app links and hides slots, drag handles, resize handles and m
 
 Add Pane immediately creates an untitled 4 × 1 pane without a dialog. Creation and successful imports enter edit mode and highlight the destination pane; pointer/focus interaction updates selection. Optional titles are attached above panels, never independent widgets. Click a title or Add title in edit mode to edit inline; Enter/blur saves and Escape cancels. Untitled read mode shows no title, but both modes reserve the title band to prevent layout shifts. Desktop editing requires sufficient viewport width. Mobile settings are view-only; imports and adding are disabled there.
 
+## Global appearance
+
+Appearance belongs to the dashboard, not individual panes. No pane-level style overrides are accepted by either validator. All controls live in Settings → Appearance with a live draft preview, Apply and Cancel.
+
+Header branding offers `icon` (square image plus name) or `logo` (wide image replacing the visible icon/name). Built-in icon choices are `grid`, `server`, `panels`. Custom artwork accepts uploads or HTTP(S) URLs; preserve aspect ratio, use the header name as the accessible/tab name, and fall back to the built-in icon/name on load failure.
+
+Background kinds: `none`, `gradient`, `image`, `waves`, `aurora`. Local gradient presets: `dusk`, `ocean`, `forest`, `mist`. Images use cover with centre/top/bottom positioning and 0–80% black dimming. Animated presets expose motion on/off and intensity 0–100; honour reduced motion and pause in hidden tabs. Backgrounds are decorative and must never intercept input or dim app artwork. Failed image loads use a gradient fallback.
+
+Global glass settings: `mode` solid/glass, `opacity` 30–100, `blur` 0–24 px. Blur, translucency, highlights and shadows apply to the pane surface only. Keep titles/icons opaque. Fall back to solid where backdrop filtering is unavailable or reduced transparency is requested; do not claim physical refraction.
+
+Optional custom palette contains six-digit hex `background`, `surface`, `text`, `accent`. Text contrast against both solid page and pane colours must be at least 4.5:1. Derive supporting shades and accent-button text; never accept arbitrary CSS. Glass/image contrast still requires visual judgement. Existing Midnight/Daylight presets remain available. Reset appearance changes the draft style only, preserving branding and layout.
+
+### Image preparation and portability
+
+The browser accepts static PNG/JPEG/WebP up to 8 MiB and 20 million pixels, then fits icons within 512 × 512, logos within 1200 × 320, backgrounds within 1920 × 1920. It submits normalised raster bytes to `POST /api/images/prepare`. The server limits requests to 5 MiB and decoded images to 4 million pixels / 4096 px per side, checks format, decodes/re-encodes PNG/JPEG to strip metadata and returns a data image of at most 2 MiB. SVG/GIF uploads are not supported. Existing same-origin mutation protection applies.
+
+Preparation never changes configuration or its revision. Prepared data images are embedded in configuration only on Apply, avoiding orphan files and making YAML/JSON backups portable. Validate data-image format, byte size and dimensions server-side on every save/import. Only header and background images accept embedded data; app links/icon URLs retain their original HTTP(S) restrictions. Full and shared exports retain uploaded artwork (with a sharing warning); remote image URLs remain references and are never fetched by the backend. Saves/imports are bounded at 8 MiB.
+
 ## Persistence and API
 
 - `GET /api/config`: complete config with ETag revision.
 - `PUT /api/config`: complete validated config; requires If-Match to prevent stale browser tabs overwriting changes.
 - `GET /api/health`: liveness.
 - `POST /api/import/preview`: validate and upgrade an imported configuration without persisting it.
+- `POST /api/images/prepare`: validate and re-encode raster artwork without persisting it.
 - `GET /api/discovery/docker`: sanitised candidates from the configured Docker endpoint only.
 
 Edits autosave after a short delay through a serialised queue. UI reports saving, saved, failure and conflict states. Unsaved changes trigger navigation protection; conflicts require explicit reload rather than blind retries. Unknown fields/schema versions and invalid coordinates, IDs, URLs, duplicate slots and overlaps are rejected. Limits bound file size, items and apps. Writes use a temporary file in the same directory, fsync and rename. Startup rejects invalid existing configuration without replacing it.
 
-Configuration version 2 has `dashboard` (title, optional logo, widthMode, width), `appearance` (showAppLabels, showButtonLabels, theme, optional paneTitleSize), and `items`. The optional fields preserve compatibility with existing version 2 configurations. Each item has `id`, `type: pane`, `title`, `layout: {x,y,w,h}`, and `apps`. x/y use 8 px units; w/h use app columns/rows. Each app has `id`, `name`, `url`, `icon`, `col`, `row`, `openInNewTab`, and optional Docker source identity. Empty URLs are permitted for imported templates and never launch.
+Configuration version 2 has `dashboard` (title, optional logo/branding/builtinIcon, widthMode, width), `appearance` (showAppLabels, showButtonLabels, theme, optional paneTitleSize/background/glass/palette), and `items`. The optional fields preserve compatibility with existing version 2 configurations. Each item has `id`, `type: pane`, `title`, `layout: {x,y,w,h}`, and `apps`. x/y use 8 px units; w/h use app columns/rows. Each app has `id`, `name`, `url`, `icon`, `col`, `row`, `openInNewTab`, and optional Docker source identity. Empty URLs are permitted for imported templates and never launch.
 
 Legacy version 1 is accepted only for startup migration and import preview. Convert old pixel capacity into explicit app dimensions; retain app coordinates, IDs and gaps. Scale pane positions by common horizontal/vertical factors to preserve ordering and separation, expanding workspace bounds as needed. Startup saves original bytes in a unique adjacent `.v1-*.bak` file before atomically writing version 2. Invalid or oversized migrations leave the original untouched. Version 2 startup is idempotent. Old browser PUT requests are rejected with a reload/import instruction.
 

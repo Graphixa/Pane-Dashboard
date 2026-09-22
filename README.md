@@ -25,19 +25,39 @@ Open `http://localhost:8080`. Configuration persists in the `pane-config` volume
 - Panes never push neighbours, apps never swap, and resizing stops before occupied slots would be clipped.
 - Icons use a fixed 80 px size, with matching square placeholders, inner padding and 16 px gutters between panes. Pane settings specify app columns and rows.
 - Movement snaps to a fainter 16 px grid. Existing saved positions stay unchanged until moved. The dotted move grip sits at the top centre of each pane. Offset vertical, horizontal and L-shaped resize marks appear on hover, focus or selection. The edit grid fills the remaining screen height and grows with your layout.
-- **Settings → Appearance** controls your header name and logo image URL, pane-title size (14–22 px, default 18 px), workspace width, theme and labels. Clear the logo to restore the built-in icon; a blank name uses `pane.`. Changes that clip panes are rejected.
+- **Settings → Appearance** controls header branding, backgrounds, global pane finish, colours, pane-title size (14–22 px), workspace width and labels. Changes that clip panes are rejected.
 - Titles use locally bundled Inter bold and app labels are 13 px. Apps without addresses keep full-brightness artwork; their tooltip explains why they cannot launch.
 - **Settings → Import** accepts YAML/JSON dashboard files, pane templates and Docker selections. Export a private backup before replacing a dashboard.
-- Shared exports remove app URLs and Docker identity. Review custom icon URLs before sharing. Blank-address tiles do not launch.
+- Shared exports remove app URLs and Docker identity but retain uploaded images and image URLs. Review these before sharing. Blank-address tiles do not launch.
 - Mobile is read-only, with panes/apps shown in reading order; desktop coordinates remain unchanged.
 
 Autosave displays its state in the header. Save errors can be retried. A revision conflict requires reloading; save a backup first if you need to preserve the local draft.
 
 ## Upgrading existing dashboards
 
+Appearance additions use optional fields in schema 2. Existing layouts keep their geometry and default solid panes; no migration is needed for this update. Export a full backup before updating, and reload old browser tabs afterwards. Older app versions cannot read the new appearance fields.
+
 The layout format is now version 2; the product remains Pane v1. On first startup, the server converts an old configuration and saves its original bytes beside it as `pane.yaml.v1-*.bak`. App slots, IDs and intentional gaps are preserved. Pane positions are scaled consistently to accommodate the larger tiles and gutters, so the workspace may grow. Layouts beyond the supported limits fail safely without replacing the original file.
 
 Old dashboard and pane-template exports are converted during import preview. Reload any browser tabs left open during the upgrade. To roll back, stop Pane, restore the original backup and run the previous application version.
+
+## Personalise Pane
+
+Open **Settings → Appearance**. The live preview follows your draft; **Apply settings** saves it and **Cancel** discards it. Appearance is global: there are deliberately no per-pane overrides.
+
+- **Header branding:** choose **Square icon + name** or **Wide logo**. Icons can use the built-in Pane grid, Server or Panels artwork, an upload, or an HTTP(S) URL. A wide logo replaces the visible icon/name, while the header name remains the browser title and accessible name. Images retain their proportions; transparent, tightly cropped PNGs work well. Failed images fall back to the name and built-in icon.
+- **Background:** choose None, Dusk, Ocean, Forest or Mist, or use the **+ Upload image** tile / URL field. These built-ins are lightweight local gradients, not downloaded photos. Dimming and image position help keep app labels readable. Broken URLs fall back to a bundled gradient. URLs load directly in your browser, not through the server; HTTPS deployments should use HTTPS image URLs.
+- **Motion:** Waves and Aurora are subtle CSS backgrounds with a motion toggle and intensity slider. They respect reduced-motion preferences and pause when the tab is hidden.
+- **Pane finish:** Solid or Glass applies to every pane. Glass has opacity (30–100%) and blur (0–24 px) controls, subtle highlights and shadows. It is frosted glass, not physical refraction. Artwork stays fully opaque. Unsupported browsers, or reduced-transparency preferences, use solid panes.
+- **Colours:** start with Midnight or Daylight, then optionally customise page, surface, text and accent colours. Text must meet 4.5:1 contrast against both solid page and pane colours before saving. Glass over images still needs a visual readability check. **Reset appearance** resets the style draft without changing branding, apps or layout.
+
+### Uploaded images and backups
+
+Accepts static PNG, JPEG and WebP files up to 8 MiB / 20 million pixels. The browser resizes icons to at most 512 × 512, logos to 1200 × 320, and backgrounds to 1920 × 1920, retaining aspect ratio. The server validates and re-encodes PNG/JPEG output, strips metadata and accepts at most 2 MiB per prepared image. SVG and GIF uploads are not supported.
+
+Prepared images are embedded in `pane.yaml` only when you apply settings. There is no separate upload folder or orphan-file cleanup. The existing configuration volume therefore persists artwork too, and **Download full backup** includes it. Shared exports include artwork as well: review private logos/backgrounds before sharing. URL-based images remain URLs and are not downloaded into backups.
+
+Configuration saves and imports are limited to 8 MiB. Upload preparation does not change the saved dashboard or revision. Keep any reverse proxy's request-size limit at least 8 MiB. Large uploaded backgrounds increase configuration and backup size; bounded embedded images favour simple, portable single-user backups over a separate asset database.
 
 ## Optional Docker import
 

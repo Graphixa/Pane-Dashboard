@@ -1,0 +1,312 @@
+/* Backgrounds are decorative siblings: never an overlay on app artwork. */
+.shell {
+  position: relative;
+  isolation: isolate;
+}
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+}
+.scene-image {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scene-dimming {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+.scene-motion {
+  position: absolute;
+  inset: 0;
+  opacity: var(--motion-strength, 0.4);
+}
+.scene-motion i {
+  position: absolute;
+  display: block;
+  animation: pane-drift var(--motion-duration, 54s) ease-in-out infinite
+    alternate;
+}
+.scene-waves .scene-motion i {
+  width: 150%;
+  height: 65%;
+  left: -25%;
+  top: 35%;
+  border-radius: 48%;
+  border-top: 2px solid #ffffff55;
+  background: linear-gradient(180deg, #c0d9ed18, transparent 35%);
+  box-shadow: 0 -14px 40px #ffffff0a;
+}
+.scene-waves .scene-motion i:nth-child(2) {
+  top: 43%;
+  animation-delay: -15s;
+  animation-direction: alternate-reverse;
+}
+.scene-waves .scene-motion i:nth-child(3) {
+  top: 52%;
+  animation-delay: -30s;
+}
+.scene-aurora .scene-motion i {
+  width: 100%;
+  height: 130%;
+  left: -25%;
+  top: -20%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #83ded844, transparent 65%);
+  transform: rotate(-25deg);
+}
+.scene-aurora .scene-motion i:nth-child(2) {
+  left: 25%;
+  background: radial-gradient(ellipse, #c394db44, transparent 65%);
+  animation-delay: -18s;
+}
+.scene-aurora .scene-motion i:nth-child(3) {
+  left: 55%;
+  background: radial-gradient(ellipse, #a4bde844, transparent 65%);
+  animation-delay: -35s;
+}
+@keyframes pane-drift {
+  from {
+    transform: translate3d(-3%, -2%, 0) rotate(-8deg);
+  }
+  to {
+    transform: translate3d(5%, 5%, 0) rotate(9deg);
+  }
+}
+.motion-paused .scene-motion i {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-motion i {
+    animation: none;
+  }
+}
+@supports (
+  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
+) {
+  .pane {
+    background: var(--surface-fill, var(--panel));
+    -webkit-backdrop-filter: var(--surface-filter, none);
+    backdrop-filter: var(--surface-filter, none);
+    box-shadow:
+      inset 0 0 0 1px var(--line),
+      var(--surface-highlight, 0 0 0 transparent);
+  }
+  .pane-frame.focused .pane {
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      var(--surface-highlight, 0 0 0 transparent);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .pane {
+    background: var(--panel);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+.shell .primary {
+  color: var(--accent-text);
+}
+.shell .primary:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--accent-text);
+  filter: brightness(1.08);
+}
+.brand-logo {
+  width: min(240px, 28vw);
+  height: 52px;
+  object-fit: contain;
+  object-position: left center;
+}
+.appearance-preview {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  margin: 4px 0 22px;
+  min-height: 230px;
+  padding: 18px 20px 34px;
+  background: var(--bg);
+}
+.appearance-preview .scene {
+  position: absolute;
+  z-index: 0;
+}
+.preview-content {
+  position: relative;
+  z-index: 1;
+}
+.appearance-preview .brand-preview {
+  font-size: 20px;
+  margin: 0 0 18px;
+}
+.appearance-preview .brand-logo {
+  width: 180px;
+  height: 36px;
+}
+.preview-title {
+  font-size: var(--pane-title-size, 18px);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.preview-pane {
+  display: flex;
+  padding: 16px;
+  gap: 18px;
+  max-width: 340px;
+}
+.preview-app {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  color: var(--text);
+}
+.preview-app > svg {
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  background: var(--panel-high);
+  border-radius: 10px;
+  color: var(--accent);
+}
+.preview-caption {
+  position: absolute;
+  bottom: 9px;
+  left: 20px;
+  color: #fff;
+  background: #0009;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  z-index: 1;
+}
+.appearance-section {
+  border-top: 1px solid var(--line);
+  padding: 14px 0;
+}
+.appearance-section > summary {
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 12px;
+}
+.appearance-section:not([open]) > summary {
+  margin-bottom: 0;
+}
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.choice-row button,
+.background-swatch {
+  font-size: 12px;
+}
+.choice-row [aria-pressed="true"],
+.background-swatch[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.background-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.background-swatch {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  min-width: 0;
+}
+.background-swatch > span {
+  display: block;
+  height: 46px;
+  width: 100%;
+  border-radius: 5px;
+}
+.background-swatch .swatch-waves {
+  border-bottom: 3px solid #b2dce799;
+  border-radius: 45%;
+}
+.background-swatch .swatch-aurora {
+  box-shadow: inset 14px 0 24px #c394db66;
+}
+.image-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+  margin-top: 16px;
+}
+.image-actions > label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.upload-tile {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 112px;
+  border: 1px dashed var(--muted);
+  border-radius: 12px;
+  font-size: 11px;
+}
+.file-picker {
+  display: none;
+}
+.range-field {
+  display: block;
+  margin: 16px 0;
+}
+.range-field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.range-field output {
+  color: var(--muted);
+}
+.range-field input {
+  width: 100%;
+  accent-color: var(--accent);
+  padding: 0;
+}
+.colour-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.colour-grid input {
+  height: 42px;
+  padding: 3px;
+  width: 100%;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .brand-logo {
+    width: min(180px, 27vw);
+    height: 40px;
+  }
+  .background-gallery,
+  .colour-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .image-actions {
+    flex-wrap: wrap;
+  }
+  .upload-tile {
+    min-height: 82px;
+  }
+}
