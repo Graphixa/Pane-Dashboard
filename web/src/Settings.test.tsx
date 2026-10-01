@@ -45,8 +45,6 @@ const setup = () => {
 };
 const page = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
-const tab = (name: string) =>
-  fireEvent.click(screen.getByRole("tab", { name }));
 describe("settings navigation and draft safety", () => {
   it("keeps a draft across sections and blocks import and backup until it is applied", () => {
     const { apply } = setup();
@@ -54,7 +52,6 @@ describe("settings navigation and draft safety", () => {
       target: { value: "My server" },
     });
     page("Appearance");
-    tab("Typography");
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },
     });
@@ -98,8 +95,9 @@ describe("settings navigation and draft safety", () => {
   it("validates hidden sections before applying", () => {
     const { apply } = setup();
     page("Appearance");
-    tab("Colours");
-    fireEvent.click(screen.getByRole("switch", { name: "Custom colours" }));
+    fireEvent.click(
+      screen.getByText("Custom palette", { selector: "summary" }),
+    );
     fireEvent.change(screen.getByLabelText("Text", { exact: true }), {
       target: { value: "#111720" },
     });
@@ -108,25 +106,76 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
   });
-  it("supports keyboard appearance tabs without losing the selected sub-section", () => {
-    setup();
+  it("offers one Appearance page with ordered headings and no miniature previews", () => {
+    const { container } = setup();
+    for (const name of [
+      "General",
+      "Appearance",
+      "Panes",
+      "Import & backup",
+      "About",
+    ]) {
+      page(name);
+      expect(
+        container.querySelector(".appearance-preview, .type-sample"),
+      ).toBeNull();
+    }
     page("Appearance");
-    const theme = screen.getByRole("tab", { name: "Theme" });
-    theme.focus();
-    fireEvent.keyDown(theme, { key: "End" });
-    expect(document.activeElement).toBe(
-      screen.getByRole("tab", { name: "Typography" }),
-    );
-    expect(screen.getByRole("tabpanel").getAttribute("aria-labelledby")).toBe(
-      "settings-tab-typography",
-    );
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
+    ).toEqual(["Theme", "Colours", "Background", "Typography"]);
+    expect(
+      screen.queryByRole("switch", { name: "Show app labels" }),
+    ).toBeNull();
+  });
+  it("keeps labels in Panes and retains glass tuning across finish and page changes", () => {
+    const { apply } = setup();
     page("Panes");
-    page("Appearance");
+    expect(screen.queryByRole("heading", { name: "Fine tuning" })).toBeNull();
+    fireEvent.click(screen.getByRole("switch", { name: "Show app labels" }));
+    page("Glass");
     expect(
       screen
-        .getByRole("tab", { name: "Typography" })
-        .getAttribute("aria-selected"),
+        .getByRole("region", { name: "Fine tuning" })
+        .contains(screen.getByRole("slider", { name: "Pane opacity" })),
+    ).toBe(true);
+    fireEvent.change(screen.getByRole("slider", { name: "Pane opacity" }), {
+      target: { value: "55" },
+    });
+    page("Solid");
+    page("General");
+    page("Panes");
+    page("Glass");
+    expect(
+      (screen.getByRole("slider", { name: "Pane opacity" }) as HTMLInputElement)
+        .value,
+    ).toBe("55");
+    expect(
+      (
+        screen.getByRole("switch", {
+          name: "Show app labels",
+        }) as HTMLInputElement
+      ).checked,
+    ).toBe(false);
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].appearance).toMatchObject({
+      showAppLabels: false,
+      glass: { mode: "glass", opacity: 55 },
+    });
+  });
+  it("keeps accent choices independent of the custom palette disclosure", () => {
+    const { apply, container } = setup();
+    page("Appearance");
+    page("Blue");
+    expect(
+      container.querySelector(".settings-disclosure")?.hasAttribute("open"),
+    ).toBe(false);
+    expect(
+      screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].appearance.palette.accent).toBe("#7db7ff");
   });
   it("warns on page unload only while changes are pending", () => {
     setup();

@@ -14,14 +14,7 @@ const pages = [
   ["backup", "Import & backup", Archive],
   ["about", "About", Info],
 ] as const;
-const appearanceTabs = [
-  "theme",
-  "colours",
-  "background",
-  "typography",
-] as const;
 type Page = (typeof pages)[number][0];
-type AppearanceTab = (typeof appearanceTabs)[number];
 const settingsValue = (c: Config) =>
   JSON.stringify([c.dashboard, c.appearance]);
 
@@ -39,7 +32,6 @@ export default function Settings({
   readOnly: boolean;
 }) {
   const [page, setPage] = useState<Page>("general");
-  const [appearanceTab, setAppearanceTab] = useState<AppearanceTab>("theme");
   const [draft, setDraft] = useState(() => clone(config));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,7 +56,7 @@ export default function Settings({
   }, [dirty, busy]);
   useEffect(() => {
     if (content.current) content.current.scrollTop = 0;
-  }, [page, appearanceTab]);
+  }, [page]);
   const submit = () => {
     if (busy || readOnly) return;
     try {
@@ -109,48 +101,6 @@ export default function Settings({
               available.
             </p>
           )}
-          {page === "appearance" && (
-            <div
-              className="settings-subtabs"
-              role="tablist"
-              aria-label="Appearance sections"
-            >
-              {appearanceTabs.map((tab, index) => (
-                <button
-                  type="button"
-                  role="tab"
-                  key={tab}
-                  id={`settings-tab-${tab}`}
-                  aria-controls="settings-appearance-panel"
-                  aria-selected={appearanceTab === tab}
-                  tabIndex={appearanceTab === tab ? 0 : -1}
-                  disabled={busy}
-                  onClick={() => setAppearanceTab(tab)}
-                  onKeyDown={(e) => {
-                    const next =
-                      e.key === "ArrowRight"
-                        ? (index + 1) % 4
-                        : e.key === "ArrowLeft"
-                          ? (index + 3) % 4
-                          : e.key === "Home"
-                            ? 0
-                            : e.key === "End"
-                              ? 3
-                              : -1;
-                    if (next >= 0) {
-                      e.preventDefault();
-                      setAppearanceTab(appearanceTabs[next]);
-                      document
-                        .getElementById(`settings-tab-${appearanceTabs[next]}`)
-                        ?.focus();
-                    }
-                  }}
-                >
-                  {tab[0].toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
           <form
             id="settings-form"
             noValidate
@@ -161,22 +111,7 @@ export default function Settings({
           >
             {editable && (
               <fieldset disabled={readOnly || busy}>
-                <div
-                  id={
-                    page === "appearance"
-                      ? "settings-appearance-panel"
-                      : undefined
-                  }
-                  role={page === "appearance" ? "tabpanel" : undefined}
-                  aria-labelledby={
-                    page === "appearance"
-                      ? `settings-tab-${appearanceTab}`
-                      : undefined
-                  }
-                >
-                  {page === "panes" && (
-                    <p>One consistent finish for every pane.</p>
-                  )}
+                <div className="settings-sections">
                   <AppearanceEditor
                     draft={draft}
                     change={(c) => {
@@ -184,7 +119,7 @@ export default function Settings({
                       setError("");
                     }}
                     onBusy={setBusy}
-                    section={page === "appearance" ? appearanceTab : page}
+                    section={page}
                   />
                 </div>
               </fieldset>

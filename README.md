@@ -43,16 +43,18 @@ Old dashboard and pane-template exports are converted during import preview. Rel
 
 ## Personalise Pane
 
-Open **Settings**. Changes stay in a draft as you move between sections. **Apply settings** saves the complete draft; closing or cancelling asks before discarding changes. The fixed action bar stays visible while the main content scrolls. Previews never cover the controls.
+Open **Settings**. Changes stay in a draft as you move between sections. **Apply settings** saves the complete draft; closing or cancelling asks before discarding changes. The fixed action bar stays visible while the main content scrolls. Appearance is a single scrolling page with Theme, Colours, Background and Typography subheadings. Settings contain no miniature dashboard previews.
 
 - **General:** set the **Dashboard name**, logo, workspace width and navigation labels. Under **Logo**, choose **Icon + name** for a square brandmark beside your name, or **Full logo** for rectangular artwork replacing both. Use a built-in icon, upload or HTTP(S) URL. Full logos fit within 280 × 48 px on desktop without cropping or stretching. Transparent PNGs with trimmed padding work well. The name still sets the browser title and accessible name; failed images fall back to the built-in icon/name.
 - **Appearance → Theme:** choose Midnight or Daylight. Changing theme resets custom colours, preserving your background and pane finish.
-- **Appearance → Colours:** select an accent swatch or customise page, surface, text and accent colours. Text must meet 4.5:1 contrast against solid page and pane colours. **Reset colours** only resets the palette.
+- **Appearance → Colours:** select an accent swatch, or expand **Custom palette** to customise page, surface, text and accent colours. Text must meet 4.5:1 contrast against solid page and pane colours. **Reset colours** only resets the palette.
 - **Appearance → Background:** choose None, Dusk, Ocean, Forest or Mist, or use **+ Upload image** / an image URL. Built-ins are local gradients. Dimming and image position help readability. URLs load directly in your browser; use HTTPS URLs on HTTPS deployments. Waves and Aurora remain available, with animation improvements deferred to [issue #1](https://github.com/Graphixa/Pane-Dashboard/issues/1).
-- **Appearance → Typography:** preview header text, pane titles and app labels using bundled Inter. Adjust pane-title size (14–22 px) and app-label visibility. Google Fonts and expanded font controls are deferred to [issue #3](https://github.com/Graphixa/Pane-Dashboard/issues/3).
-- **Panes:** choose one global Solid or Glass finish. Glass provides opacity (30–100%) and blur (0–24 px). Text and artwork stay opaque; reduced-transparency preferences and unsupported browsers use solid surfaces. This remains frosted glass; liquid-glass refinement is tracked in [issue #2](https://github.com/Graphixa/Pane-Dashboard/issues/2). There are no per-pane appearance overrides.
+- **Appearance → Typography:** adjust pane-title size (14–22 px) using bundled Inter. Google Fonts and expanded font controls are deferred to [issue #3](https://github.com/Graphixa/Pane-Dashboard/issues/3).
+- **Panes:** choose one global Solid or Glass finish under **Pane finish**. When Glass is selected, **Fine tuning** provides opacity (30–100%) and blur (0–24 px). **Labels** controls whether app names appear beneath icons. Text and artwork stay opaque; reduced-transparency preferences and unsupported browsers use solid surfaces. This remains frosted glass; liquid-glass refinement is tracked in [issue #2](https://github.com/Graphixa/Pane-Dashboard/issues/2). There are no per-pane appearance overrides.
 - **Import & backup:** import layouts or Docker selections, download a private backup, or export a shareable layout. Apply pending settings before importing or exporting to avoid mixing draft and saved data.
 - **About:** installed version and repository/issue links.
+
+Live changes on the dashboard behind Settings, without background blur and with Cancel restoring the prior state, are deferred to [issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4). Until then, the dashboard changes only when you apply.
 
 ### Uploaded images and backups
 

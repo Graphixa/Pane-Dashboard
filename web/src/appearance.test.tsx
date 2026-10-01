@@ -105,10 +105,10 @@ describe("global appearance", () => {
     expect(style["--surface-filter"]).toContain("20px");
     expect(style.opacity).toBeUndefined();
   });
-  it("previews global background and glass choices, then applies one configuration", () => {
+  it("keeps background and glass choices in a draft, then applies one configuration", () => {
     const apply = vi.fn(),
       c = config();
-    const r = render(
+    render(
       <Settings
         config={c}
         apply={apply}
@@ -118,18 +118,13 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
     fireEvent.change(screen.getByRole("slider", { name: "Pane opacity" }), {
       target: { value: "55" },
     });
-    expect(
-      r.container
-        .querySelector(".appearance-preview")
-        ?.getAttribute("data-pane-style"),
-    ).toBe("glass");
+    expect(apply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply).toHaveBeenCalledOnce();
     const saved = apply.mock.calls[0][0];
@@ -140,7 +135,7 @@ describe("global appearance", () => {
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
   });
-  it("does not persist a cancelled preview", () => {
+  it("does not persist a cancelled settings draft", () => {
     const apply = vi.fn(),
       close = vi.fn();
     render(

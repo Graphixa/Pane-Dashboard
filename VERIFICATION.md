@@ -1,5 +1,13 @@
 # V1 implementation verification
 
+## Settings hierarchy refinement
+
+- All 45 frontend tests, strict TypeScript checking and the production build pass after `npm ci`. Coverage verifies the single Appearance page, removed miniature previews, app-label controls in Panes, glass tuning retained across finish changes, independent accent choices, draft navigation, hidden-field validation and discard protection.
+- `go test ./...` and `go vet ./...` pass. Dependencies and schema remain unchanged.
+- Sidebar icons and labels use explicit grid tracks rather than inherited button centring. Major sections use consistent typography, whitespace and subtle dividers; Panes separates Pane finish, Fine tuning and Labels.
+- Reviewed the supplied screenshots. A local Chromium launch was attempted but exited before rendering in this execution environment; fresh browser screenshots and physical layout checks remain outstanding. Check sidebar alignment, both themes, short/narrow viewports, scrolling and upload controls on the target browser.
+- Live dashboard preview and Cancel rollback are deferred in [issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4). Current settings keep the existing backdrop and update the dashboard only on Apply.
+
 ## Settings sidebar refactor
 
 - `npm ci`, all 43 frontend tests, TypeScript checking and the production build pass. New tests cover drafts surviving navigation, keyboard sub-tabs, hidden-field validation, discard confirmation for Escape/Close/Cancel, unload warnings and import/export protection while dirty.

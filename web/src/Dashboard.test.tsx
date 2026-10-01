@@ -101,7 +101,6 @@ describe("interaction boundary", () => {
       target: { value: "https://example.com/logo.png" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
-    fireEvent.click(screen.getByRole("tab", { name: "Typography" }));
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },
     });
