@@ -44,7 +44,7 @@ Add Pane immediately creates an untitled 4 × 1 pane without a dialog. Creation 
 
 ## Global appearance
 
-Appearance belongs to the dashboard, not individual panes. No pane-level style overrides are accepted by either validator. All controls live in Settings → Appearance with a live draft preview, Apply and Cancel.
+Appearance belongs to the dashboard, not individual panes. No pane-level style overrides are accepted by either validator. Settings has a fixed sidebar ordered General, Appearance, Panes, Import & backup, About, an independently scrolling content area and a fixed Cancel/Apply action bar. General owns Dashboard name, Logo, workspace width and navigation labels. Appearance uses Theme, Colours, Background and Typography sub-tabs. Panes owns global finish, opacity and blur. Previews occupy normal layout space and never overlay controls.
 
 Header branding offers `icon` (square image plus name) or `logo` (wide image replacing the visible icon/name). Built-in icon choices are `grid`, `server`, `panels`. Custom artwork accepts uploads or HTTP(S) URLs; preserve aspect ratio, use the header name as the accessible/tab name, and fall back to the built-in icon/name on load failure.
 
@@ -52,7 +52,7 @@ Background kinds: `none`, `gradient`, `image`, `waves`, `aurora`. Local gradient
 
 Global glass settings: `mode` solid/glass, `opacity` 30–100, `blur` 0–24 px. Blur, translucency, highlights and shadows apply to the pane surface only. Keep titles/icons opaque. Fall back to solid where backdrop filtering is unavailable or reduced transparency is requested; do not claim physical refraction.
 
-Optional custom palette contains six-digit hex `background`, `surface`, `text`, `accent`. Text contrast against both solid page and pane colours must be at least 4.5:1. Derive supporting shades and accent-button text; never accept arbitrary CSS. Glass/image contrast still requires visual judgement. Existing Midnight/Daylight presets remain available. Reset appearance changes the draft style only, preserving branding and layout.
+Optional custom palette contains six-digit hex `background`, `surface`, `text`, `accent`. Text contrast against both solid page and pane colours must be at least 4.5:1. Derive supporting shades and accent-button text; never accept arbitrary CSS. Glass/image contrast still requires visual judgement. Existing Midnight/Daylight presets remain available. Reset colours changes only the palette. Selecting Midnight/Daylight resets custom colours, retaining background and pane finish.
 
 ### Image preparation and portability
 
@@ -77,7 +77,7 @@ Legacy version 1 is accepted only for startup migration and import preview. Conv
 
 ## Import and export
 
-Settings → Import offers layout files and Docker. YAML/JSON files are parsed as data, validated and previewed before applying. A full dashboard import replaces the current dashboard only after explicit confirmation. Pane templates are appended at a free position. New IDs are generated for pane-template imports. Layout exports omit app URLs and Docker source metadata by default; a separate full backup explicitly includes private addresses.
+Settings → Import & backup offers layout files and Docker. YAML/JSON files are parsed as data, validated and previewed before applying. A full dashboard import replaces the current dashboard only after explicit confirmation. Pane templates are appended at a free position. New IDs are generated for pane-template imports. Layout exports omit app URLs and Docker source metadata by default; a separate full backup explicitly includes private addresses.
 
 Docker import scans only when requested. Candidates include editable names, URLs and proposed icons, published TCP-port alternatives and an already-imported indicator. Selection imports to an optionally titled new pane or an existing pane. Existing panes fill empty slots in row-major order without moving any existing apps; insufficient capacity blocks the entire import. A new pane is sized to contain the selection and placed in the first valid free position. Import is all-or-nothing.
 
@@ -96,3 +96,12 @@ Search a bundled local catalogue of Dashboard Icons slugs; custom HTTP(S) icon U
 ## Acceptance and verification
 
 Tests cover fixed geometry, gutters, snapping, occupied destinations/minima, immediate creation, inline titles, keyboard controls, import regeneration, URL validation, schema rejection, legacy backups/migration, atomic persistence, revision conflicts and Docker sanitisation. Integration tests mount the real grid library and exercise mouse resize with live placeholders. CI runs frontend tests/type checking/build, Go tests/vet and a Docker build. Hands-on checks must cover visual alignment, desktop drag/resize blocking, persistence across reload, read-mode locking, narrow presentation and import conflicts. Missing local runtimes and browser QA must be disclosed.
+
+## Settings refactor
+
+- General labels are **Dashboard name** and **Logo**. Logo choices are **Icon + name** and **Full logo**. Rectangular artwork fits within 280 × 48 px on desktop, with smaller responsive limits, using object-fit contain; it is never forced into the square icon container.
+- Draft settings persist across sidebar/sub-tab navigation. Close, Escape and Cancel require discard confirmation when changed; page unload warns while dirty. Apply validates the entire draft, including hidden sections, and preserves current app/layout items. Read-only presentation disables mutations but allows saved backups.
+- Pending settings prevent import/export until applied or discarded. Import confirmation and revision-protected persistence retain their existing behaviour.
+- Typography provides Inter role samples (header, pane titles, app labels), current global pane-title sizing and app-label visibility. Google Fonts and expanded font-family controls are deferred; do not add non-functional selectors.
+- One global pane finish remains mandatory. Product/repository naming remains Pane/Pane-Dashboard; LucentDash and Docks are uncommitted naming ideas.
+- Deferred work: animated background reliability ([#1](https://github.com/Graphixa/Pane-Dashboard/issues/1)), liquid-glass material refinement ([#2](https://github.com/Graphixa/Pane-Dashboard/issues/2)), Google Fonts ([#3](https://github.com/Graphixa/Pane-Dashboard/issues/3)).

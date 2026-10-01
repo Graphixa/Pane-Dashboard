@@ -1,5 +1,13 @@
 # V1 implementation verification
 
+## Settings sidebar refactor
+
+- `npm ci`, all 43 frontend tests, TypeScript checking and the production build pass. New tests cover drafts surviving navigation, keyboard sub-tabs, hidden-field validation, discard confirmation for Escape/Close/Cancel, unload warnings and import/export protection while dirty.
+- `go test ./...` and `go vet ./...` pass. No backend schema or dependency changes.
+- General now includes Dashboard name and Logo; Appearance contains Theme, Colours, Background and Typography; Panes owns the global finish. Updated previews occupy normal flow and the action bar stays outside the scrolling content.
+- Browser visual QA remains outstanding: Chromium was unavailable and its download failed in this workspace. Review both themes, wide PNG logos, long names, short viewport heights and responsive navigation on the target browser.
+- Deferred issues: animated backgrounds #1, liquid-glass refinement #2, Google Fonts #3.
+
 ## Global appearance and portable uploads
 
 - 38 frontend tests pass, including image input preparation, URL/data-image validation, live global settings, cancelled drafts, logo failure fallback, motion-off state and rejection of per-pane overrides. TypeScript and the production build pass.

@@ -6,6 +6,7 @@ import "@fontsource/inter/latin-600.css";
 import "@fontsource/inter/latin-700.css";
 import "./style.css";
 import "./appearance.css";
+import "./settings.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Dashboard />

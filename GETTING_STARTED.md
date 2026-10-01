@@ -64,7 +64,7 @@ Open **http://127.0.0.1:8080**. Keep the terminal running; press **Ctrl+C** to s
 
 Pane creates `config/pane.yaml` automatically and keeps your dashboard there. No database is needed. These commands bind the app to your computer only.
 
-Open **Settings → Appearance** to choose a square icon plus name or a wide logo, upload artwork (or paste a URL), pick a background and set the global Solid/Glass finish and colours. All panes share the same style. Preview changes, then Apply. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
+Open **Settings → General → Logo** to choose **Icon + name** or a rectangular **Full logo**, using an upload or URL. **Appearance** contains Theme, Colours, Background and Typography; **Panes** contains the global Solid/Glass finish. All panes share the same style. Preview changes, then Apply. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
 
 ### Optional: live frontend development
 
@@ -104,7 +104,7 @@ Press Ctrl+C to leave the log viewer; the container keeps running. Configuration
 
 To build without starting anything, use `docker compose build`. To build the Dockerfile directly with a chosen image name, use `docker build -t pane-dashboard:local .`.
 
-The local `config/pane.yaml` and Docker volume are separate. To move your dashboard between them, use **Settings → Export → Download full backup**, then import that file in the other instance.
+The local `config/pane.yaml` and Docker volume are separate. To move your dashboard between them, use **Settings → Import & backup → Download full backup**, then import that file in the other instance.
 
 ## 5. Deploy to a remote Linux server
 

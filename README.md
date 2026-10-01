@@ -25,9 +25,9 @@ Open `http://localhost:8080`. Configuration persists in the `pane-config` volume
 - Panes never push neighbours, apps never swap, and resizing stops before occupied slots would be clipped.
 - Icons use a fixed 80 px size, with matching square placeholders, inner padding and 16 px gutters between panes. Pane settings specify app columns and rows.
 - Movement snaps to a fainter 16 px grid. Existing saved positions stay unchanged until moved. The dotted move grip sits at the top centre of each pane. Offset vertical, horizontal and L-shaped resize marks appear on hover, focus or selection. The edit grid fills the remaining screen height and grows with your layout.
-- **Settings → Appearance** controls header branding, backgrounds, global pane finish, colours, pane-title size (14–22 px), workspace width and labels. Changes that clip panes are rejected.
+- **Settings** uses a sidebar: General, Appearance, Panes, Import & backup, and About. Changes that clip panes are rejected.
 - Titles use locally bundled Inter bold and app labels are 13 px. Apps without addresses keep full-brightness artwork; their tooltip explains why they cannot launch.
-- **Settings → Import** accepts YAML/JSON dashboard files, pane templates and Docker selections. Export a private backup before replacing a dashboard.
+- **Settings → Import & backup** accepts YAML/JSON dashboard files, pane templates and Docker selections. Export a private backup before replacing a dashboard.
 - Shared exports remove app URLs and Docker identity but retain uploaded images and image URLs. Review these before sharing. Blank-address tiles do not launch.
 - Mobile is read-only, with panes/apps shown in reading order; desktop coordinates remain unchanged.
 
@@ -43,13 +43,16 @@ Old dashboard and pane-template exports are converted during import preview. Rel
 
 ## Personalise Pane
 
-Open **Settings → Appearance**. The live preview follows your draft; **Apply settings** saves it and **Cancel** discards it. Appearance is global: there are deliberately no per-pane overrides.
+Open **Settings**. Changes stay in a draft as you move between sections. **Apply settings** saves the complete draft; closing or cancelling asks before discarding changes. The fixed action bar stays visible while the main content scrolls. Previews never cover the controls.
 
-- **Header branding:** choose **Square icon + name** or **Wide logo**. Icons can use the built-in Pane grid, Server or Panels artwork, an upload, or an HTTP(S) URL. A wide logo replaces the visible icon/name, while the header name remains the browser title and accessible name. Images retain their proportions; transparent, tightly cropped PNGs work well. Failed images fall back to the name and built-in icon.
-- **Background:** choose None, Dusk, Ocean, Forest or Mist, or use the **+ Upload image** tile / URL field. These built-ins are lightweight local gradients, not downloaded photos. Dimming and image position help keep app labels readable. Broken URLs fall back to a bundled gradient. URLs load directly in your browser, not through the server; HTTPS deployments should use HTTPS image URLs.
-- **Motion:** Waves and Aurora are subtle CSS backgrounds with a motion toggle and intensity slider. They respect reduced-motion preferences and pause when the tab is hidden.
-- **Pane finish:** Solid or Glass applies to every pane. Glass has opacity (30–100%) and blur (0–24 px) controls, subtle highlights and shadows. It is frosted glass, not physical refraction. Artwork stays fully opaque. Unsupported browsers, or reduced-transparency preferences, use solid panes.
-- **Colours:** start with Midnight or Daylight, then optionally customise page, surface, text and accent colours. Text must meet 4.5:1 contrast against both solid page and pane colours before saving. Glass over images still needs a visual readability check. **Reset appearance** resets the style draft without changing branding, apps or layout.
+- **General:** set the **Dashboard name**, logo, workspace width and navigation labels. Under **Logo**, choose **Icon + name** for a square brandmark beside your name, or **Full logo** for rectangular artwork replacing both. Use a built-in icon, upload or HTTP(S) URL. Full logos fit within 280 × 48 px on desktop without cropping or stretching. Transparent PNGs with trimmed padding work well. The name still sets the browser title and accessible name; failed images fall back to the built-in icon/name.
+- **Appearance → Theme:** choose Midnight or Daylight. Changing theme resets custom colours, preserving your background and pane finish.
+- **Appearance → Colours:** select an accent swatch or customise page, surface, text and accent colours. Text must meet 4.5:1 contrast against solid page and pane colours. **Reset colours** only resets the palette.
+- **Appearance → Background:** choose None, Dusk, Ocean, Forest or Mist, or use **+ Upload image** / an image URL. Built-ins are local gradients. Dimming and image position help readability. URLs load directly in your browser; use HTTPS URLs on HTTPS deployments. Waves and Aurora remain available, with animation improvements deferred to [issue #1](https://github.com/Graphixa/Pane-Dashboard/issues/1).
+- **Appearance → Typography:** preview header text, pane titles and app labels using bundled Inter. Adjust pane-title size (14–22 px) and app-label visibility. Google Fonts and expanded font controls are deferred to [issue #3](https://github.com/Graphixa/Pane-Dashboard/issues/3).
+- **Panes:** choose one global Solid or Glass finish. Glass provides opacity (30–100%) and blur (0–24 px). Text and artwork stay opaque; reduced-transparency preferences and unsupported browsers use solid surfaces. This remains frosted glass; liquid-glass refinement is tracked in [issue #2](https://github.com/Graphixa/Pane-Dashboard/issues/2). There are no per-pane appearance overrides.
+- **Import & backup:** import layouts or Docker selections, download a private backup, or export a shareable layout. Apply pending settings before importing or exporting to avoid mixing draft and saved data.
+- **About:** installed version and repository/issue links.
 
 ### Uploaded images and backups
 
@@ -61,7 +64,7 @@ Configuration saves and imports are limited to 8 MiB. Upload preparation does no
 
 ## Optional Docker import
 
-Set `PANE_DOCKER_ENDPOINT` to `http://socket-proxy:2375` on an internal Docker network, or explicitly to `unix:///var/run/docker.sock`. Restart Pane, then open Settings → Import → Docker. Only running containers are listed. Review the proposed name, icon and address, check the apps to import, and choose a new or existing pane.
+Set `PANE_DOCKER_ENDPOINT` to `http://socket-proxy:2375` on an internal Docker network, or explicitly to `unix:///var/run/docker.sock`. Restart Pane, then open Settings → Import & backup → Docker. Only running containers are listed. Review the proposed name, icon and address, check the apps to import, and choose a new or existing pane.
 
 Prefer a restricted Docker API proxy allowing only `GET /version` and `GET /v*/containers/json`. Some standard socket proxies grant broader read categories; review their rules. Do not publish the proxy port to your LAN or the internet. Pane does not pass arbitrary paths or execute container-management operations.
 

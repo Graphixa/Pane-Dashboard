@@ -117,11 +117,10 @@ describe("global appearance", () => {
         readOnly={false}
       />,
     );
-    fireEvent.click(screen.getByText("Background", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    fireEvent.click(
-      screen.getByText("Pane finish · global", { selector: "summary" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
     fireEvent.change(screen.getByRole("slider", { name: "Pane opacity" }), {
       target: { value: "55" },
@@ -153,10 +152,11 @@ describe("global appearance", () => {
         readOnly={false}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Wide logo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Full logo" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/wordmark.png" },
     });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
@@ -207,7 +207,7 @@ describe("global appearance", () => {
         .hasAttribute("disabled"),
     ).toBe(true);
     expect(
-      screen.getByLabelText("Header name").closest("fieldset")?.disabled,
+      screen.getByLabelText("Dashboard name").closest("fieldset")?.disabled,
     ).toBe(true);
   });
 });

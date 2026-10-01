@@ -1,9 +1,30 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Settings2, Palette, PanelsTopLeft, Archive, Info } from "lucide-react";
 import { Config, clone, sanitiseExport, validate } from "./model";
 import AppearanceEditor from "./AppearanceEditor";
 import Modal from "./Modal";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
+import { version } from "../package.json";
+
+const pages = [
+  ["general", "General", Settings2],
+  ["appearance", "Appearance", Palette],
+  ["panes", "Panes", PanelsTopLeft],
+  ["backup", "Import & backup", Archive],
+  ["about", "About", Info],
+] as const;
+const appearanceTabs = [
+  "theme",
+  "colours",
+  "background",
+  "typography",
+] as const;
+type Page = (typeof pages)[number][0];
+type AppearanceTab = (typeof appearanceTabs)[number];
+const settingsValue = (c: Config) =>
+  JSON.stringify([c.dashboard, c.appearance]);
+
 export default function Settings({
   config,
   apply,
@@ -17,231 +38,275 @@ export default function Settings({
   close: () => void;
   readOnly: boolean;
 }) {
-  const [tab, setTab] = useState("appearance"),
-    [draft, setDraft] = useState(clone(config)),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+  const [page, setPage] = useState<Page>("general");
+  const [appearanceTab, setAppearanceTab] = useState<AppearanceTab>("theme");
+  const [draft, setDraft] = useState(() => clone(config));
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const initial = useRef(settingsValue(config));
+  const content = useRef<HTMLDivElement>(null);
+  const dirty = settingsValue(draft) !== initial.current;
+  const requestClose = () => {
+    if (
+      (!dirty && !busy) ||
+      window.confirm("Discard unsaved settings changes?")
+    )
+      close();
+  };
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, busy]);
+  useEffect(() => {
+    if (content.current) content.current.scrollTop = 0;
+  }, [page, appearanceTab]);
+  const submit = () => {
+    if (busy || readOnly) return;
+    try {
+      const next = {
+        ...config,
+        dashboard: draft.dashboard,
+        appearance: draft.appearance,
+      };
+      validate(next);
+      apply(next);
+      close();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+  const editable =
+    page === "general" || page === "appearance" || page === "panes";
   return (
-    <Modal title="Settings" close={close}>
-      <nav className="tabs" aria-label="Settings sections">
-        {["appearance", "import", "export"].map((s) => (
-          <button
-            key={s}
-            disabled={busy}
-            className={tab === s ? "active" : ""}
-            onClick={() => setTab(s)}
-          >
-            {s[0].toUpperCase() + s.slice(1)}
-          </button>
-        ))}
-      </nav>
-      {readOnly && (
-        <p className="notice">
-          This screen is read-only at this viewport size. Use a wider desktop
-          screen to make changes.
-        </p>
-      )}
-      {tab === "appearance" && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (busy) return;
-            try {
-              const n = {
-                ...config,
-                dashboard: draft.dashboard,
-                appearance: draft.appearance,
-              };
-              validate(n);
-              apply(n);
-              close();
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          <fieldset disabled={readOnly || busy}>
-            <AppearanceEditor
-              draft={draft}
-              change={setDraft}
-              onBusy={setBusy}
-            />
-            <div className="fields">
-              <label>
-                Dashboard width
-                <select
-                  value={
-                    draft.dashboard.widthMode === "full"
-                      ? "full"
-                      : String(
-                          draft.dashboard.width === 960 ||
-                            draft.dashboard.width === 1200
-                            ? draft.dashboard.width
-                            : "custom",
-                        )
-                  }
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      dashboard: {
-                        ...draft.dashboard,
-                        widthMode: e.target.value === "full" ? "full" : "fixed",
-                        width: ["960", "1200"].includes(e.target.value)
-                          ? Number(e.target.value)
-                          : e.target.value === "custom"
-                            ? 1000
-                            : draft.dashboard.width,
-                      },
-                    })
-                  }
-                >
-                  <option value="full">Full width</option>
-                  <option value="960">960 px</option>
-                  <option value="1200">1200 px</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              <label>
-                {draft.dashboard.widthMode === "full"
-                  ? "Saved workspace width (px)"
-                  : "Width (px)"}
-                <input
-                  type="number"
-                  min={768}
-                  max={3840}
-                  required
-                  value={draft.dashboard.width}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      dashboard: {
-                        ...draft.dashboard,
-                        width: Number(e.target.value),
-                      },
-                    })
-                  }
-                />
-              </label>
-            </div>
-            <p className="hint">
-              Full width gives you more workspace without stretching tiles.
-              Narrow screens use a read-only presentation. Tile size is fixed at
-              80 px.
+    <Modal title="Settings" close={requestClose} className="settings-dialog">
+      <div className="settings-body">
+        <nav className="settings-sidebar" aria-label="Settings sections">
+          {pages.map(([id, label, Icon]) => (
+            <button
+              type="button"
+              key={id}
+              disabled={busy}
+              aria-current={page === id ? "page" : undefined}
+              onClick={() => setPage(id)}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="settings-content" ref={content}>
+          <h2 className="settings-page-title">
+            {pages.find(([id]) => id === page)?.[1]}
+          </h2>
+          {readOnly && (
+            <p className="notice">
+              Use a wider desktop screen to change settings. Backups are still
+              available.
             </p>
-            <div className="fields">
-              <label>
-                Theme
-                <select
-                  value={draft.appearance.theme}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      appearance: {
-                        ...draft.appearance,
-                        theme: e.target.value as "dark" | "light",
-                        palette: undefined,
-                      },
-                    })
+          )}
+          {page === "appearance" && (
+            <div
+              className="settings-subtabs"
+              role="tablist"
+              aria-label="Appearance sections"
+            >
+              {appearanceTabs.map((tab, index) => (
+                <button
+                  type="button"
+                  role="tab"
+                  key={tab}
+                  id={`settings-tab-${tab}`}
+                  aria-controls="settings-appearance-panel"
+                  aria-selected={appearanceTab === tab}
+                  tabIndex={appearanceTab === tab ? 0 : -1}
+                  disabled={busy}
+                  onClick={() => setAppearanceTab(tab)}
+                  onKeyDown={(e) => {
+                    const next =
+                      e.key === "ArrowRight"
+                        ? (index + 1) % 4
+                        : e.key === "ArrowLeft"
+                          ? (index + 3) % 4
+                          : e.key === "Home"
+                            ? 0
+                            : e.key === "End"
+                              ? 3
+                              : -1;
+                    if (next >= 0) {
+                      e.preventDefault();
+                      setAppearanceTab(appearanceTabs[next]);
+                      document
+                        .getElementById(`settings-tab-${appearanceTabs[next]}`)
+                        ?.focus();
+                    }
+                  }}
+                >
+                  {tab[0].toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
+          )}
+          <form
+            id="settings-form"
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit();
+            }}
+          >
+            {editable && (
+              <fieldset disabled={readOnly || busy}>
+                <div
+                  id={
+                    page === "appearance"
+                      ? "settings-appearance-panel"
+                      : undefined
+                  }
+                  role={page === "appearance" ? "tabpanel" : undefined}
+                  aria-labelledby={
+                    page === "appearance"
+                      ? `settings-tab-${appearanceTab}`
+                      : undefined
                   }
                 >
-                  <option value="dark">Midnight</option>
-                  <option value="light">Daylight</option>
-                </select>
-              </label>
-              <label>
-                Pane title size (px)
-                <input
-                  type="number"
-                  min={14}
-                  max={22}
-                  step={1}
-                  required
-                  value={draft.appearance.paneTitleSize ?? 18}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      appearance: {
-                        ...draft.appearance,
-                        paneTitleSize: Number(e.target.value),
-                      },
-                    })
-                  }
-                />
-              </label>
-            </div>
-            {(["showAppLabels", "showButtonLabels"] as const).map((k) => (
-              <label className="check" key={k}>
-                <input
-                  type="checkbox"
-                  checked={draft.appearance[k]}
-                  onChange={(e) =>
-                    setDraft({
-                      ...draft,
-                      appearance: {
-                        ...draft.appearance,
-                        [k]: e.target.checked,
-                      },
-                    })
-                  }
-                />
-                {k === "showAppLabels"
-                  ? "App labels"
-                  : "Navigation button labels"}
-              </label>
-            ))}
-          </fieldset>
-          {error && (
+                  {page === "panes" && (
+                    <p>One consistent finish for every pane.</p>
+                  )}
+                  <AppearanceEditor
+                    draft={draft}
+                    change={(c) => {
+                      setDraft(c);
+                      setError("");
+                    }}
+                    onBusy={setBusy}
+                    section={page === "appearance" ? appearanceTab : page}
+                  />
+                </div>
+              </fieldset>
+            )}
+          </form>
+          {page === "backup" && (
+            <>
+              <section className="settings-card">
+                <h3>Export</h3>
+                <p>
+                  Exports use your saved dashboard. Apply pending changes before
+                  downloading.
+                </p>
+                <div className="backup-option">
+                  <div>
+                    <h4>Private backup</h4>
+                    <p>
+                      Includes app addresses, Docker identities and uploaded
+                      images. Keep this file private.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={dirty || busy}
+                    onClick={() => download("pane-backup.yaml", config)}
+                  >
+                    Download full backup
+                  </button>
+                </div>
+                <div className="backup-option">
+                  <div>
+                    <h4>Share a layout</h4>
+                    <p>
+                      Omits app addresses and Docker identities. Images and
+                      image URLs remain; review before sharing.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={dirty || busy}
+                    onClick={() =>
+                      download("pane-layout.yaml", sanitiseExport(config))
+                    }
+                  >
+                    Export shareable layout
+                  </button>
+                </div>
+              </section>
+              <section className="settings-card">
+                <h3>Import</h3>
+                {dirty ? (
+                  <p className="notice">
+                    Apply your settings first, or cancel and reopen Settings
+                    before importing a layout.
+                  </p>
+                ) : (
+                  !readOnly && (
+                    <ImportPanel
+                      config={config}
+                      imported={(c, id) => {
+                        imported(c, id);
+                        close();
+                      }}
+                    />
+                  )
+                )}
+              </section>
+            </>
+          )}
+          {page === "about" && (
+            <section className="settings-card">
+              <h3>Pane</h3>
+              <p>Version {version}</p>
+              <p>A self-hosted dashboard for your apps.</p>
+              <div className="about-links">
+                <a
+                  href="https://github.com/Graphixa/Pane-Dashboard"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub
+                </a>
+                <a
+                  href="https://github.com/Graphixa/Pane-Dashboard/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Report an issue
+                </a>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+      <div className="settings-footer">
+        <div className="settings-status" aria-live="polite">
+          {error ? (
             <p className="error" role="alert">
               {error}
             </p>
+          ) : busy ? (
+            "Preparing image…"
+          ) : dirty ? (
+            "Unsaved changes"
+          ) : (
+            "Settings are up to date"
           )}
-          <div className="actions">
-            <button type="button" onClick={close}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="primary"
-              disabled={readOnly || busy}
-            >
-              Apply settings
-            </button>
-          </div>
-        </form>
-      )}
-      {tab === "import" &&
-        (readOnly ? null : (
-          <ImportPanel
-            config={config}
-            imported={(c, id) => {
-              imported(c, id);
-              close();
-            }}
-          />
-        ))}
-      {tab === "export" && (
-        <div className="export-options">
-          <h3>Share a layout</h3>
-          <p>
-            Exports structure and icons without app addresses or Docker
-            identities. Uploaded images and custom image URLs remain: review
-            them before sharing.
-          </p>
-          <button
-            onClick={() => download("pane-layout.yaml", sanitiseExport(config))}
-          >
-            Export shareable layout
+        </div>
+        <div className="settings-footer-actions">
+          <button type="button" onClick={requestClose}>
+            Cancel
           </button>
-          <h3>Private backup</h3>
-          <p>
-            Includes uploaded images, appearance, app addresses and Docker
-            identities. Keep this file private.
-          </p>
-          <button onClick={() => download("pane-backup.yaml", config)}>
-            Download full backup
+          <button
+            type="submit"
+            form="settings-form"
+            className="primary"
+            disabled={readOnly || busy}
+          >
+            Apply settings
           </button>
         </div>
-      )}
+      </div>
     </Modal>
   );
 }

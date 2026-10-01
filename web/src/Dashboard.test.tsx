@@ -94,12 +94,14 @@ describe("interaction boundary", () => {
     ).toBeNull();
     expect(screen.queryByText(/YOUR SPACE, CONNECTED/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("Header name"), {
+    fireEvent.change(screen.getByLabelText("Dashboard name"), {
       target: { value: "Akira" },
     });
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/logo.png" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Typography" }));
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },
     });
