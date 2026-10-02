@@ -160,21 +160,48 @@
 }
 .background-swatch .swatch-waves {
   border-bottom: 3px solid #b2dce799;
-  border-radius: 45%;
 }
 .background-swatch .swatch-aurora {
   box-shadow: inset 14px 0 24px #c394db66;
+}
+.background-swatch .swatch-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--panel-high) 80%, transparent);
+  color: var(--muted);
+}
+.background-swatch .swatch-custom-set {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel-high));
+}
+.image-field {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
 }
 .image-actions {
   display: flex;
   align-items: stretch;
   gap: 14px;
-  margin-top: 16px;
 }
 .image-actions > label {
   flex: 1;
   min-width: 0;
   margin: 0;
+}
+.image-field-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+}
+.image-field-meta .hint {
+  margin: 0;
+}
+.image-field-meta .text-button {
+  margin: 0;
+  padding: 0;
 }
 .upload-tile {
   display: flex;
@@ -182,7 +209,7 @@
   flex: 0 0 112px;
   border: 1px dashed var(--muted);
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .file-picker {
   display: none;

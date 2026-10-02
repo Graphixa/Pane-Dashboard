@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { Server, LayoutGrid, PanelsTopLeft } from "lucide-react";
+import { Server, LayoutGrid, PanelsTopLeft, ImagePlus } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -92,7 +92,10 @@ export default function AppearanceEditor({
   if (section === "general")
     return (
       <>
-        <Section title="Dashboard">
+        <Section
+          title="Dashboard"
+          description="Also used for the browser tab and accessible name."
+        >
           <label>
             Dashboard name
             <input
@@ -101,9 +104,6 @@ export default function AppearanceEditor({
               onChange={(e) => header({ title: e.target.value })}
             />
           </label>
-          <p className="hint">
-            Also used for the browser tab and accessible name.
-          </p>
         </Section>
         <Section
           title="Logo"
@@ -175,15 +175,18 @@ export default function AppearanceEditor({
               value={draft.dashboard.logo ?? ""}
               change={(logo) => header({ logo })}
               onBusy={onBusy}
+              hint={
+                draft.dashboard.branding === "logo"
+                  ? "Rectangular logos replace the icon and name. PNG, JPEG or WebP."
+                  : "Square artwork beside the name. PNG, JPEG or WebP."
+              }
             />
-            <p className="hint">
-              {draft.dashboard.branding === "logo"
-                ? "Rectangular logos replace the visible icon and name. Transparent PNGs keep their proportions."
-                : "Square artwork sits beside your dashboard name."}
-            </p>
           </div>
         </Section>
-        <Section title="Workspace">
+        <Section
+          title="Workspace"
+          description="Tiles keep their size. Narrow screens use a read-only layout."
+        >
           <div className="fields">
             <label>
               Dashboard width
@@ -225,9 +228,6 @@ export default function AppearanceEditor({
               />
             </label>
           </div>
-          <p className="hint">
-            Tiles keep their size. Narrow screens use a read-only layout.
-          </p>
           <label className="setting-switch">
             <span>Navigation button labels</span>
             <input
@@ -248,7 +248,11 @@ export default function AppearanceEditor({
       <>
         <Section
           title="Pane finish"
-          description="One consistent finish for every pane."
+          description={
+            g.mode === "glass"
+              ? "Frosted surfaces with fully opaque text and icons."
+              : "Opaque surfaces for a clear, uniform look."
+          }
         >
           <div
             className="choice-row finish-choices"
@@ -266,16 +270,11 @@ export default function AppearanceEditor({
               </button>
             ))}
           </div>
-          <p className="hint">
-            {g.mode === "glass"
-              ? "Frosted surfaces with fully opaque text and icons."
-              : "Opaque surfaces for a clear, uniform look."}
-          </p>
         </Section>
         {g.mode === "glass" && (
           <Section
             title="Fine tuning"
-            description="Adjust the transparency and softness of your panes."
+            description="Transparency and blur for every pane."
           >
             <div className="settings-control-group">
               <Range
@@ -297,7 +296,10 @@ export default function AppearanceEditor({
             </div>
           </Section>
         )}
-        <Section title="Labels">
+        <Section
+          title="Labels"
+          description="Show names beneath app icons."
+        >
           <label className="setting-switch">
             <span>Show app labels</span>
             <input
@@ -307,14 +309,16 @@ export default function AppearanceEditor({
               onChange={(e) => appearance({ showAppLabels: e.target.checked })}
             />
           </label>
-          <p className="hint">Display names beneath app icons.</p>
         </Section>
       </>
     );
 
   return (
     <>
-      <Section title="Theme" description="Choose your dashboard’s base theme.">
+      <Section
+        title="Theme"
+        description="Changing theme resets custom colours."
+      >
         <div
           className="theme-choices choice-row"
           role="group"
@@ -339,11 +343,11 @@ export default function AppearanceEditor({
             </button>
           ))}
         </div>
-        <p className="hint">Changing theme resets custom colours.</p>
       </Section>
-      <Section title="Colours">
-        <h4>Accent</h4>
-        <p className="hint">Used for buttons, selections and focus.</p>
+      <Section
+        title="Colours"
+        description="Accent is used for buttons, selections and focus."
+      >
         <div
           className="accent-swatches"
           role="group"
@@ -398,8 +402,7 @@ export default function AppearanceEditor({
             ))}
           </div>
           <p className="hint">
-            Text contrast is checked before saving. Check readability over
-            images when using glass.
+            Text contrast is checked before saving. Check glass over images.
           </p>
         </details>
         {badContrast && (
@@ -418,7 +421,7 @@ export default function AppearanceEditor({
       </Section>
       <Section
         title="Background"
-        description="Choose a built-in background or add your own image."
+        description="Pick a built-in look, or choose Custom for your own image."
       >
         <div
           className="background-gallery"
@@ -466,27 +469,37 @@ export default function AppearanceEditor({
               {kind === "waves" ? "Waves" : "Aurora"}
             </button>
           ))}
+          <button
+            type="button"
+            className="background-swatch"
+            aria-pressed={b.kind === "image"}
+            onClick={() => background({ kind: "image" })}
+          >
+            <span
+              className={`swatch-custom ${b.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
+            >
+              <ImagePlus size={18} aria-hidden="true" />
+            </span>
+            Custom
+          </button>
         </div>
-        <div className="settings-subsection">
-          <h4>Custom image</h4>
-          <ImageField
-            label="Background image"
-            kind="background"
-            value={b.image}
-            change={(image) =>
-              background({ image, kind: image ? "image" : "none" })
-            }
-            onBusy={onBusy}
-          />
-          {b.image && b.kind !== "image" && (
-            <button type="button" onClick={() => background({ kind: "image" })}>
-              Use custom image
-            </button>
-          )}
-        </div>
+        {b.kind === "image" && (
+          <div className="settings-subsection">
+            <ImageField
+              label="Background image"
+              kind="background"
+              value={b.image}
+              change={(image) =>
+                background({ image, kind: image ? "image" : "none" })
+              }
+              onBusy={onBusy}
+              hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
+            />
+          </div>
+        )}
         {b.kind !== "none" && (
           <div className="settings-subsection">
-            <h4>Background adjustments</h4>
+            <h4>Adjustments</h4>
             <Range
               label="Background dimming"
               value={b.dimming}
@@ -544,21 +557,24 @@ export default function AppearanceEditor({
                 onChange={(e) => background({ motion: e.target.checked })}
               />
             </label>
-            <Range
-              label="Motion intensity"
-              value={b.intensity}
-              min={0}
-              max={100}
-              unit="%"
-              change={(intensity) => background({ intensity })}
-            />
-            <p className="hint">
-              Respects your device’s reduced-motion setting.
-            </p>
+            {b.motion && (
+              <Range
+                label="Motion intensity"
+                value={b.intensity}
+                min={0}
+                max={100}
+                unit="%"
+                change={(intensity) => background({ intensity })}
+              />
+            )}
+            <p className="hint">Respects reduced-motion preferences.</p>
           </div>
         )}
       </Section>
-      <Section title="Typography" description="Inter is included with Pane.">
+      <Section
+        title="Typography"
+        description="Inter is included with Pane. Applies to every pane title."
+      >
         <label className="settings-row">
           <span>Pane title size (px)</span>
           <input
@@ -571,7 +587,6 @@ export default function AppearanceEditor({
             }
           />
         </label>
-        <p className="hint">Applies to every pane title.</p>
       </Section>
     </>
   );

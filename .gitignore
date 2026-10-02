@@ -4,3 +4,4 @@ pane
 config/
 *.tmp
 coverage/
+planning/*

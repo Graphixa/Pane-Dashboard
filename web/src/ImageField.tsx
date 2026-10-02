@@ -55,12 +55,14 @@ export default function ImageField({
   kind,
   change,
   onBusy,
+  hint,
 }: {
   label: string;
   value: string;
   kind: "icon" | "logo" | "background";
   change: (s: string) => void;
   onBusy: (busy: boolean) => void;
+  hint?: string;
 }) {
   const input = useRef<HTMLInputElement>(null),
     alive = useRef(true);
@@ -128,29 +130,27 @@ export default function ImageField({
           />
         </label>
       </div>
-      {uploaded && (
+      <div className="image-field-meta">
+        {value ? (
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => change("")}
+          >
+            Remove
+          </button>
+        ) : null}
         <p className="hint">
-          Uploaded image included in backups. Enter a URL to replace it.
+          {uploaded
+            ? "Uploaded image is included in backups."
+            : (hint ?? "PNG, JPEG or WebP, up to 8 MiB.")}
         </p>
-      )}
-      {value && (
-        <button
-          type="button"
-          className="text-button"
-          onClick={() => change("")}
-        >
-          Remove {label.toLowerCase()}
-        </button>
-      )}
+      </div>
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-      <p className="hint">
-        PNG, JPEG or WebP, up to 8 MiB. Images are resized to fit; uploads never
-        stretch.
-      </p>
     </div>
   );
 }

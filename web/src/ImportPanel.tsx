@@ -169,7 +169,7 @@ export default function ImportPanel({
           </label>
           {preview && (
             <div className="notice">
-              <h3>{replacement ? "Replace dashboard" : "Add shared pane"}</h3>
+              <h4>{replacement ? "Replace dashboard" : "Add shared pane"}</h4>
               <p>
                 {preview.items.length} panes ·{" "}
                 {preview.items.reduce((n, p) => n + p.apps.length, 0)} apps

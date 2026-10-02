@@ -129,16 +129,16 @@ export default function Settings({
             <>
               <section className="settings-card">
                 <h3>Export</h3>
-                <p>
-                  Exports use your saved dashboard. Apply pending changes before
-                  downloading.
+                <p className="section-description">
+                  Downloads use your saved dashboard. Apply pending changes
+                  first.
                 </p>
                 <div className="backup-option">
                   <div>
                     <h4>Private backup</h4>
                     <p>
                       Includes app addresses, Docker identities and uploaded
-                      images. Keep this file private.
+                      images.
                     </p>
                   </div>
                   <button
@@ -153,8 +153,8 @@ export default function Settings({
                   <div>
                     <h4>Share a layout</h4>
                     <p>
-                      Omits app addresses and Docker identities. Images and
-                      image URLs remain; review before sharing.
+                      Omits app addresses and Docker identities. Review images
+                      before sharing.
                     </p>
                   </div>
                   <button

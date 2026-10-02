@@ -54,12 +54,12 @@
   min-width: 0;
 }
 .settings-sidebar button[aria-current="page"] {
-  color: var(--text);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .settings-sidebar button[aria-current="page"] svg {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .settings-content {
   overflow-y: auto;
@@ -107,8 +107,25 @@
   margin: 10px 0 0;
   max-width: 64ch;
 }
-.settings-section > .section-description {
+.settings-section > .section-description,
+.settings-card > .section-description {
   margin: -8px 0 20px;
+  color: var(--muted);
+}
+.settings-card > .section-description {
+  margin: -4px 0 8px;
+}
+.settings-dialog .hint {
+  margin-top: 8px;
+}
+.settings-subsection > .image-field {
+  margin-top: 10px;
+}
+.settings-disclosure .colour-grid {
+  margin-top: 14px;
+}
+.settings-dialog .accent-swatches {
+  margin: 4px 0 8px;
 }
 .settings-dialog label {
   font-size: 14px;
@@ -149,7 +166,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 6px 0;
+  padding: 10px 0;
+}
+.settings-dialog .settings-row + .settings-row,
+.settings-dialog .settings-row + .setting-switch,
+.settings-dialog .setting-switch + .settings-row,
+.settings-dialog .setting-switch + .setting-switch {
+  border-top: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
 }
 .settings-row input[type="number"] {
   width: 90px;
@@ -216,6 +239,22 @@
 .settings-dialog .choice-row button {
   font-size: 13px;
 }
+.settings-dialog .choice-row button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+.settings-dialog .logo-choices > button[aria-pressed="true"],
+.settings-dialog .theme-choices > button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.settings-dialog .upload-tile {
+  font-size: 13px;
+}
 .logo-choices,
 .theme-choices {
   max-width: 520px;
@@ -259,23 +298,23 @@
   gap: 8px;
   padding: 18px 14px;
   width: 100%;
-  border: 1px solid #ffffff25;
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 .theme-thumbnail i {
   height: 22px;
   width: 22px;
   border-radius: 6px;
-  background: #a9d2c5;
+  background: #a2cbbb;
 }
 .theme-dark {
   background: #111720;
 }
 .theme-light {
-  background: #edf1f5;
+  background: #f5f6f2;
 }
 .theme-light i {
-  background: #366b5a;
+  background: #287962;
 }
 .finish-choices {
   max-width: 320px;
