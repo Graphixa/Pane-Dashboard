@@ -106,11 +106,12 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
   });
-  it("offers one Appearance page with ordered headings and no miniature previews", () => {
+  it("offers Appearance and Background pages with ordered headings and no miniature previews", () => {
     const { container } = setup();
     for (const name of [
       "General",
       "Appearance",
+      "Background",
       "Panes",
       "Import & backup",
       "About",
@@ -124,7 +125,11 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
-    ).toEqual(["Theme", "Colours", "Background", "Typography"]);
+    ).toEqual(["Theme", "Colours", "Typography"]);
+    page("Background");
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
+    ).toEqual(["Static", "Animated"]);
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();

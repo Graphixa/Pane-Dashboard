@@ -357,7 +357,10 @@ function DashboardView({
         } as CSSProperties
       }
     >
-      <Background settings={config.appearance.background} />
+      <Background
+        settings={config.appearance.background}
+        theme={config.appearance.theme}
+      />
       <header className="topbar">
         <a
           href="#"

@@ -19,13 +19,16 @@ const configLimit = 8 << 20
 const imageLimit = 2 << 20
 
 type Background struct {
-	Kind      string `json:"kind" yaml:"kind"`
-	Preset    string `json:"preset" yaml:"preset"`
-	Image     string `json:"image" yaml:"image"`
-	Dimming   int    `json:"dimming" yaml:"dimming"`
-	Position  string `json:"position" yaml:"position"`
-	Motion    bool   `json:"motion" yaml:"motion"`
-	Intensity int    `json:"intensity" yaml:"intensity"`
+	Kind           string `json:"kind" yaml:"kind"`
+	Preset         string `json:"preset" yaml:"preset"`
+	Image          string `json:"image" yaml:"image"`
+	Dimming        int    `json:"dimming,omitempty" yaml:"dimming,omitempty"`
+	Overlay        string `json:"overlay,omitempty" yaml:"overlay,omitempty"`
+	OverlayOpacity int    `json:"overlayOpacity,omitempty" yaml:"overlayOpacity,omitempty"`
+	OverlayColour  string `json:"overlayColour,omitempty" yaml:"overlayColour,omitempty"`
+	Position       string `json:"position" yaml:"position"`
+	Motion         bool   `json:"motion" yaml:"motion"`
+	Intensity      int    `json:"intensity" yaml:"intensity"`
 }
 type Glass struct {
 	Mode    string `json:"mode" yaml:"mode"`
@@ -95,7 +98,14 @@ func validateAppearance(c Config) error {
 		return fmt.Errorf("invalid header branding or image")
 	}
 	if b := c.Appearance.Background; b != nil {
-		if !oneOf(b.Kind, "none", "gradient", "image", "waves", "aurora") || !oneOf(b.Preset, "dusk", "ocean", "forest", "mist") || !oneOf(b.Position, "center", "top", "bottom") || b.Dimming < 0 || b.Dimming > 80 || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
+		if !oneOf(b.Kind, "none", "gradient", "image", "waves", "aurora") || !oneOf(b.Preset, "dusk", "ocean", "forest", "mist") || !oneOf(b.Position, "center", "top", "bottom") || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
+			return fmt.Errorf("invalid background settings or image")
+		}
+		if b.Overlay != "" {
+			if !oneOf(b.Overlay, "dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom") || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
+				return fmt.Errorf("invalid background overlay settings")
+			}
+		} else if b.Dimming < 0 || b.Dimming > 80 {
 			return fmt.Errorf("invalid background settings or image")
 		}
 	}

@@ -3,25 +3,29 @@ import {
   defaultBackground,
   gradients,
   imageReference,
+  migrateBackground,
+  overlayBackground,
   type Background as BackgroundSettings,
 } from "./appearance";
 
 export default function Background({
   settings = defaultBackground,
+  theme = "dark",
 }: {
-  settings?: BackgroundSettings;
+  settings?: BackgroundSettings & { dimming?: number };
+  theme?: "dark" | "light";
 }) {
   const [failed, setFailed] = useState(false),
     [hidden, setHidden] = useState(false);
-  useEffect(() => setFailed(false), [settings.image]);
+  const b = migrateBackground(settings, theme);
+  useEffect(() => setFailed(false), [b.image]);
   useEffect(() => {
     const update = () => setHidden(document.hidden);
     update();
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
-  const b = settings,
-    animated = b.kind === "waves" || b.kind === "aurora";
+  const animated = b.kind === "waves" || b.kind === "aurora";
   const activeImage =
     b.kind === "image" && imageReference(b.image) && b.image && !failed;
   return (
@@ -57,7 +61,10 @@ export default function Background({
         </div>
       )}
       {b.kind !== "none" && (
-        <div className="scene-dimming" style={{ opacity: b.dimming / 100 }} />
+        <div
+          className="scene-overlay"
+          style={{ background: overlayBackground(b) }}
+        />
       )}
     </div>
   );

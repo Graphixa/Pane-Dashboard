@@ -1,15 +1,245 @@
-import { useId, type ReactNode } from "react";
-import { Server, LayoutGrid, PanelsTopLeft, ImagePlus } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { Server, LayoutGrid, PanelsTopLeft, ImagePlus, X } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
   defaultBackground,
   defaultGlass,
   gradients,
+  defaultOverlayColour,
+  migrateBackground,
+  overlayForTheme,
   palettes,
   type Background as BackgroundSettings,
+  type OverlayMode,
 } from "./appearance";
 import ImageField from "./ImageField";
+
+function OverlayModeSwatch({
+  id,
+  label,
+  pressed,
+  className,
+  onSelect,
+}: {
+  id: OverlayMode;
+  label: string;
+  pressed: boolean;
+  className: string;
+  onSelect: (id: OverlayMode) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={pressed}
+      className={`colour-tile overlay-swatch ${className}`}
+      onClick={() => onSelect(id)}
+    >
+      <span className="colour-tile-paint" aria-hidden="true" />
+      <span className="colour-tile-tick" aria-hidden="true">
+        {pressed ? "✓" : ""}
+      </span>
+    </button>
+  );
+}
+
+function ColourSwatch({
+  label,
+  colour,
+  pressed = false,
+  hueDefault = false,
+  onSelect,
+  onColour,
+}: {
+  label: string;
+  colour: string;
+  pressed?: boolean;
+  /** HSL-style spectrum until a custom colour is chosen. */
+  hueDefault?: boolean;
+  onSelect?: () => void;
+  onColour: (colour: string) => void;
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const colourInput = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [hex, setHex] = useState(colour);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const portalHost =
+    button.current?.closest("dialog") ??
+    (typeof document !== "undefined" ? document.body : null);
+
+  useEffect(() => {
+    setHex(colour);
+  }, [colour]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+      }
+    };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (popover.current?.contains(t) || button.current?.contains(t)) return;
+      setOpen(false);
+    };
+    // Defer so the opening click does not immediately dismiss.
+    const timer = window.setTimeout(() => {
+      document.addEventListener("keydown", onKey, true);
+      document.addEventListener("pointerdown", onPointer, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
+  }, [open]);
+
+  const place = () => {
+    const anchor = button.current;
+    if (!anchor) return;
+    const box = anchor.getBoundingClientRect();
+    const host = anchor.closest("dialog");
+    const origin = host?.getBoundingClientRect();
+    const ox = origin?.left ?? 0;
+    const oy = origin?.top ?? 0;
+    const hostW = origin?.width ?? window.innerWidth;
+    const hostH = origin?.height ?? window.innerHeight;
+    const width = 220;
+    const height = 120;
+    const left = Math.min(
+      Math.max(12, box.left - ox),
+      hostW - width - 12,
+    );
+    const spaceBelow = (origin?.bottom ?? window.innerHeight) - box.bottom;
+    const top =
+      spaceBelow < height + 12
+        ? Math.max(12, box.top - oy - height - 8)
+        : box.bottom - oy + 8;
+    setPos({ top, left });
+  };
+
+  const openPicker = () => {
+    onSelect?.();
+    place();
+    setOpen(true);
+    const el = colourInput.current;
+    if (el && typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+      } catch {
+        /* Ignore if the browser blocks the picker. */
+      }
+    }
+  };
+
+  const applyHex = (value: string) => {
+    const next = value.startsWith("#") ? value : `#${value}`;
+    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
+      setHex(colour);
+      return;
+    }
+    setHex(next);
+    onSelect?.();
+    onColour(next.toLowerCase());
+  };
+
+  const onColourInput = (value: string) => {
+    onSelect?.();
+    onColour(value);
+    setHex(value);
+  };
+
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        aria-label={label}
+        title={label}
+        aria-pressed={pressed}
+        aria-expanded={open}
+        className="colour-tile overlay-swatch overlay-custom"
+        onClick={openPicker}
+      >
+        <span
+          className={`colour-tile-paint${hueDefault ? " overlay-custom-hue" : ""}`}
+          style={hueDefault ? undefined : { background: colour }}
+          aria-hidden="true"
+        />
+        <span className="colour-tile-tick" aria-hidden="true">
+          {pressed ? "✓" : ""}
+        </span>
+      </button>
+      <input
+        ref={colourInput}
+        type="color"
+        className="colour-native-ghost"
+        aria-hidden="true"
+        tabIndex={-1}
+        value={colour}
+        onChange={(e) => onColourInput(e.target.value)}
+      />
+      {open &&
+        portalHost &&
+        createPortal(
+          <div
+            ref={popover}
+            className="colour-popover"
+            role="dialog"
+            aria-label={label}
+            style={{ top: pos.top, left: pos.left }}
+          >
+            <div className="colour-popover-head">
+              <strong>{label}</strong>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={`Close ${label} picker`}
+                onClick={() => setOpen(false)}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="colour-popover-body">
+              <label className="colour-popover-swatch">
+                <input
+                  type="color"
+                  aria-label={`Pick ${label}`}
+                  value={colour}
+                  onChange={(e) => onColourInput(e.target.value)}
+                />
+              </label>
+              <label className="colour-popover-hex">
+                <span>Hex</span>
+                <input
+                  type="text"
+                  spellCheck={false}
+                  maxLength={7}
+                  value={hex}
+                  onChange={(e) => setHex(e.target.value)}
+                  onBlur={(e) => applyHex(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyHex((e.target as HTMLInputElement).value);
+                    }
+                  }}
+                />
+              </label>
+            </div>
+          </div>,
+          portalHost,
+        )}
+    </>
+  );
+}
 
 function Section({
   title,
@@ -71,13 +301,13 @@ export default function AppearanceEditor({
   onBusy,
   section,
 }: {
-  section: "general" | "appearance" | "panes";
+  section: "general" | "appearance" | "background" | "panes";
   draft: Config;
   change: (c: Config) => void;
   onBusy: (b: boolean) => void;
 }) {
   const a = draft.appearance,
-    b = a.background ?? defaultBackground,
+    b = migrateBackground(a.background ?? defaultBackground, a.theme),
     g = a.glass ?? defaultGlass,
     p = a.palette ?? palettes[a.theme];
   const header = (update: Partial<Config["dashboard"]>) =>
@@ -86,8 +316,19 @@ export default function AppearanceEditor({
     change({ ...draft, appearance: { ...a, ...update } });
   const background = (update: Partial<BackgroundSettings>) =>
     appearance({ background: { ...b, ...update } });
+  const setTheme = (theme: "dark" | "light") =>
+    appearance({
+      theme,
+      palette: undefined,
+      background: {
+        ...b,
+        overlay: overlayForTheme(theme, b.overlay),
+      },
+    });
   const badContrast =
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
+  const fullLogo = draft.dashboard.branding === "logo";
+  const hasCustomLogo = Boolean(draft.dashboard.logo);
 
   if (section === "general")
     return (
@@ -107,7 +348,7 @@ export default function AppearanceEditor({
         </Section>
         <Section
           title="Logo"
-          description="Choose how your name and artwork appear in the header."
+          description="How your name and artwork appear in the header."
         >
           <div
             className="choice-row logo-choices"
@@ -116,27 +357,27 @@ export default function AppearanceEditor({
           >
             <button
               type="button"
-              aria-pressed={draft.dashboard.branding !== "logo"}
+              aria-pressed={!fullLogo}
               onClick={() => header({ branding: "icon" })}
             >
               <span className="logo-choice-icon" aria-hidden="true">
-                <LayoutGrid size={22} />
-                <span>Dashboard</span>
+                <LayoutGrid size={20} />
+                <span>Name</span>
               </span>
               Icon + name
             </button>
             <button
               type="button"
-              aria-pressed={draft.dashboard.branding === "logo"}
+              aria-pressed={fullLogo}
               onClick={() => header({ branding: "logo" })}
             >
               <span className="logo-choice-wide" aria-hidden="true">
-                Your logo
+                Logo
               </span>
               Full logo
             </button>
           </div>
-          {draft.dashboard.branding !== "logo" && (
+          {!fullLogo && (
             <div className="settings-subsection">
               <h4>Built-in icons</h4>
               <div
@@ -167,21 +408,33 @@ export default function AppearanceEditor({
               </div>
             </div>
           )}
-          <div className="settings-subsection">
-            <h4>Custom image</h4>
-            <ImageField
-              label="Logo image"
-              kind={draft.dashboard.branding === "logo" ? "logo" : "icon"}
-              value={draft.dashboard.logo ?? ""}
-              change={(logo) => header({ logo })}
-              onBusy={onBusy}
-              hint={
-                draft.dashboard.branding === "logo"
-                  ? "Rectangular logos replace the icon and name. PNG, JPEG or WebP."
-                  : "Square artwork beside the name. PNG, JPEG or WebP."
-              }
-            />
-          </div>
+          {fullLogo ? (
+            <div className="settings-subsection">
+              <ImageField
+                label="Logo image"
+                kind="logo"
+                value={draft.dashboard.logo ?? ""}
+                change={(logo) => header({ logo })}
+                onBusy={onBusy}
+                hint="Rectangular artwork replaces the icon and name. PNG, JPEG or WebP."
+              />
+            </div>
+          ) : (
+            <details
+              className="settings-disclosure"
+              open={hasCustomLogo || undefined}
+            >
+              <summary>Custom image</summary>
+              <ImageField
+                label="Logo image"
+                kind="icon"
+                value={draft.dashboard.logo ?? ""}
+                change={(logo) => header({ logo })}
+                onBusy={onBusy}
+                hint="Square artwork beside the name. PNG, JPEG or WebP."
+              />
+            </details>
+          )}
         </Section>
         <Section
           title="Workspace"
@@ -228,8 +481,10 @@ export default function AppearanceEditor({
               />
             </label>
           </div>
+        </Section>
+        <Section title="Navigation">
           <label className="setting-switch">
-            <span>Navigation button labels</span>
+            <span>Show button labels</span>
             <input
               type="checkbox"
               role="switch"
@@ -296,10 +551,7 @@ export default function AppearanceEditor({
             </div>
           </Section>
         )}
-        <Section
-          title="Labels"
-          description="Show names beneath app icons."
-        >
+        <Section title="Labels" description="Show names beneath app icons.">
           <label className="setting-switch">
             <span>Show app labels</span>
             <input
@@ -310,6 +562,243 @@ export default function AppearanceEditor({
             />
           </label>
         </Section>
+      </>
+    );
+
+  if (section === "background")
+    return (
+      <>
+        <Section
+          title="Static"
+          description="Solid colour, gradients, or your own image."
+        >
+          <div
+            className="background-gallery"
+            role="group"
+            aria-label="Static backgrounds"
+          >
+            <button
+              type="button"
+              className="background-swatch"
+              aria-pressed={b.kind === "none"}
+              onClick={() => background({ kind: "none" })}
+            >
+              <span style={{ background: "var(--bg)" }} />
+              None
+            </button>
+            {Object.entries(gradients).map(([id, gradient]) => (
+              <button
+                type="button"
+                className="background-swatch"
+                key={id}
+                aria-pressed={b.kind === "gradient" && b.preset === id}
+                onClick={() =>
+                  background({
+                    kind: "gradient",
+                    preset: id as BackgroundSettings["preset"],
+                  })
+                }
+              >
+                <span style={{ background: gradient }} />
+                {id[0].toUpperCase() + id.slice(1)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="background-swatch"
+              aria-pressed={b.kind === "image"}
+              onClick={() => background({ kind: "image" })}
+            >
+              <span
+                className={`swatch-custom ${b.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
+              >
+                <ImagePlus size={18} aria-hidden="true" />
+              </span>
+              Custom
+            </button>
+          </div>
+          {b.kind === "image" && (
+            <div className="settings-subsection">
+              <ImageField
+                label="Background image"
+                kind="background"
+                value={b.image}
+                change={(image) =>
+                  background({ image, kind: image ? "image" : "none" })
+                }
+                onBusy={onBusy}
+                hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
+              />
+              <label className="settings-row">
+                <span>Image position</span>
+                <select
+                  value={b.position}
+                  onChange={(e) =>
+                    background({
+                      position: e.target
+                        .value as BackgroundSettings["position"],
+                    })
+                  }
+                >
+                  <option value="center">Centre</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                </select>
+              </label>
+            </div>
+          )}
+        </Section>
+        <Section
+          title="Animated"
+          description="Motion backgrounds. Improvements are still underway."
+        >
+          <div
+            className="background-gallery"
+            role="group"
+            aria-label="Animated backgrounds"
+          >
+            {(["waves", "aurora"] as const).map((kind) => (
+              <button
+                type="button"
+                className="background-swatch"
+                key={kind}
+                aria-pressed={b.kind === kind}
+                onClick={() => background({ kind })}
+              >
+                <span
+                  className={`swatch-${kind}`}
+                  style={{ background: gradients[b.preset] }}
+                />
+                {kind === "waves" ? "Waves" : "Aurora"}
+              </button>
+            ))}
+          </div>
+          {(b.kind === "waves" || b.kind === "aurora") && (
+            <div className="settings-subsection">
+              <label className="settings-row">
+                <span>Animation palette</span>
+                <select
+                  value={b.preset}
+                  onChange={(e) =>
+                    background({
+                      preset: e.target.value as BackgroundSettings["preset"],
+                    })
+                  }
+                >
+                  {Object.keys(gradients).map((k) => (
+                    <option key={k} value={k}>
+                      {k[0].toUpperCase() + k.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="setting-switch">
+                <span>Enable background motion</span>
+                <input
+                  role="switch"
+                  type="checkbox"
+                  checked={b.motion}
+                  onChange={(e) => background({ motion: e.target.checked })}
+                />
+              </label>
+              {b.motion && (
+                <Range
+                  label="Motion intensity"
+                  value={b.intensity}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  change={(intensity) => background({ intensity })}
+                />
+              )}
+            </div>
+          )}
+        </Section>
+        {b.kind !== "none" && (
+          <Section
+            title="Overlay"
+            description="Improve contrast over the background. Theme changes keep solid or gradient unless Custom is selected."
+          >
+            <div className="overlay-groups">
+              <div className="overlay-group">
+                <h4 className="overlay-group-label">Solid</h4>
+                <div
+                  className="overlay-swatches"
+                  role="group"
+                  aria-label="Solid overlays"
+                >
+                  <OverlayModeSwatch
+                    id="dark-solid"
+                    label="Dark solid"
+                    pressed={b.overlay === "dark-solid"}
+                    className="overlay-solid overlay-tone-dark"
+                    onSelect={(id) => background({ overlay: id })}
+                  />
+                  <OverlayModeSwatch
+                    id="light-solid"
+                    label="Light solid"
+                    pressed={b.overlay === "light-solid"}
+                    className="overlay-solid overlay-tone-light"
+                    onSelect={(id) => background({ overlay: id })}
+                  />
+                </div>
+              </div>
+              <div className="overlay-group">
+                <h4 className="overlay-group-label">Gradient</h4>
+                <div
+                  className="overlay-swatches"
+                  role="group"
+                  aria-label="Gradient overlays"
+                >
+                  <OverlayModeSwatch
+                    id="dark-gradient"
+                    label="Dark gradient"
+                    pressed={b.overlay === "dark-gradient"}
+                    className="overlay-gradient overlay-tone-dark"
+                    onSelect={(id) => background({ overlay: id })}
+                  />
+                  <OverlayModeSwatch
+                    id="light-gradient"
+                    label="Light gradient"
+                    pressed={b.overlay === "light-gradient"}
+                    className="overlay-gradient overlay-tone-light"
+                    onSelect={(id) => background({ overlay: id })}
+                  />
+                </div>
+              </div>
+              <div className="overlay-group overlay-group-custom">
+                <h4 className="overlay-group-label">Custom</h4>
+                <div
+                  className="overlay-swatches"
+                  role="group"
+                  aria-label="Custom overlay"
+                >
+                  <ColourSwatch
+                    label="Custom colour"
+                    colour={b.overlayColour}
+                    pressed={b.overlay === "custom"}
+                    hueDefault={
+                      b.overlayColour.toLowerCase() ===
+                      defaultOverlayColour(a.theme).toLowerCase()
+                    }
+                    onSelect={() => background({ overlay: "custom" })}
+                    onColour={(overlayColour) =>
+                      background({ overlay: "custom", overlayColour })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <Range
+              label="Overlay opacity"
+              value={b.overlayOpacity}
+              min={0}
+              max={80}
+              unit="%"
+              change={(overlayOpacity) => background({ overlayOpacity })}
+            />
+          </Section>
+        )}
       </>
     );
 
@@ -329,7 +818,7 @@ export default function AppearanceEditor({
               key={theme}
               type="button"
               aria-pressed={a.theme === theme}
-              onClick={() => appearance({ theme, palette: undefined })}
+              onClick={() => setTheme(theme)}
             >
               <span
                 className={`theme-thumbnail theme-${theme}`}
@@ -367,14 +856,13 @@ export default function AppearanceEditor({
               aria-label={name}
               title={name}
               aria-pressed={p.accent.toLowerCase() === colour}
-              style={{
-                background: colour,
-                color:
-                  contrast(colour, "#111720") >= 4.5 ? "#111720" : "#ffffff",
-              }}
+              className="accent-swatch"
+              style={{ background: colour }}
               onClick={() => appearance({ palette: { ...p, accent: colour } })}
             >
-              {p.accent.toLowerCase() === colour ? "✓" : ""}
+              <span aria-hidden="true">
+                {p.accent.toLowerCase() === colour ? "✓" : ""}
+              </span>
             </button>
           ))}
         </div>
@@ -418,158 +906,6 @@ export default function AppearanceEditor({
         >
           Reset colours
         </button>
-      </Section>
-      <Section
-        title="Background"
-        description="Pick a built-in look, or choose Custom for your own image."
-      >
-        <div
-          className="background-gallery"
-          role="group"
-          aria-label="Background gallery"
-        >
-          <button
-            type="button"
-            className="background-swatch"
-            aria-pressed={b.kind === "none"}
-            onClick={() => background({ kind: "none" })}
-          >
-            <span style={{ background: "var(--bg)" }} />
-            None
-          </button>
-          {Object.entries(gradients).map(([id, gradient]) => (
-            <button
-              type="button"
-              className="background-swatch"
-              key={id}
-              aria-pressed={b.kind === "gradient" && b.preset === id}
-              onClick={() =>
-                background({
-                  kind: "gradient",
-                  preset: id as BackgroundSettings["preset"],
-                })
-              }
-            >
-              <span style={{ background: gradient }} />
-              {id[0].toUpperCase() + id.slice(1)}
-            </button>
-          ))}
-          {(["waves", "aurora"] as const).map((kind) => (
-            <button
-              type="button"
-              className="background-swatch"
-              key={kind}
-              aria-pressed={b.kind === kind}
-              onClick={() => background({ kind })}
-            >
-              <span
-                className={`swatch-${kind}`}
-                style={{ background: gradients[b.preset] }}
-              />
-              {kind === "waves" ? "Waves" : "Aurora"}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="background-swatch"
-            aria-pressed={b.kind === "image"}
-            onClick={() => background({ kind: "image" })}
-          >
-            <span
-              className={`swatch-custom ${b.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
-            >
-              <ImagePlus size={18} aria-hidden="true" />
-            </span>
-            Custom
-          </button>
-        </div>
-        {b.kind === "image" && (
-          <div className="settings-subsection">
-            <ImageField
-              label="Background image"
-              kind="background"
-              value={b.image}
-              change={(image) =>
-                background({ image, kind: image ? "image" : "none" })
-              }
-              onBusy={onBusy}
-              hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
-            />
-          </div>
-        )}
-        {b.kind !== "none" && (
-          <div className="settings-subsection">
-            <h4>Adjustments</h4>
-            <Range
-              label="Background dimming"
-              value={b.dimming}
-              min={0}
-              max={80}
-              unit="%"
-              change={(dimming) => background({ dimming })}
-            />
-            {b.kind === "image" && (
-              <label className="settings-row">
-                <span>Image position</span>
-                <select
-                  value={b.position}
-                  onChange={(e) =>
-                    background({
-                      position: e.target
-                        .value as BackgroundSettings["position"],
-                    })
-                  }
-                >
-                  <option value="center">Centre</option>
-                  <option value="top">Top</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </label>
-            )}
-          </div>
-        )}
-        {(b.kind === "waves" || b.kind === "aurora") && (
-          <div className="settings-subsection">
-            <h4>Motion</h4>
-            <label className="settings-row">
-              <span>Animation palette</span>
-              <select
-                value={b.preset}
-                onChange={(e) =>
-                  background({
-                    preset: e.target.value as BackgroundSettings["preset"],
-                  })
-                }
-              >
-                {Object.keys(gradients).map((k) => (
-                  <option key={k} value={k}>
-                    {k[0].toUpperCase() + k.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="setting-switch">
-              <span>Enable background motion</span>
-              <input
-                role="switch"
-                type="checkbox"
-                checked={b.motion}
-                onChange={(e) => background({ motion: e.target.checked })}
-              />
-            </label>
-            {b.motion && (
-              <Range
-                label="Motion intensity"
-                value={b.intensity}
-                min={0}
-                max={100}
-                unit="%"
-                change={(intensity) => background({ intensity })}
-              />
-            )}
-            <p className="hint">Respects reduced-motion preferences.</p>
-          </div>
-        )}
       </Section>
       <Section
         title="Typography"

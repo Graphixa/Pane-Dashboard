@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Settings2, Palette, PanelsTopLeft, Archive, Info } from "lucide-react";
+import {
+  Settings2,
+  Palette,
+  Image as ImageIcon,
+  PanelsTopLeft,
+  Archive,
+  Info,
+} from "lucide-react";
 import { Config, clone, sanitiseExport, validate } from "./model";
 import AppearanceEditor from "./AppearanceEditor";
 import Modal from "./Modal";
@@ -10,6 +17,7 @@ import { version } from "../package.json";
 const pages = [
   ["general", "General", Settings2],
   ["appearance", "Appearance", Palette],
+  ["background", "Background", ImageIcon],
   ["panes", "Panes", PanelsTopLeft],
   ["backup", "Import & backup", Archive],
   ["about", "About", Info],
@@ -73,7 +81,10 @@ export default function Settings({
     }
   };
   const editable =
-    page === "general" || page === "appearance" || page === "panes";
+    page === "general" ||
+    page === "appearance" ||
+    page === "background" ||
+    page === "panes";
   return (
     <Modal title="Settings" close={requestClose} className="settings-dialog">
       <div className="settings-body">
@@ -127,14 +138,15 @@ export default function Settings({
           </form>
           {page === "backup" && (
             <>
-              <section className="settings-card">
+              <section className="settings-section">
                 <h3>Export</h3>
                 <p className="section-description">
-                  Downloads use your saved dashboard. Apply pending changes
-                  first.
+                  {dirty
+                    ? "Apply or discard pending changes before downloading."
+                    : "Downloads use your saved dashboard."}
                 </p>
                 <div className="backup-option">
-                  <div>
+                  <div className="backup-option-copy">
                     <h4>Private backup</h4>
                     <p>
                       Includes app addresses, Docker identities and uploaded
@@ -150,7 +162,7 @@ export default function Settings({
                   </button>
                 </div>
                 <div className="backup-option">
-                  <div>
+                  <div className="backup-option-copy">
                     <h4>Share a layout</h4>
                     <p>
                       Omits app addresses and Docker identities. Review images
@@ -168,12 +180,12 @@ export default function Settings({
                   </button>
                 </div>
               </section>
-              <section className="settings-card">
+              <section className="settings-section">
                 <h3>Import</h3>
                 {dirty ? (
-                  <p className="notice">
+                  <p className="section-description">
                     Apply your settings first, or cancel and reopen Settings
-                    before importing a layout.
+                    before importing.
                   </p>
                 ) : (
                   !readOnly && (
@@ -190,9 +202,9 @@ export default function Settings({
             </>
           )}
           {page === "about" && (
-            <section className="settings-card">
+            <section className="settings-section">
               <h3>Pane</h3>
-              <p>Version {version}</p>
+              <p className="section-description">Version {version}</p>
               <p>A self-hosted dashboard for your apps.</p>
               <div className="about-links">
                 <a

@@ -64,7 +64,7 @@ Open **http://127.0.0.1:8080**. Keep the terminal running; press **Ctrl+C** to s
 
 Pane creates `config/pane.yaml` automatically and keeps your dashboard there. No database is needed. These commands bind the app to your computer only.
 
-Open **Settings → General → Logo** to choose **Icon + name** or a rectangular **Full logo**, using an upload or URL. **Appearance** groups Theme, Colours, Background and Typography on one scrolling page. **Panes** contains Pane finish, glass Fine tuning and app Labels. All panes share the same style. Change settings, then Apply to update the dashboard. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
+Open **Settings → General → Logo** to choose **Icon + name** or a rectangular **Full logo**, using an upload or URL. **Appearance** groups Theme, Colours and Typography. **Background** is its own sidebar page for Look, Adjustments and Motion. **Panes** contains Pane finish, glass Fine tuning and app Labels. All panes share the same style. Change settings, then Apply to update the dashboard. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
 
 ### Optional: live frontend development
 

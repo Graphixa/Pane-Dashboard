@@ -1,9 +1,17 @@
 import type { CSSProperties } from "react";
+export type OverlayMode =
+  | "dark-solid"
+  | "dark-gradient"
+  | "light-solid"
+  | "light-gradient"
+  | "custom";
 export type Background = {
   kind: "none" | "gradient" | "image" | "waves" | "aurora";
   preset: "dusk" | "ocean" | "forest" | "mist";
   image: string;
-  dimming: number;
+  overlay: OverlayMode;
+  overlayOpacity: number;
+  overlayColour: string;
   position: "center" | "top" | "bottom";
   motion: boolean;
   intensity: number;
@@ -21,11 +29,20 @@ export type AppearanceOptions = {
   glass?: Glass;
   palette?: Palette;
 };
+export const overlayModes: OverlayMode[] = [
+  "dark-solid",
+  "dark-gradient",
+  "light-solid",
+  "light-gradient",
+  "custom",
+];
 export const defaultBackground: Background = {
   kind: "none",
   preset: "dusk",
   image: "",
-  dimming: 25,
+  overlay: "dark-solid",
+  overlayOpacity: 25,
+  overlayColour: "#111720",
   position: "center",
   motion: true,
   intensity: 40,
@@ -53,6 +70,80 @@ export const gradients = {
     "radial-gradient(ellipse at 20% 80%, #497453, transparent 60%), linear-gradient(135deg, #182b2d, #243c34)",
   mist: "radial-gradient(ellipse at 80% 20%, #e0dcd5, transparent 60%), linear-gradient(135deg, #a8b5bb, #7c8c9d)",
 };
+export function defaultOverlayColour(theme: "dark" | "light") {
+  return theme === "light" ? "#f5f6f2" : "#111720";
+}
+
+export function overlayForTheme(
+  theme: "dark" | "light",
+  current: OverlayMode,
+): OverlayMode {
+  if (current === "custom") return current;
+  const gradient = current.includes("gradient");
+  return theme === "dark"
+    ? gradient
+      ? "dark-gradient"
+      : "dark-solid"
+    : gradient
+      ? "light-gradient"
+      : "light-solid";
+}
+export function migrateBackground(
+  raw: Partial<Background> & { dimming?: number },
+  theme: "dark" | "light",
+): Background {
+  const base = { ...defaultBackground, ...raw };
+  if (
+    raw.overlay &&
+    overlayModes.includes(raw.overlay) &&
+    typeof raw.overlayOpacity === "number" &&
+    typeof raw.overlayColour === "string"
+  ) {
+    return {
+      kind: base.kind,
+      preset: base.preset,
+      image: base.image ?? "",
+      overlay: raw.overlay,
+      overlayOpacity: raw.overlayOpacity,
+      overlayColour: raw.overlayColour,
+      position: base.position,
+      motion: base.motion,
+      intensity: base.intensity,
+    };
+  }
+  const dimming =
+    typeof raw.dimming === "number" && Number.isInteger(raw.dimming)
+      ? raw.dimming
+      : defaultBackground.overlayOpacity;
+  return {
+    kind: base.kind,
+    preset: base.preset,
+    image: base.image ?? "",
+    overlay: theme === "light" ? "light-solid" : "dark-solid",
+    overlayOpacity: dimming,
+    overlayColour: defaultOverlayColour(theme),
+    position: base.position,
+    motion: base.motion,
+    intensity: base.intensity,
+  };
+}
+const rgb = (hex: string) =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+export function overlayPaint(b: Background): string {
+  const a = b.overlayOpacity / 100;
+  if (b.overlay === "custom") {
+    const [r, g, bl] = rgb(b.overlayColour);
+    return `rgba(${r},${g},${bl},${a})`;
+  }
+  if (b.overlay.startsWith("light")) return `rgba(255,255,255,${a})`;
+  return `rgba(0,0,0,${a})`;
+}
+export function overlayBackground(b: Background): string {
+  const paint = overlayPaint(b);
+  return b.overlay.includes("gradient")
+    ? `linear-gradient(to bottom, ${paint}, transparent)`
+    : paint;
+}
 export function imageReference(s: unknown): s is string {
   if (typeof s !== "string") return false;
   if (!s) return true;
@@ -79,23 +170,20 @@ export function imageReference(s: unknown): s is string {
   try {
     const u = new URL(s);
     return (
-      s.length <= 2048 &&
-      ["https:", "http:"].includes(u.protocol) &&
-      !!u.hostname &&
+      (u.protocol === "http:" || u.protocol === "https:") &&
       !u.username &&
-      !u.password
+      !u.password &&
+      s.length <= 2048
     );
   } catch {
     return false;
   }
 }
-const rgb = (hex: string) =>
-  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const luminance = (hex: string) =>
   rgb(hex)
-    .map((v) => {
-      const n = v / 255;
-      return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+    .map((n) => {
+      const v = n / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
     })
     .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
 export const contrast = (a: string, b: string) => {
@@ -116,11 +204,17 @@ function fields(value: unknown, keys: string[]) {
 }
 export function validateVisuals(a: AppearanceOptions) {
   if (a.background !== undefined) {
+    a.background = migrateBackground(
+      a.background as Background & { dimming?: number },
+      a.theme,
+    );
     fields(a.background, [
       "kind",
       "preset",
       "image",
-      "dimming",
+      "overlay",
+      "overlayOpacity",
+      "overlayColour",
       "position",
       "motion",
       "intensity",
@@ -131,7 +225,9 @@ export function validateVisuals(a: AppearanceOptions) {
       !Object.hasOwn(gradients, b.preset) ||
       !imageReference(b.image) ||
       (b.kind === "image" && !b.image) ||
-      !within(b.dimming, 0, 80) ||
+      !overlayModes.includes(b.overlay) ||
+      !within(b.overlayOpacity, 0, 80) ||
+      !/^#[a-fA-F0-9]{6}$/.test(b.overlayColour) ||
       !within(b.intensity, 0, 100) ||
       !["center", "top", "bottom"].includes(b.position) ||
       typeof b.motion !== "boolean"

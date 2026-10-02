@@ -77,16 +77,22 @@ export default function ImportPanel({
   const patch = (i: number, update: Partial<Selection>) =>
     setApps(apps.map((a, j) => (j === i ? { ...a, ...update } : a)));
   return (
-    <section>
-      <div className="tabs">
+    <div className="import-panel">
+      <div
+        className="choice-row finish-choices import-source"
+        role="group"
+        aria-label="Import source"
+      >
         <button
-          className={source === "file" ? "active" : ""}
+          type="button"
+          aria-pressed={source === "file"}
           onClick={() => setSource("file")}
         >
           Layout file
         </button>
         <button
-          className={source === "docker" ? "active" : ""}
+          type="button"
+          aria-pressed={source === "docker"}
           onClick={() => setSource("docker")}
         >
           Docker
@@ -94,9 +100,8 @@ export default function ImportPanel({
       </div>
       {source === "file" ? (
         <>
-          <p>
-            Import a Pane dashboard backup or a shared pane template. Review the
-            preview before applying.
+          <p className="section-description">
+            Import a dashboard backup or shared pane template.
           </p>
           <label>
             YAML or JSON file
@@ -403,6 +408,6 @@ export default function ImportPanel({
           {error}
         </p>
       )}
-    </section>
+    </div>
   );
 }
