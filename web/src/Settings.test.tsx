@@ -185,6 +185,20 @@ describe("settings navigation and draft safety", () => {
     page("Apply settings");
     expect(apply.mock.calls[0][0].appearance.palette.accent).toBe("#7db7ff");
   });
+  it("remaps named accent chips when the theme changes", () => {
+    const { apply } = setup();
+    page("Appearance");
+    page("Blue");
+    page("Daylight");
+    expect(
+      screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].appearance).toMatchObject({
+      theme: "light",
+      palette: { accent: "#1d4f91" },
+    });
+  });
   it("warns on page unload only while changes are pending", () => {
     setup();
     let event = new Event("beforeunload", { cancelable: true });

@@ -62,6 +62,54 @@ export const palettes: Record<"dark" | "light", Palette> = {
     accent: "#287962",
   },
 };
+/** Named accent chips: lighter on Midnight, darker on Daylight (Mint pair is the theme default). */
+export const accentPresets: Record<
+  "dark" | "light",
+  { name: string; colour: string }[]
+> = {
+  dark: [
+    { name: "Mint", colour: palettes.dark.accent },
+    { name: "Blue", colour: "#7db7ff" },
+    { name: "Violet", colour: "#bca5ff" },
+    { name: "Rose", colour: "#ef9fb5" },
+    { name: "Amber", colour: "#efc06e" },
+    { name: "Teal", colour: "#72d4cc" },
+  ],
+  light: [
+    { name: "Mint", colour: palettes.light.accent },
+    { name: "Blue", colour: "#1d4f91" },
+    { name: "Violet", colour: "#5b3cc4" },
+    { name: "Rose", colour: "#b4235a" },
+    { name: "Amber", colour: "#b45309" },
+    { name: "Teal", colour: "#0f766e" },
+  ],
+};
+export function accentPresetName(
+  theme: "dark" | "light",
+  accent: string,
+): string | undefined {
+  const colour = accent.toLowerCase();
+  return accentPresets[theme].find((p) => p.colour.toLowerCase() === colour)
+    ?.name;
+}
+/** Keep a named accent across theme changes; drop fully custom palettes. */
+export function paletteForThemeChange(
+  from: "dark" | "light",
+  to: "dark" | "light",
+  palette?: Palette,
+): Palette | undefined {
+  if (!palette || from === to) return palette;
+  const base = palettes[from];
+  const touched =
+    palette.background.toLowerCase() !== base.background.toLowerCase() ||
+    palette.surface.toLowerCase() !== base.surface.toLowerCase() ||
+    palette.text.toLowerCase() !== base.text.toLowerCase();
+  if (touched) return undefined;
+  const name = accentPresetName(from, palette.accent);
+  if (!name || name === "Mint") return undefined;
+  const colour = accentPresets[to].find((p) => p.name === name)!.colour;
+  return { ...palettes[to], accent: colour };
+}
 export const gradients = {
   dusk: "radial-gradient(ellipse at 15% 10%, #765586, transparent 60%), linear-gradient(130deg, #172331, #493653)",
   ocean:

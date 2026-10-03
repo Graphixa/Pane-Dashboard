@@ -10,9 +10,12 @@ import {
 } from "@testing-library/react";
 import { Config, sanitiseExport, validate } from "./model";
 import {
+  accentPresets,
   appearanceStyle,
+  contrast,
   defaultBackground,
   imageReference,
+  paletteForThemeChange,
   palettes,
   validateVisuals,
 } from "./appearance";
@@ -95,6 +98,31 @@ describe("global appearance", () => {
         ],
       }),
     ).toThrow(/Unknown/);
+  });
+  it("pairs accent presets per theme with readable accent-button contrast", () => {
+    for (const theme of ["dark", "light"] as const) {
+      expect(accentPresets[theme][0].colour).toBe(palettes[theme].accent);
+      for (const { colour } of accentPresets[theme]) {
+        const ink =
+          contrast(colour, "#000000") >= contrast(colour, "#ffffff")
+            ? "#000000"
+            : "#ffffff";
+        expect(contrast(colour, ink)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+    expect(
+      paletteForThemeChange("dark", "light", {
+        ...palettes.dark,
+        accent: "#7db7ff",
+      }),
+    ).toEqual({ ...palettes.light, accent: "#1d4f91" });
+    expect(
+      paletteForThemeChange("dark", "light", {
+        ...palettes.dark,
+        background: "#000000",
+        accent: "#7db7ff",
+      }),
+    ).toBeUndefined();
   });
   it("uses global finish variables without setting content opacity", () => {
     const style = appearanceStyle({

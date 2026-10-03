@@ -10,6 +10,8 @@ import {
   defaultOverlayColour,
   migrateBackground,
   overlayForTheme,
+  accentPresets,
+  paletteForThemeChange,
   palettes,
   type Background as BackgroundSettings,
   type OverlayMode,
@@ -320,7 +322,7 @@ export default function AppearanceEditor({
   const setTheme = (theme: "dark" | "light") =>
     appearance({
       theme,
-      palette: undefined,
+      palette: paletteForThemeChange(a.theme, theme, a.palette),
       background: {
         ...b,
         overlay: overlayForTheme(theme, b.overlay),
@@ -846,26 +848,19 @@ export default function AppearanceEditor({
           role="group"
           aria-labelledby={accentHeadingId}
         >
-          {[
-            ["Mint", palettes[a.theme].accent],
-            ["Blue", "#7db7ff"],
-            ["Violet", "#bca5ff"],
-            ["Rose", "#ef9fb5"],
-            ["Amber", "#efc06e"],
-            ["Teal", "#72d4cc"],
-          ].map(([name, colour]) => (
+          {accentPresets[a.theme].map(({ name, colour }) => (
             <button
               key={name}
               type="button"
               aria-label={name}
               title={name}
-              aria-pressed={p.accent.toLowerCase() === colour}
+              aria-pressed={p.accent.toLowerCase() === colour.toLowerCase()}
               className="accent-swatch"
               style={{ background: colour }}
               onClick={() => appearance({ palette: { ...p, accent: colour } })}
             >
               <span aria-hidden="true">
-                {p.accent.toLowerCase() === colour ? "✓" : ""}
+                {p.accent.toLowerCase() === colour.toLowerCase() ? "✓" : ""}
               </span>
             </button>
           ))}
