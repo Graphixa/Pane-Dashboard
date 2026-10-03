@@ -126,6 +126,9 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
     ).toEqual(["Theme", "Colours", "Typography"]);
+    expect(
+      screen.getByRole("heading", { level: 4, name: "Accent" }),
+    ).toBeTruthy();
     page("Background");
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),

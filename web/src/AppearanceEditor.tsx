@@ -306,6 +306,7 @@ export default function AppearanceEditor({
   change: (c: Config) => void;
   onBusy: (b: boolean) => void;
 }) {
+  const accentHeadingId = useId();
   const a = draft.appearance,
     b = migrateBackground(a.background ?? defaultBackground, a.theme),
     g = a.glass ?? defaultGlass,
@@ -837,10 +838,13 @@ export default function AppearanceEditor({
         title="Colours"
         description="Accent is used for buttons, selections and focus."
       >
+        <h4 className="overlay-group-label" id={accentHeadingId}>
+          Accent
+        </h4>
         <div
           className="accent-swatches"
           role="group"
-          aria-label="Accent colour"
+          aria-labelledby={accentHeadingId}
         >
           {[
             ["Mint", palettes[a.theme].accent],

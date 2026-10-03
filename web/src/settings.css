@@ -125,7 +125,7 @@
   margin-top: 14px;
 }
 .settings-dialog .accent-swatches {
-  margin: 4px 0 8px;
+  margin: 0 0 8px;
 }
 .settings-dialog label {
   font-size: 14px;
@@ -526,8 +526,11 @@
 .accent-swatches button[aria-pressed="true"],
 .accent-swatch[aria-pressed="true"],
 .accent-swatch[aria-expanded="true"] {
-  outline: 2px solid var(--text);
-  outline-offset: 3px;
+  border-color: var(--accent);
+  /* Spacer uses dialog surface so Mint/current accent stays readable. */
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
 }
 .settings-dialog input[role="switch"] {
   appearance: none;
