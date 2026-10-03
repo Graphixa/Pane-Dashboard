@@ -182,6 +182,9 @@
   width: 180px;
   flex-shrink: 0;
 }
+.settings-row select[aria-label="Font"] {
+  width: 200px;
+}
 .settings-dialog .fields {
   gap: 20px;
 }
@@ -421,15 +424,6 @@
   color: var(--text);
   filter: drop-shadow(0 0 1.5px var(--bg));
   pointer-events: none;
-}
-.colour-native-ghost {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-  border: 0;
-  padding: 0;
 }
 .colour-popover {
   position: absolute;

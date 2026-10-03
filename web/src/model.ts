@@ -2,7 +2,9 @@ import {
   type Background,
   type Glass,
   type Palette,
+  type UiFont,
   imageReference,
+  uiFonts,
   validateVisuals,
 } from "./appearance";
 export type Geometry = { x: number; y: number; w: number; h: number };
@@ -38,6 +40,7 @@ export type Config = {
     showButtonLabels: boolean;
     theme: "dark" | "light";
     paneTitleSize?: number;
+    fontFamily?: UiFont;
     background?: Background;
     glass?: Glass;
     palette?: Palette;
@@ -134,6 +137,7 @@ export function validate(value: unknown): asserts value is Config {
     "showButtonLabels",
     "theme",
     "paneTitleSize",
+    "fontFamily",
     "background",
     "glass",
     "palette",
@@ -154,6 +158,8 @@ export function validate(value: unknown): asserts value is Config {
     !["dark", "light"].includes(c.appearance.theme) ||
     (c.appearance.paneTitleSize !== undefined &&
       !integer(c.appearance.paneTitleSize, 14, 22)) ||
+    (c.appearance.fontFamily !== undefined &&
+      !uiFonts.some((f) => f.id === c.appearance.fontFamily)) ||
     typeof c.appearance.showAppLabels !== "boolean" ||
     typeof c.appearance.showButtonLabels !== "boolean"
   )

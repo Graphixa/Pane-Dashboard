@@ -13,7 +13,6 @@ import {
   AlertCircle,
 } from "lucide-react";
 import "react-grid-layout/css/styles.css";
-import "react-resizable/css/styles.css";
 import {
   App,
   Config,
@@ -34,7 +33,7 @@ import {
 import { tileResize, gridWidth, paneSnap } from "./layout";
 import { HeaderBrand } from "./BrandLogo";
 import Background from "./Background";
-import { appearanceStyle } from "./appearance";
+import { appearanceStyle, uiFontFamily } from "./appearance";
 import PaneTitle from "./PaneTitle";
 import { iconURL } from "./icons";
 import { useConfig } from "./useConfig";
@@ -68,13 +67,13 @@ export default function Dashboard() {
   const state = useConfig();
   if (!state.config)
     return (
-      <main className="loading">
-        <LayoutGrid size={36} />
-        <h1>Pane</h1>
-        <p role="status">{state.error || "Opening your dashboard…"}</p>
-        {state.error && (
-          <button onClick={() => window.location.reload()}>Retry</button>
-        )}
+      <main className="loading" aria-busy={!state.error || undefined}>
+        {state.error ? (
+          <>
+            <p role="alert">{state.error}</p>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </>
+        ) : null}
       </main>
     );
   return <DashboardView {...state} config={state.config} />;
@@ -115,9 +114,17 @@ function DashboardView({
   useEffect(() => {
     if (config) {
       document.documentElement.dataset.theme = config.appearance.theme;
+      document.documentElement.style.setProperty(
+        "--ui-font",
+        uiFontFamily(config.appearance.fontFamily),
+      );
       document.title = config.dashboard.title.trim() || "pane.";
     }
-  }, [config?.appearance.theme, config?.dashboard.title]);
+  }, [
+    config?.appearance.theme,
+    config?.appearance.fontFamily,
+    config?.dashboard.title,
+  ]);
   const apply = (next: Config) => {
     if (
       config.dashboard.widthMode === "full" &&

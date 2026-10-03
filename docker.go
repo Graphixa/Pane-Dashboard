@@ -11,9 +11,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -21,9 +19,6 @@ type DockerProvider struct {
 	client *http.Client
 	base   string
 	scope  string
-	mu     sync.Mutex
-	last   time.Time
-	cached []Candidate
 }
 type Port struct {
 	IP          string `json:"ip"`
@@ -103,11 +98,6 @@ func (d *DockerProvider) get(ctx context.Context, p string, out any) error {
 var apiVersion = regexp.MustCompile(`^1\.[0-9]{1,3}$`)
 
 func (d *DockerProvider) Scan(ctx context.Context) ([]Candidate, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if time.Since(d.last) < 10*time.Second {
-		return d.cached, nil
-	}
 	var version struct {
 		APIVersion string `json:"ApiVersion"`
 	}
@@ -125,9 +115,6 @@ func (d *DockerProvider) Scan(ctx context.Context) ([]Candidate, error) {
 	for _, c := range containers {
 		out = append(out, candidate(c, d.scope))
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	d.last = time.Now()
-	d.cached = out
 	return out, nil
 }
 func candidate(c dockerContainer, scope string) Candidate {

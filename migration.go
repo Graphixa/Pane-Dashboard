@@ -6,9 +6,6 @@ import "fmt"
 // every old outer coordinate consistently, keeping relative placement and avoiding
 // overlaps as fixed-size tiles replace stretched panels. No runtime reflow engine.
 func upgrade(c Config) (Config, error) {
-	if err := validate(c); err != nil {
-		return c, err
-	}
 	if c.Version == 2 {
 		return c, nil
 	}

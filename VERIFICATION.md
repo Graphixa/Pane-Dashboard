@@ -29,7 +29,7 @@
 - `npm ci`, all 29 frontend tests, TypeScript checking and the production build passed. Real-grid tests cover 16 px mouse snapping alongside live resizing and collision blocking.
 - Branding tests cover saving the header name/logo and global title size, image failure fallback, and removal of the secondary heading/footer. Addressless apps retain their non-launching tooltip behaviour; the dimming style is removed.
 - `go test -race ./...` and `go vet ./...` passed, including logo URL validation and branding persistence across restart.
-- Existing dependency versions remain unchanged; the sole added package is `@fontsource/inter` for locally served fonts. Its licence is distributed at `web/public/fonts/Inter-LICENSE.txt`.
+- UI fonts are served locally via `@fontsource/geist`, `@fontsource/rubik` and `@fontsource/oxanium`. Licences are distributed under `web/public/fonts/`.
 - Visual browser QA remains outstanding. Check both themes, long header names, logo loading and edge/corner grip appearance on a real browser before a release.
 
 ## Tile-based redesign

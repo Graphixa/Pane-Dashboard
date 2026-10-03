@@ -55,6 +55,9 @@ describe("settings navigation and draft safety", () => {
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },
     });
+    fireEvent.change(screen.getByLabelText("Font"), {
+      target: { value: "oxanium" },
+    });
     page("Import & backup");
     expect(screen.queryByText("Confirm import")).toBeNull();
     expect(screen.getByText(/Apply your settings first/)).toBeTruthy();
@@ -73,6 +76,7 @@ describe("settings navigation and draft safety", () => {
     page("Apply settings");
     expect(apply.mock.calls[0][0].dashboard.title).toBe("My server");
     expect(apply.mock.calls[0][0].appearance.paneTitleSize).toBe(20);
+    expect(apply.mock.calls[0][0].appearance.fontFamily).toBe("oxanium");
   });
   it("protects changed drafts from Escape, Cancel and Close", () => {
     const { close } = setup();

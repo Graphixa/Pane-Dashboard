@@ -169,6 +169,11 @@ describe("validation and imports", () => {
         validate({ ...c, appearance: { ...c.appearance, paneTitleSize } }),
       ).toThrow();
     }
+    c.appearance.fontFamily = "rubik";
+    validate(c);
+    expect(() =>
+      validate({ ...c, appearance: { ...c.appearance, fontFamily: "inter" } }),
+    ).toThrow();
   });
   it("rejects unknown fields, obsolete size presets and fractional dimensions", () => {
     const c = base();

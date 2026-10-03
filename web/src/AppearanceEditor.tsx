@@ -6,15 +6,19 @@ import {
   contrast,
   defaultBackground,
   defaultGlass,
-  gradients,
   defaultOverlayColour,
+  defaultUiFont,
+  gradients,
   migrateBackground,
   overlayForTheme,
   accentPresets,
   paletteForThemeChange,
   palettes,
+  uiFontFamily,
+  uiFonts,
   type Background as BackgroundSettings,
   type OverlayMode,
+  type UiFont,
 } from "./appearance";
 import ImageField from "./ImageField";
 
@@ -96,6 +100,14 @@ function ColourSwatch({
       document.addEventListener("keydown", onKey, true);
       document.addEventListener("pointerdown", onPointer, true);
     }, 0);
+    const el = colourInput.current;
+    if (el && typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+      } catch {
+        /* Ignore if the browser blocks the picker. */
+      }
+    }
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", onKey, true);
@@ -112,7 +124,6 @@ function ColourSwatch({
     const ox = origin?.left ?? 0;
     const oy = origin?.top ?? 0;
     const hostW = origin?.width ?? window.innerWidth;
-    const hostH = origin?.height ?? window.innerHeight;
     const width = 220;
     const height = 120;
     const left = Math.min(
@@ -131,14 +142,6 @@ function ColourSwatch({
     onSelect?.();
     place();
     setOpen(true);
-    const el = colourInput.current;
-    if (el && typeof el.showPicker === "function") {
-      try {
-        el.showPicker();
-      } catch {
-        /* Ignore if the browser blocks the picker. */
-      }
-    }
   };
 
   const applyHex = (value: string) => {
@@ -179,15 +182,6 @@ function ColourSwatch({
           {pressed ? "✓" : ""}
         </span>
       </button>
-      <input
-        ref={colourInput}
-        type="color"
-        className="colour-native-ghost"
-        aria-hidden="true"
-        tabIndex={-1}
-        value={colour}
-        onChange={(e) => onColourInput(e.target.value)}
-      />
       {open &&
         portalHost &&
         createPortal(
@@ -212,6 +206,7 @@ function ColourSwatch({
             <div className="colour-popover-body">
               <label className="colour-popover-swatch">
                 <input
+                  ref={colourInput}
                   type="color"
                   aria-label={`Pick ${label}`}
                   value={colour}
@@ -908,8 +903,29 @@ export default function AppearanceEditor({
       </Section>
       <Section
         title="Typography"
-        description="Inter is included with Pane. Applies to every pane title."
+        description="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
       >
+        <label className="settings-row">
+          <span>Font</span>
+          <select
+            aria-label="Font"
+            value={a.fontFamily ?? defaultUiFont}
+            style={{ fontFamily: uiFontFamily(a.fontFamily) }}
+            onChange={(e) =>
+              appearance({ fontFamily: e.target.value as UiFont })
+            }
+          >
+            {uiFonts.map((font) => (
+              <option
+                key={font.id}
+                value={font.id}
+                style={{ fontFamily: font.family }}
+              >
+                {font.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="settings-row">
           <span>Pane title size (px)</span>
           <input

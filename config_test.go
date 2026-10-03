@@ -31,6 +31,7 @@ func TestValidation(t *testing.T) {
 		{"logo credentials", func(c *Config) { c.Dashboard.Logo = "https://user:pass@example.com/logo.png" }},
 		{"title too large", func(c *Config) { c.Appearance.PaneTitleSize = 23 }},
 		{"title too small", func(c *Config) { c.Appearance.PaneTitleSize = 13 }},
+		{"unknown font", func(c *Config) { c.Appearance.FontFamily = "inter" }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			c := populated()

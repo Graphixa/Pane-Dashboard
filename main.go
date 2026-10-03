@@ -24,6 +24,18 @@ func respond(w http.ResponseWriter, status int, v any) {
 func apiError(w http.ResponseWriter, status int, s string) {
 	respond(w, status, map[string]string{"error": s})
 }
+func readJSON(w http.ResponseWriter, r *http.Request, limitMsg string) ([]byte, bool) {
+	if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
+		apiError(w, 415, "Use application/json")
+		return nil, false
+	}
+	b, e := io.ReadAll(http.MaxBytesReader(w, r.Body, configLimit))
+	if e != nil {
+		apiError(w, 413, limitMsg)
+		return nil, false
+	}
+	return b, true
+}
 func handler(s *Store, d *DockerProvider) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/images/prepare", prepareImage)
@@ -35,13 +47,8 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 		respond(w, 200, s.config)
 	})
 	mux.HandleFunc("PUT /api/config", func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			apiError(w, 415, "Use application/json")
-			return
-		}
-		b, e := io.ReadAll(http.MaxBytesReader(w, r.Body, configLimit))
-		if e != nil {
-			apiError(w, 413, "Configuration exceeds 8 MiB")
+		b, ok := readJSON(w, r, "Configuration exceeds 8 MiB")
+		if !ok {
 			return
 		}
 		c, e := decodeJSON(b)
@@ -74,13 +81,8 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 		respond(w, 200, map[string]bool{"saved": true})
 	})
 	mux.HandleFunc("POST /api/import/preview", func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.Header.Get("Content-Type"), "application/json") {
-			apiError(w, 415, "Use application/json")
-			return
-		}
-		b, e := io.ReadAll(http.MaxBytesReader(w, r.Body, configLimit))
-		if e != nil {
-			apiError(w, 413, "Import exceeds 8 MiB")
+		b, ok := readJSON(w, r, "Import exceeds 8 MiB")
+		if !ok {
 			return
 		}
 		c, e := decodeJSON(b)

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/url"
 	"regexp"
 
@@ -31,6 +30,7 @@ type Appearance struct {
 	Glass            *Glass      `json:"glass,omitempty" yaml:"glass,omitempty"`
 	Palette          *Palette    `json:"palette,omitempty" yaml:"palette,omitempty"`
 	PaneTitleSize    int         `json:"paneTitleSize,omitempty" yaml:"paneTitleSize,omitempty"`
+	FontFamily       string      `json:"fontFamily,omitempty" yaml:"fontFamily,omitempty"`
 	AppSize          string      `json:"appSize,omitempty" yaml:"appSize,omitempty"` // Legacy schema 1 only.
 	ShowAppLabels    bool        `json:"showAppLabels" yaml:"showAppLabels"`
 	ShowButtonLabels bool        `json:"showButtonLabels" yaml:"showButtonLabels"`
@@ -87,7 +87,7 @@ func capacity(g Geometry, width int, size string) (int, int) {
 	}
 	pw := float64(g.W)*float64(width+8)/24 - 8
 	ph := g.H*32 - 8
-	return int(math.Floor((pw - 24 + 8) / float64(cellW+8))), (ph - 64 + 8) / (cellH + 8)
+	return int((pw - 24 + 8) / float64(cellW+8)), (ph - 64 + 8) / (cellH + 8)
 }
 func overlaps(a, b Geometry) bool {
 	return a.X < b.X+b.W && a.X+a.W > b.X && a.Y < b.Y+b.H && a.Y+a.H > b.Y
@@ -109,6 +109,9 @@ func validate(c Config) error {
 	}
 	if c.Appearance.PaneTitleSize != 0 && (c.Appearance.PaneTitleSize < 14 || c.Appearance.PaneTitleSize > 22) {
 		return fail("pane title size must be between 14 and 22 px")
+	}
+	if c.Appearance.FontFamily != "" && c.Appearance.FontFamily != "geist" && c.Appearance.FontFamily != "rubik" && c.Appearance.FontFamily != "oxanium" {
+		return fail("font family must be geist, rubik or oxanium")
 	}
 	if c.Version == 2 && c.Appearance.AppSize != "" {
 		return fail("tile size is fixed in schema 2")

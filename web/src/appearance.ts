@@ -23,12 +23,23 @@ export type Palette = {
   text: string;
   accent: string;
 };
+export type UiFont = "geist" | "rubik" | "oxanium";
 export type AppearanceOptions = {
   theme: "dark" | "light";
+  fontFamily?: UiFont;
   background?: Background;
   glass?: Glass;
   palette?: Palette;
 };
+export const uiFonts: { id: UiFont; label: string; family: string }[] = [
+  { id: "geist", label: "Geist", family: "Geist" },
+  { id: "rubik", label: "Rubik", family: "Rubik" },
+  { id: "oxanium", label: "Oxanium", family: "Oxanium" },
+];
+export const defaultUiFont: UiFont = "geist";
+export function uiFontFamily(id?: UiFont) {
+  return uiFonts.find((f) => f.id === (id ?? defaultUiFont))?.family ?? "Geist";
+}
 export const overlayModes: OverlayMode[] = [
   "dark-solid",
   "dark-gradient",
@@ -177,17 +188,15 @@ export function migrateBackground(
 }
 const rgb = (hex: string) =>
   [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-export function overlayPaint(b: Background): string {
+export function overlayBackground(b: Background): string {
   const a = b.overlayOpacity / 100;
+  let paint = `rgba(0,0,0,${a})`;
   if (b.overlay === "custom") {
     const [r, g, bl] = rgb(b.overlayColour);
-    return `rgba(${r},${g},${bl},${a})`;
+    paint = `rgba(${r},${g},${bl},${a})`;
+  } else if (b.overlay.startsWith("light")) {
+    paint = `rgba(255,255,255,${a})`;
   }
-  if (b.overlay.startsWith("light")) return `rgba(255,255,255,${a})`;
-  return `rgba(0,0,0,${a})`;
-}
-export function overlayBackground(b: Background): string {
-  const paint = overlayPaint(b);
   return b.overlay.includes("gradient")
     ? `linear-gradient(to bottom, ${paint}, transparent)`
     : paint;
@@ -241,12 +250,12 @@ export const contrast = (a: string, b: string) => {
 };
 const within = (n: unknown, min: number, max: number) =>
   typeof n === "number" && Number.isInteger(n) && n >= min && n <= max;
-function fields(value: unknown, keys: string[]) {
+function fields(value: unknown, allowed: string[]) {
   if (
     !value ||
     typeof value !== "object" ||
     Array.isArray(value) ||
-    Object.keys(value).some((k) => !keys.includes(k))
+    Object.keys(value).some((k) => !allowed.includes(k))
   )
     throw Error("Unknown appearance fields.");
 }
@@ -319,6 +328,7 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
       .join(",")})`;
   };
   return {
+    "--ui-font": uiFontFamily(a.fontFamily),
     "--bg": p.background,
     "--panel": p.surface,
     "--text": p.text,

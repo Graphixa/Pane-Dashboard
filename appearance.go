@@ -11,6 +11,7 @@ import (
 	"math"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -42,17 +43,9 @@ type Palette struct {
 	Accent     string `json:"accent" yaml:"accent"`
 }
 
-func oneOf(s string, values ...string) bool {
-	for _, v := range values {
-		if s == v {
-			return true
-		}
-	}
-	return false
-}
 func decodeImage(data []byte) (image.Config, string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || !oneOf(format, "png", "jpeg") || cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 4096 || cfg.Height > 4096 || int64(cfg.Width)*int64(cfg.Height) > 4_000_000 {
+	if err != nil || !slices.Contains([]string{"png", "jpeg"}, format) || cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 4096 || cfg.Height > 4096 || int64(cfg.Width)*int64(cfg.Height) > 4_000_000 {
 		return cfg, format, fmt.Errorf("use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
 	}
 	return cfg, format, nil
@@ -62,7 +55,7 @@ func validImage(s string) bool {
 		return validURL(s, true)
 	}
 	parts := strings.SplitN(s, ",", 2)
-	if len(parts) != 2 || !oneOf(parts[0], "data:image/png;base64", "data:image/jpeg;base64") || len(parts[1]) > base64.StdEncoding.EncodedLen(imageLimit) {
+	if len(parts) != 2 || !slices.Contains([]string{"data:image/png;base64", "data:image/jpeg;base64"}, parts[0]) || len(parts[1]) > base64.StdEncoding.EncodedLen(imageLimit) {
 		return false
 	}
 	data, err := base64.StdEncoding.Strict().DecodeString(parts[1])
@@ -94,15 +87,15 @@ func contrast(a, b string) float64 {
 	return (math.Max(x, y) + 0.05) / (math.Min(x, y) + 0.05)
 }
 func validateAppearance(c Config) error {
-	if !oneOf(c.Dashboard.Branding, "", "icon", "logo") || !oneOf(c.Dashboard.BuiltinIcon, "", "grid", "server", "panels") || !validImage(c.Dashboard.Logo) {
+	if !slices.Contains([]string{"", "icon", "logo"}, c.Dashboard.Branding) || !slices.Contains([]string{"", "grid", "server", "panels"}, c.Dashboard.BuiltinIcon) || !validImage(c.Dashboard.Logo) {
 		return fmt.Errorf("invalid header branding or image")
 	}
 	if b := c.Appearance.Background; b != nil {
-		if !oneOf(b.Kind, "none", "gradient", "image", "waves", "aurora") || !oneOf(b.Preset, "dusk", "ocean", "forest", "mist") || !oneOf(b.Position, "center", "top", "bottom") || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
+		if !slices.Contains([]string{"none", "gradient", "image", "waves", "aurora"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
 			return fmt.Errorf("invalid background settings or image")
 		}
 		if b.Overlay != "" {
-			if !oneOf(b.Overlay, "dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom") || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
+			if !slices.Contains([]string{"dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom"}, b.Overlay) || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
 				return fmt.Errorf("invalid background overlay settings")
 			}
 		} else if b.Dimming < 0 || b.Dimming > 80 {
@@ -110,7 +103,7 @@ func validateAppearance(c Config) error {
 		}
 	}
 	if g := c.Appearance.Glass; g != nil {
-		if !oneOf(g.Mode, "solid", "glass") || g.Opacity < 30 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
+		if !slices.Contains([]string{"solid", "glass"}, g.Mode) || g.Opacity < 30 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
 			return fmt.Errorf("invalid global glass settings")
 		}
 	}
@@ -135,14 +128,15 @@ func prepareImage(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 413, "Image exceeds 5 MiB")
 		return
 	}
-	_, format, err := decodeImage(data)
-	if err != nil {
-		apiError(w, 400, err.Error())
-		return
-	}
-	img, _, err := image.Decode(bytes.NewReader(data))
+	img, format, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		apiError(w, 400, "Image is damaged or unsupported")
+		return
+	}
+	b := img.Bounds()
+	wPx, hPx := b.Dx(), b.Dy()
+	if !slices.Contains([]string{"png", "jpeg"}, format) || wPx < 1 || hPx < 1 || wPx > 4096 || hPx > 4096 || int64(wPx)*int64(hPx) > 4_000_000 {
+		apiError(w, 400, "use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
 		return
 	}
 	var out bytes.Buffer

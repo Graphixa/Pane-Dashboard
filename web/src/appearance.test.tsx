@@ -131,7 +131,15 @@ describe("global appearance", () => {
     }) as Record<string, string>;
     expect(style["--surface-fill"]).toBe("rgba(26,34,46,0.4)");
     expect(style["--surface-filter"]).toContain("20px");
+    expect(style["--ui-font"]).toBe("Geist");
     expect(style.opacity).toBeUndefined();
+  });
+  it("maps selected UI fonts onto the cascade variable", () => {
+    const style = appearanceStyle({
+      theme: "dark",
+      fontFamily: "oxanium",
+    }) as Record<string, string>;
+    expect(style["--ui-font"]).toBe("Oxanium");
   });
   it("keeps background and glass choices in a draft, then applies one configuration", () => {
     const apply = vi.fn(),
