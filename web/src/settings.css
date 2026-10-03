@@ -9,6 +9,10 @@
   display: flex;
   flex-direction: column;
 }
+.settings-dialog::backdrop {
+  background: #080c1380;
+  backdrop-filter: none;
+}
 .settings-dialog > .modal-title {
   padding: 20px 24px;
   margin: 0;

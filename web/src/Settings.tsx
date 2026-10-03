@@ -8,6 +8,7 @@ import {
   Info,
 } from "lucide-react";
 import { Config, clone, sanitiseExport, validate } from "./model";
+import { appearanceStyle } from "./appearance";
 import AppearanceEditor from "./AppearanceEditor";
 import Modal from "./Modal";
 import { download } from "./Editors";
@@ -32,12 +33,14 @@ export default function Settings({
   imported,
   close,
   readOnly,
+  onPreview,
 }: {
   config: Config;
   apply: (c: Config) => void;
   imported: (c: Config, id?: string) => void;
   close: () => void;
   readOnly: boolean;
+  onPreview?: (draft: Config | null) => void;
 }) {
   const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
@@ -46,6 +49,17 @@ export default function Settings({
   const initial = useRef(settingsValue(config));
   const content = useRef<HTMLDivElement>(null);
   const dirty = settingsValue(draft) !== initial.current;
+  const previewFrom = (d: Config) =>
+    onPreview?.({
+      ...config,
+      dashboard: d.dashboard,
+      appearance: d.appearance,
+    });
+  const updateDraft = (c: Config) => {
+    setDraft(c);
+    setError("");
+    previewFrom(c);
+  };
   const requestClose = () => {
     if (
       (!dirty && !busy) ||
@@ -53,6 +67,9 @@ export default function Settings({
     )
       close();
   };
+  useEffect(() => {
+    previewFrom(draft);
+  }, []);
   useEffect(() => {
     if (!dirty && !busy) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -86,7 +103,12 @@ export default function Settings({
     page === "background" ||
     page === "panes";
   return (
-    <Modal title="Settings" close={requestClose} className="settings-dialog">
+    <Modal
+      title="Settings"
+      close={requestClose}
+      className="settings-dialog"
+      style={appearanceStyle(draft.appearance)}
+    >
       <div className="settings-body">
         <nav className="settings-sidebar" aria-label="Settings sections">
           {pages.map(([id, label, Icon]) => (
@@ -125,10 +147,7 @@ export default function Settings({
                 <div className="settings-sections">
                   <AppearanceEditor
                     draft={draft}
-                    change={(c) => {
-                      setDraft(c);
-                      setError("");
-                    }}
+                    change={updateDraft}
                     onBusy={setBusy}
                     section={page}
                   />

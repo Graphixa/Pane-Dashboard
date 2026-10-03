@@ -6,7 +6,7 @@
 - `go test ./...` and `go vet ./...` pass. Dependencies and schema remain unchanged.
 - Sidebar icons and labels use explicit grid tracks rather than inherited button centring. Major sections use consistent typography, whitespace and subtle dividers; Panes separates Pane finish, Fine tuning and Labels.
 - Reviewed the supplied screenshots. A local Chromium launch was attempted but exited before rendering in this execution environment; fresh browser screenshots and physical layout checks remain outstanding. Check sidebar alignment, both themes, short/narrow viewports, scrolling and upload controls on the target browser.
-- Live dashboard preview and Cancel rollback are deferred in [issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4). Current settings keep the existing backdrop and update the dashboard only on Apply.
+- Live dashboard draft preview without backdrop blur and Cancel rollback are covered for [issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4). Preview updates shell and Settings chrome without calling Apply; Cancel restores the prior applied appearance.
 
 ## Settings sidebar refactor
 

@@ -43,7 +43,7 @@ Old dashboard and pane-template exports are converted during import preview. Rel
 
 ## Personalise Pane
 
-Open **Settings**. Changes stay in a draft as you move between sections. **Apply settings** saves the complete draft; closing or cancelling asks before discarding changes. The fixed action bar stays visible while the main content scrolls. Appearance covers Theme, Colours and Typography. Background is a separate sidebar page. Settings contain no miniature dashboard previews.
+Open **Settings**. Changes stay in a draft as you move between sections and preview live on the dashboard and inside Settings. **Apply settings** saves the complete draft; closing or cancelling asks before discarding and restores the previous look. The Settings backdrop is lightly dimmed without blur so the dashboard stays visible. The fixed action bar stays visible while the main content scrolls. Appearance covers Theme, Colours and Typography. Background is a separate sidebar page. Settings contain no miniature dashboard previews.
 
 - **General:** set the **Dashboard name**, logo, workspace width and navigation labels. Under **Logo**, choose **Icon + name** for a square brandmark beside your name, or **Full logo** for rectangular artwork replacing both. Use a built-in icon, upload or HTTP(S) URL. Full logos fit within 280 × 48 px on desktop without cropping or stretching. Transparent PNGs with trimmed padding work well. The name still sets the browser title and accessible name; failed images fall back to the built-in icon/name.
 - **Appearance → Theme:** choose Midnight or Daylight. Changing theme resets custom colours, preserving your background and pane finish.
@@ -54,7 +54,7 @@ Open **Settings**. Changes stay in a draft as you move between sections. **Apply
 - **Import & backup:** import layouts or Docker selections, download a private backup, or export a shareable layout. Apply pending settings before importing or exporting to avoid mixing draft and saved data.
 - **About:** installed version and repository/issue links.
 
-Live changes on the dashboard behind Settings, without background blur and with Cancel restoring the prior state, are deferred to [issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4). Until then, the dashboard changes only when you apply.
+Draft settings preview live on the dashboard behind Settings without backdrop blur; Cancel restores the prior state ([issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4)). Apply still validates and saves through the ordinary revision-protected flow.
 
 ### Uploaded images and backups
 

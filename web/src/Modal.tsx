@@ -1,15 +1,17 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { CSSProperties, ReactNode, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 export default function Modal({
   title,
   close,
   children,
   className,
+  style,
 }: {
   title: string;
   close: () => void;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -21,6 +23,7 @@ export default function Modal({
     <dialog
       className={className}
       ref={ref}
+      style={style}
       onCancel={(e) => {
         e.preventDefault();
         close();

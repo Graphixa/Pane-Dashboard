@@ -93,14 +93,16 @@ function DashboardView({
     [selected, setSelected] = useState(""),
     [dragged, setDragged] = useState<string | null>(null);
   const [preview, setPreview] = useState<Layout | null>(null);
+  const [settingsPreview, setSettingsPreview] = useState<Config | null>(null);
+  const display = settingsPreview ?? config;
   const width = gridWidth(
-    config.dashboard.widthMode === "full"
+    display.dashboard.widthMode === "full"
       ? availableWidth
-      : config.dashboard.width,
+      : display.dashboard.width,
   );
   const mobile =
     !!config &&
-    ((config.dashboard.widthMode === "fixed" && availableWidth < width) ||
+    ((display.dashboard.widthMode === "fixed" && availableWidth < width) ||
       availableWidth < 768 ||
       !canPresent(config, width));
   const editing = edit && !mobile && status !== "Conflict";
@@ -109,21 +111,20 @@ function DashboardView({
       setEdit(false);
       setEditor(null);
       setAddMenu(false);
+      setSettingsPreview(null);
     }
   }, [mobile]);
   useEffect(() => {
-    if (config) {
-      document.documentElement.dataset.theme = config.appearance.theme;
-      document.documentElement.style.setProperty(
-        "--ui-font",
-        uiFontFamily(config.appearance.fontFamily),
-      );
-      document.title = config.dashboard.title.trim() || "pane.";
-    }
+    document.documentElement.dataset.theme = display.appearance.theme;
+    document.documentElement.style.setProperty(
+      "--ui-font",
+      uiFontFamily(display.appearance.fontFamily),
+    );
+    document.title = display.dashboard.title.trim() || "pane.";
   }, [
-    config?.appearance.theme,
-    config?.appearance.fontFamily,
-    config?.dashboard.title,
+    display.appearance.theme,
+    display.appearance.fontFamily,
+    display.dashboard.title,
   ]);
   const apply = (next: Config) => {
     if (
@@ -147,7 +148,7 @@ function DashboardView({
       setMessage((e as Error).message);
     }
   };
-  const labels = config.appearance.showButtonLabels,
+  const labels = display.appearance.showButtonLabels,
     size = tileSize;
   const add = () =>
     attempt(() => {
@@ -200,7 +201,7 @@ function DashboardView({
           title={`Edit ${a.name}`}
         >
           <Artwork app={a} />
-          {config.appearance.showAppLabels && (
+          {display.appearance.showAppLabels && (
             <span className="app-name">{a.name}</span>
           )}
         </button>
@@ -215,7 +216,7 @@ function DashboardView({
           rel="noopener noreferrer"
         >
           <Artwork app={a} />
-          {config.appearance.showAppLabels && (
+          {display.appearance.showAppLabels && (
             <span className="app-name">{a.name}</span>
           )}
         </a>
@@ -353,28 +354,28 @@ function DashboardView({
   return (
     <div
       className="shell"
-      data-pane-style={config.appearance.glass?.mode ?? "solid"}
+      data-pane-style={display.appearance.glass?.mode ?? "solid"}
       style={
         {
-          ...appearanceStyle(config.appearance),
+          ...appearanceStyle(display.appearance),
           "--icon-size": `${size.icon}px`,
           "--cell-width": `${size.w}px`,
           "--cell-height": `${size.h}px`,
-          "--pane-title-size": `${config.appearance.paneTitleSize ?? 18}px`,
+          "--pane-title-size": `${display.appearance.paneTitleSize ?? 18}px`,
         } as CSSProperties
       }
     >
       <Background
-        settings={config.appearance.background}
-        theme={config.appearance.theme}
+        settings={display.appearance.background}
+        theme={display.appearance.theme}
       />
       <header className="topbar">
         <a
           href="#"
           className="brand"
-          aria-label={`${config.dashboard.title.trim() || "pane."} home`}
+          aria-label={`${display.dashboard.title.trim() || "pane."} home`}
         >
-          <HeaderBrand dashboard={config.dashboard} />
+          <HeaderBrand dashboard={display.dashboard} />
         </a>
         <div className="header-right">
           <span
@@ -578,7 +579,11 @@ function DashboardView({
             setEdit(true);
             setSelected(id || "");
           }}
-          close={() => setEditor(null)}
+          onPreview={setSettingsPreview}
+          close={() => {
+            setSettingsPreview(null);
+            setEditor(null);
+          }}
           readOnly={mobile}
         />
       )}

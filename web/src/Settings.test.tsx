@@ -31,17 +31,19 @@ afterEach(() => {
 const setup = () => {
   const apply = vi.fn(),
     close = vi.fn(),
-    imported = vi.fn();
+    imported = vi.fn(),
+    preview = vi.fn();
   const result = render(
     <Settings
       config={config()}
       apply={apply}
       close={close}
       imported={imported}
+      onPreview={preview}
       readOnly={false}
     />,
   );
-  return { ...result, apply, close, imported };
+  return { ...result, apply, close, imported, preview };
 };
 const page = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
@@ -214,5 +216,32 @@ describe("settings navigation and draft safety", () => {
     event = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
+  });
+  it("previews draft appearance without applying until Apply settings", () => {
+    const { apply, preview } = setup();
+    expect(preview).toHaveBeenCalled();
+    const baseline = preview.mock.calls.at(-1)?.[0] as Config;
+    expect(baseline.appearance.theme).toBe("dark");
+    page("Appearance");
+    page("Daylight");
+    expect(apply).not.toHaveBeenCalled();
+    const live = preview.mock.calls.at(-1)?.[0] as Config;
+    expect(live.appearance.theme).toBe("light");
+    expect(live.items).toEqual([]);
+    page("Apply settings");
+    expect(apply).toHaveBeenCalledOnce();
+    expect(apply.mock.calls[0][0].appearance.theme).toBe("light");
+  });
+  it("discards the preview when Cancel confirms without applying", () => {
+    const { apply, close, preview } = setup();
+    page("Appearance");
+    page("Daylight");
+    expect(
+      (preview.mock.calls.at(-1)?.[0] as Config).appearance.theme,
+    ).toBe("light");
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    page("Cancel");
+    expect(apply).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledOnce();
   });
 });
