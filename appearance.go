@@ -29,6 +29,7 @@ type Background struct {
 	OverlayColour  string `json:"overlayColour,omitempty" yaml:"overlayColour,omitempty"`
 	Position       string `json:"position" yaml:"position"`
 	Motion         bool   `json:"motion" yaml:"motion"`
+	MotionStyle    string `json:"motionStyle,omitempty" yaml:"motionStyle,omitempty"`
 	Intensity      int    `json:"intensity" yaml:"intensity"`
 }
 type Glass struct {
@@ -98,7 +99,7 @@ func validateAppearance(c Config) error {
 		return fmt.Errorf("invalid header branding or image")
 	}
 	if b := c.Appearance.Background; b != nil {
-		if !slices.Contains([]string{"none", "gradient", "image", "waves", "aurora"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
+		if !slices.Contains([]string{"none", "gradient", "image", "waves", "aurora"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") || (b.MotionStyle != "" && !slices.Contains([]string{"none", "ken-burns", "breathe", "drift", "twist"}, b.MotionStyle)) {
 			return fmt.Errorf("invalid background settings or image")
 		}
 		if b.Overlay == "" {

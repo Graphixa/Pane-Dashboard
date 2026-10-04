@@ -139,6 +139,10 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
     ).toEqual(["Static", "Animated"]);
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    expect(
+      screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
+    ).toEqual(["Static", "Animated", "Motion", "Overlay"]);
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();

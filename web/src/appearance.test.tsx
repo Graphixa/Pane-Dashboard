@@ -15,6 +15,7 @@ import {
   contrast,
   defaultBackground,
   imageReference,
+  migrateBackground,
   paletteForThemeChange,
   palettes,
   validateVisuals,
@@ -211,7 +212,7 @@ describe("global appearance", () => {
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
   });
-  it("offers a Ken Burns toggle for custom images, off when first selected", () => {
+  it("offers shared motion styles for backgrounds, starting at None for Custom", () => {
     const apply = vi.fn(),
       c = config();
     c.appearance.background = {
@@ -219,6 +220,7 @@ describe("global appearance", () => {
       kind: "gradient",
       image: png,
       motion: true,
+      motionStyle: "drift",
     };
     render(
       <Settings
@@ -231,9 +233,13 @@ describe("global appearance", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    const toggle = screen.getByRole("switch", { name: "Ken Burns effect" });
-    expect(toggle).toHaveProperty("checked", false);
-    fireEvent.click(toggle);
+    expect(
+      screen.getByRole("dialog", { name: "Custom background image" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    const style = screen.getByLabelText("Motion style");
+    expect(style).toHaveProperty("value", "none");
+    fireEvent.change(style, { target: { value: "ken-burns" } });
     fireEvent.change(screen.getByRole("slider", { name: "Speed" }), {
       target: { value: "75" },
     });
@@ -241,8 +247,56 @@ describe("global appearance", () => {
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "image",
       motion: true,
+      motionStyle: "ken-burns",
       intensity: 75,
     });
+  });
+  it("restores the prior background when the custom image popover is cancelled", () => {
+    const c = config();
+    c.appearance.background = {
+      ...defaultBackground,
+      kind: "gradient",
+      preset: "ocean",
+      image: png,
+    };
+    render(
+      <Settings
+        config={c}
+        apply={vi.fn()}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Close custom image picker" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Custom" }).getAttribute("aria-pressed"),
+    ).toBe("false");
+    expect(
+      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+  it("migrates legacy motion flags into motion styles", () => {
+    const legacy = {
+      kind: "image" as const,
+      preset: "dusk" as const,
+      image: png,
+      overlay: "dark-solid" as const,
+      overlayOpacity: 25,
+      overlayColour: "#111720",
+      position: "center" as const,
+      motion: true,
+      intensity: 40,
+    };
+    expect(migrateBackground(legacy, "dark").motionStyle).toBe("ken-burns");
+    expect(
+      migrateBackground({ ...legacy, kind: "waves", image: "" }, "dark")
+        .motionStyle,
+    ).toBe("drift");
   });
   it("does not persist a cancelled settings draft", () => {
     const apply = vi.fn(),
@@ -279,7 +333,12 @@ describe("global appearance", () => {
   it("pauses decorative animation when motion is disabled and falls back from broken images", () => {
     const r = render(
       <Background
-        settings={{ ...defaultBackground, kind: "waves", motion: false }}
+        settings={{
+          ...defaultBackground,
+          kind: "waves",
+          motion: false,
+          motionStyle: "none",
+        }}
       />,
     );
     expect(r.container.querySelector(".motion-paused")).not.toBeNull();
@@ -290,10 +349,12 @@ describe("global appearance", () => {
           kind: "image",
           image: "https://example.com/broken.png",
           motion: true,
+          motionStyle: "ken-burns",
         }}
       />,
     );
     expect(r.container.querySelector(".motion-paused")).toBeNull();
+    expect(r.container.querySelector(".motion-ken-burns")).not.toBeNull();
     expect(r.container.querySelector(".scene-image")).not.toBeNull();
     fireEvent.error(r.container.querySelector("img")!);
     expect(r.container.querySelector("img")).toBeNull();

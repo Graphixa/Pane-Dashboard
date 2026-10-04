@@ -10,6 +10,8 @@ import {
   defaultUiFont,
   gradients,
   migrateBackground,
+  motionStyleLabels,
+  motionStyles,
   normaliseGlass,
   overlayForTheme,
   accentPresets,
@@ -17,7 +19,9 @@ import {
   palettes,
   uiFontFamily,
   uiFonts,
+  withMotionStyle,
   type Background as BackgroundSettings,
+  type MotionStyle,
   type OverlayMode,
   type UiFont,
 } from "./appearance";
@@ -231,6 +235,173 @@ function ColourSwatch({
                   }}
                 />
               </label>
+            </div>
+          </div>,
+          portalHost,
+        )}
+    </>
+  );
+}
+
+function BackgroundCustomSwatch({
+  settings,
+  onBusy,
+  background,
+}: {
+  settings: BackgroundSettings;
+  onBusy: (busy: boolean) => void;
+  background: (update: Partial<BackgroundSettings>) => void;
+}) {
+  const button = useRef<HTMLButtonElement>(null);
+  const popover = useRef<HTMLDivElement>(null);
+  const revert = useRef<Partial<BackgroundSettings> | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const pressed = settings.kind === "image";
+  const portalHost =
+    button.current?.closest("dialog") ??
+    (typeof document !== "undefined" ? document.body : null);
+
+  const cancel = () => {
+    if (revert.current) background(revert.current);
+    revert.current = null;
+    setOpen(false);
+  };
+
+  const confirm = () => {
+    if (!settings.image) background({ kind: "none", image: "" });
+    revert.current = null;
+    setOpen(false);
+  };
+
+  const cancelRef = useRef(cancel);
+  cancelRef.current = cancel;
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = () => cancelRef.current();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        dismiss();
+      }
+    };
+    const onPointer = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (popover.current?.contains(t) || button.current?.contains(t)) return;
+      dismiss();
+    };
+    const timer = window.setTimeout(() => {
+      document.addEventListener("keydown", onKey, true);
+      document.addEventListener("pointerdown", onPointer, true);
+    }, 0);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
+  }, [open]);
+
+  const place = () => {
+    const anchor = button.current;
+    if (!anchor) return;
+    const box = anchor.getBoundingClientRect();
+    const host = anchor.closest("dialog");
+    const origin = host?.getBoundingClientRect();
+    const ox = origin?.left ?? 0;
+    const oy = origin?.top ?? 0;
+    const hostW = origin?.width ?? window.innerWidth;
+    const width = 360;
+    const height = 300;
+    const left = Math.min(Math.max(12, box.left - ox), hostW - width - 12);
+    const spaceBelow = (origin?.bottom ?? window.innerHeight) - box.bottom;
+    const top =
+      spaceBelow < height + 12
+        ? Math.max(12, box.top - oy - height - 8)
+        : box.bottom - oy + 8;
+    setPos({ top, left });
+  };
+
+  const openPicker = () => {
+    revert.current = {
+      kind: settings.kind,
+      image: settings.image,
+      position: settings.position,
+      motion: settings.motion,
+      motionStyle: settings.motionStyle,
+    };
+    if (settings.kind !== "image") {
+      background({ kind: "image", ...withMotionStyle("none") });
+    }
+    place();
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className="background-swatch"
+        aria-pressed={pressed}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => (open ? cancel() : openPicker())}
+      >
+        <span
+          className={`swatch-custom ${settings.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
+        >
+          <ImagePlus size={18} aria-hidden="true" />
+        </span>
+        Custom
+      </button>
+      {open &&
+        portalHost &&
+        createPortal(
+          <div
+            ref={popover}
+            className="colour-popover image-popover"
+            role="dialog"
+            aria-label="Custom background image"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            <div className="colour-popover-head">
+              <strong>Custom image</strong>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Close custom image picker"
+                onClick={cancel}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <ImageField
+              label="Background image"
+              kind="background"
+              value={settings.image}
+              change={(image) => background({ image, kind: "image" })}
+              onBusy={onBusy}
+              hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
+            />
+            <label className="settings-row">
+              <span>Image position</span>
+              <select
+                value={settings.position}
+                onChange={(e) =>
+                  background({
+                    position: e.target.value as BackgroundSettings["position"],
+                  })
+                }
+              >
+                <option value="center">Centre</option>
+                <option value="top">Top</option>
+                <option value="bottom">Bottom</option>
+              </select>
+            </label>
+            <div className="image-popover-actions">
+              <button type="button" className="primary" onClick={confirm}>
+                OK
+              </button>
             </div>
           </div>,
           portalHost,
@@ -634,74 +805,12 @@ export default function AppearanceEditor({
                 {id[0].toUpperCase() + id.slice(1)}
               </button>
             ))}
-            <button
-              type="button"
-              className="background-swatch"
-              aria-pressed={b.kind === "image"}
-              onClick={() =>
-                background({
-                  kind: "image",
-                  ...(b.kind !== "image" ? { motion: false } : {}),
-                })
-              }
-            >
-              <span
-                className={`swatch-custom ${b.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
-              >
-                <ImagePlus size={18} aria-hidden="true" />
-              </span>
-              Custom
-            </button>
+            <BackgroundCustomSwatch
+              settings={b}
+              onBusy={onBusy}
+              background={background}
+            />
           </div>
-          {b.kind === "image" && (
-            <div className="settings-subsection">
-              <ImageField
-                label="Background image"
-                kind="background"
-                value={b.image}
-                change={(image) =>
-                  background({ image, kind: image ? "image" : "none" })
-                }
-                onBusy={onBusy}
-                hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
-              />
-              <label className="settings-row">
-                <span>Image position</span>
-                <select
-                  value={b.position}
-                  onChange={(e) =>
-                    background({
-                      position: e.target
-                        .value as BackgroundSettings["position"],
-                    })
-                  }
-                >
-                  <option value="center">Centre</option>
-                  <option value="top">Top</option>
-                  <option value="bottom">Bottom</option>
-                </select>
-              </label>
-              <label className="setting-switch">
-                <span>Ken Burns effect</span>
-                <input
-                  role="switch"
-                  type="checkbox"
-                  checked={b.motion}
-                  onChange={(e) => background({ motion: e.target.checked })}
-                />
-              </label>
-              {b.motion && (
-                <Range
-                  label="Speed"
-                  value={b.intensity}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  change={(intensity) => background({ intensity })}
-                />
-              )}
-            </div>
-          )}
         </Section>
         <Section
           title="Animated"
@@ -718,7 +827,14 @@ export default function AppearanceEditor({
                 className="background-swatch"
                 key={kind}
                 aria-pressed={b.kind === kind}
-                onClick={() => background({ kind })}
+                onClick={() =>
+                  background({
+                    kind,
+                    ...(b.motionStyle === "none"
+                      ? withMotionStyle("drift")
+                      : {}),
+                  })
+                }
               >
                 <span
                   className={`swatch-${kind}`}
@@ -747,28 +863,43 @@ export default function AppearanceEditor({
                   ))}
                 </select>
               </label>
-              <label className="setting-switch">
-                <span>Enable background motion</span>
-                <input
-                  role="switch"
-                  type="checkbox"
-                  checked={b.motion}
-                  onChange={(e) => background({ motion: e.target.checked })}
-                />
-              </label>
-              {b.motion && (
-                <Range
-                  label="Motion intensity"
-                  value={b.intensity}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  change={(intensity) => background({ intensity })}
-                />
-              )}
             </div>
           )}
         </Section>
+        {b.kind !== "none" && (
+          <Section
+            title="Motion"
+            description="Optional movement for the whole background. Try each style; keep None for a still scene."
+          >
+            <label className="settings-row">
+              <span>Motion style</span>
+              <select
+                value={b.motionStyle}
+                onChange={(e) =>
+                  background(
+                    withMotionStyle(e.target.value as MotionStyle),
+                  )
+                }
+              >
+                {motionStyles.map((id) => (
+                  <option key={id} value={id}>
+                    {motionStyleLabels[id]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {b.motionStyle !== "none" && (
+              <Range
+                label="Speed"
+                value={b.intensity}
+                min={0}
+                max={100}
+                unit="%"
+                change={(intensity) => background({ intensity })}
+              />
+            )}
+          </Section>
+        )}
         {b.kind !== "none" && (
           <Section
             title="Overlay"

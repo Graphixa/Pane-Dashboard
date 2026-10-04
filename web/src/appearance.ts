@@ -5,6 +5,21 @@ export type OverlayMode =
   | "light-solid"
   | "light-gradient"
   | "custom";
+export const motionStyles = [
+  "none",
+  "ken-burns",
+  "breathe",
+  "drift",
+  "twist",
+] as const;
+export type MotionStyle = (typeof motionStyles)[number];
+export const motionStyleLabels: Record<MotionStyle, string> = {
+  none: "None",
+  "ken-burns": "Ken Burns",
+  breathe: "Breathe",
+  drift: "Drift",
+  twist: "Twist",
+};
 export type Background = {
   kind: "none" | "gradient" | "image" | "waves" | "aurora";
   preset: "dusk" | "ocean" | "forest" | "mist";
@@ -14,6 +29,7 @@ export type Background = {
   overlayColour: string;
   position: "center" | "top" | "bottom";
   motion: boolean;
+  motionStyle: MotionStyle;
   intensity: number;
 };
 export type Glass = {
@@ -63,9 +79,26 @@ export const defaultBackground: Background = {
   overlayOpacity: 25,
   overlayColour: "#111720",
   position: "center",
-  motion: true,
+  motion: false,
+  motionStyle: "none",
   intensity: 40,
 };
+export function resolveMotionStyle(
+  raw: Partial<Background>,
+  kind: Background["kind"],
+  motion: boolean,
+): MotionStyle {
+  if (raw.motionStyle && motionStyles.includes(raw.motionStyle))
+    return raw.motionStyle;
+  if (!motion) return "none";
+  return kind === "image" ? "ken-burns" : "drift";
+}
+export function withMotionStyle(style: MotionStyle): Pick<
+  Background,
+  "motionStyle" | "motion"
+> {
+  return { motionStyle: style, motion: style !== "none" };
+}
 // Defaults favour a visible edge bend with moderate frost and saturation.
 export const defaultGlass: Glass = {
   mode: "solid",
@@ -182,6 +215,8 @@ export function migrateBackground(
   theme: "dark" | "light",
 ): Background {
   const base = { ...defaultBackground, ...raw };
+  const motionStyle = resolveMotionStyle(raw, base.kind, !!base.motion);
+  const motion = motionStyle !== "none";
   if (
     raw.overlay &&
     overlayModes.includes(raw.overlay) &&
@@ -196,7 +231,8 @@ export function migrateBackground(
       overlayOpacity: raw.overlayOpacity,
       overlayColour: raw.overlayColour,
       position: base.position,
-      motion: base.motion,
+      motion,
+      motionStyle,
       intensity: base.intensity,
     };
   }
@@ -212,7 +248,8 @@ export function migrateBackground(
     overlayOpacity: dimming,
     overlayColour: defaultOverlayColour(theme),
     position: base.position,
-    motion: base.motion,
+    motion,
+    motionStyle,
     intensity: base.intensity,
   };
 }
@@ -304,6 +341,7 @@ export function validateVisuals(a: AppearanceOptions) {
       "overlayColour",
       "position",
       "motion",
+      "motionStyle",
       "intensity",
     ]);
     const b = a.background;
@@ -317,7 +355,9 @@ export function validateVisuals(a: AppearanceOptions) {
       !/^#[a-fA-F0-9]{6}$/.test(b.overlayColour) ||
       !within(b.intensity, 0, 100) ||
       !["center", "top", "bottom"].includes(b.position) ||
-      typeof b.motion !== "boolean"
+      !motionStyles.includes(b.motionStyle) ||
+      typeof b.motion !== "boolean" ||
+      b.motion !== (b.motionStyle !== "none")
     )
       throw Error("Invalid background settings or image.");
   }

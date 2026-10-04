@@ -11,6 +11,12 @@
   pointer-events: none;
   background: var(--bg);
 }
+.scene-stage {
+  position: absolute;
+  inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
 .scene-image {
   position: absolute;
   inset: 0;
@@ -18,19 +24,69 @@
   height: 100%;
   object-fit: cover;
 }
-.scene:not(.motion-paused) .scene-image {
-  inset: -8%;
-  width: 116%;
-  height: 116%;
-  animation: ken-burns var(--motion-duration, 54s) ease-in-out infinite
+.scene:not(.motion-paused).motion-ken-burns .scene-stage,
+.scene:not(.motion-paused).motion-breathe .scene-stage,
+.scene:not(.motion-paused).motion-drift .scene-stage,
+.scene:not(.motion-paused).motion-twist .scene-stage {
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+}
+.scene:not(.motion-paused).motion-ken-burns .scene-stage {
+  animation: ken-burns var(--motion-duration, 54s) ease-in-out infinite;
+}
+.scene:not(.motion-paused).motion-breathe .scene-stage {
+  animation: bg-breathe var(--motion-duration, 54s) ease-in-out infinite
+    alternate;
+}
+.scene:not(.motion-paused).motion-drift .scene-stage {
+  animation: bg-drift var(--motion-duration, 54s) ease-in-out infinite
+    alternate;
+}
+.scene:not(.motion-paused).motion-twist .scene-stage {
+  animation: bg-twist var(--motion-duration, 54s) ease-in-out infinite
     alternate;
 }
 @keyframes ken-burns {
-  from {
+  0%,
+  100% {
     transform: scale(1) translate3d(0, 0, 0);
   }
+  20% {
+    transform: scale(1.1) translate3d(-3%, -2%, 0);
+  }
+  40% {
+    transform: scale(1.02) translate3d(2.5%, 1.5%, 0);
+  }
+  60% {
+    transform: scale(1.12) translate3d(-1.5%, 2.5%, 0);
+  }
+  80% {
+    transform: scale(1.04) translate3d(2%, -2%, 0);
+  }
+}
+@keyframes bg-breathe {
+  from {
+    transform: scale(1);
+  }
   to {
+    transform: scale(1.06);
+  }
+}
+@keyframes bg-drift {
+  from {
     transform: scale(1.06) translate3d(-2.5%, -1.5%, 0);
+  }
+  to {
+    transform: scale(1.06) translate3d(2.5%, 2%, 0);
+  }
+}
+@keyframes bg-twist {
+  from {
+    transform: scale(1.1) rotate(-12deg);
+  }
+  to {
+    transform: scale(1.1) rotate(12deg);
   }
 }
 .scene-overlay {
@@ -95,15 +151,18 @@
   }
 }
 .motion-paused .scene-motion i,
-.motion-paused .scene-image {
+.motion-paused .scene-stage {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
   .scene-motion i,
-  .scene-image {
+  .scene-stage {
     animation: none;
   }
-  .scene:not(.motion-paused) .scene-image {
+  .scene:not(.motion-paused).motion-ken-burns .scene-stage,
+  .scene:not(.motion-paused).motion-breathe .scene-stage,
+  .scene:not(.motion-paused).motion-drift .scene-stage,
+  .scene:not(.motion-paused).motion-twist .scene-stage {
     inset: 0;
     width: 100%;
     height: 100%;

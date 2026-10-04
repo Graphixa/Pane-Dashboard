@@ -503,6 +503,19 @@
   border-radius: 8px;
   padding: 6px 8px;
 }
+.image-popover {
+  width: min(360px, calc(100% - 24px));
+}
+.image-popover .image-field {
+  margin: 0 0 10px;
+}
+.image-popover .settings-row {
+  margin: 0 0 12px;
+}
+.image-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .accent-swatches button,
 .accent-swatch {
   width: 36px;

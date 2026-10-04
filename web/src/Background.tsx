@@ -28,41 +28,40 @@ export default function Background({
   const animated = b.kind === "waves" || b.kind === "aurora";
   const activeImage =
     b.kind === "image" && imageReference(b.image) && b.image && !failed;
+  const paused = b.motionStyle === "none" || !b.motion || hidden;
+  const paint =
+    b.kind === "none" ? "var(--bg)" : (gradients[b.preset] ?? gradients.dusk);
   return (
     <div
       aria-hidden="true"
-      className={`scene scene-${b.kind} ${!b.motion || hidden ? "motion-paused" : ""}`}
+      className={`scene scene-${b.kind} motion-${b.motionStyle}${paused ? " motion-paused" : ""}`}
       style={
         {
           "--motion-strength": b.intensity / 100,
-          "--motion-duration":
-            b.kind === "image"
-              ? `${80 - b.intensity * 0.74}s`
-              : `${70 - b.intensity * 0.4}s`,
-          background:
-            b.kind === "none"
-              ? "var(--bg)"
-              : (gradients[b.preset] ?? gradients.dusk),
+          "--motion-duration": `${80 - b.intensity * 0.74}s`,
+          background: paint,
         } as CSSProperties
       }
     >
-      {activeImage && (
-        <img
-          className="scene-image"
-          src={b.image}
-          alt=""
-          referrerPolicy="no-referrer"
-          style={{ objectPosition: b.position }}
-          onError={() => setFailed(true)}
-        />
-      )}
-      {animated && (
-        <div className="scene-motion">
-          <i />
-          <i />
-          <i />
-        </div>
-      )}
+      <div className="scene-stage" style={{ background: paint }}>
+        {activeImage && (
+          <img
+            className="scene-image"
+            src={b.image}
+            alt=""
+            referrerPolicy="no-referrer"
+            style={{ objectPosition: b.position }}
+            onError={() => setFailed(true)}
+          />
+        )}
+        {animated && (
+          <div className="scene-motion">
+            <i />
+            <i />
+            <i />
+          </div>
+        )}
+      </div>
       {b.kind !== "none" && (
         <div
           className="scene-overlay"
