@@ -97,9 +97,11 @@ describe("interaction boundary", () => {
     fireEvent.change(screen.getByLabelText("Dashboard name"), {
       target: { value: "Akira" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/logo.png" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },

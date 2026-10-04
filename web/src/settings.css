@@ -504,7 +504,7 @@
   padding: 6px 8px;
 }
 .image-popover {
-  width: min(360px, calc(100% - 24px));
+  width: min(380px, calc(100% - 24px));
 }
 .image-popover .image-field {
   margin: 0 0 10px;
@@ -515,6 +515,12 @@
 .image-popover-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+.brand-image-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .accent-swatches button,
 .accent-swatch {

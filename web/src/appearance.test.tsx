@@ -311,9 +311,11 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Full logo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose logo image" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/wordmark.png" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
     vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(apply).not.toHaveBeenCalled();

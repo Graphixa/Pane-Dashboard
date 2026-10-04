@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { imageReference } from "./appearance";
 
 export async function prepareUpload(
@@ -67,7 +67,8 @@ export default function ImageField({
   const input = useRef<HTMLInputElement>(null),
     alive = useRef(true);
   const [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [drag, setDrag] = useState(false);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -75,61 +76,90 @@ export default function ImageField({
     };
   }, []);
   const uploaded = value.startsWith("data:");
+  const formats = hint ?? "PNG, JPEG or WebP, up to 8 MiB.";
+  const take = async (file: File) => {
+    setError("");
+    setBusy(true);
+    onBusy(true);
+    try {
+      const url = await prepareUpload(file, kind);
+      if (alive.current) change(url);
+    } catch (err) {
+      if (alive.current) setError((err as Error).message);
+    } finally {
+      if (alive.current) {
+        setBusy(false);
+        onBusy(false);
+      }
+    }
+  };
   return (
     <div className="image-field">
-      <div className="image-actions">
-        <button
-          type="button"
-          className="upload-tile"
-          aria-label={`Upload ${label.toLowerCase()}`}
-          disabled={busy}
-          onClick={() => input.current?.click()}
-        >
-          {uploaded ? <Upload size={22} /> : <Plus size={24} />}
-          <span>
-            {busy ? "Preparing…" : uploaded ? "Replace upload" : "Upload image"}
-          </span>
-        </button>
+      <button
+        type="button"
+        className="image-dropzone"
+        data-drag={drag ? "true" : undefined}
+        aria-label={`Upload ${label.toLowerCase()}`}
+        disabled={busy}
+        onClick={() => input.current?.click()}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDrag(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDrag(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDrag(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDrag(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) void take(file);
+        }}
+      >
+        <Upload size={28} aria-hidden="true" />
+        <span className="image-dropzone-title">
+          {busy
+            ? "Preparing…"
+            : uploaded
+              ? "Drop to replace, or click to browse"
+              : "Drop an image here, or click to browse"}
+        </span>
+        <span className="image-dropzone-hint">{formats}</span>
+      </button>
+      <input
+        ref={input}
+        className="file-picker"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label={`${label} file`}
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (file) void take(file);
+        }}
+      />
+      <div className="image-or" aria-hidden="true">
+        or
+      </div>
+      <label className="image-url-field">
+        <span>From URL</span>
         <input
-          ref={input}
-          className="file-picker"
-          type="file"
-          accept="image/png,image/jpeg,image/webp"
-          aria-label={`${label} file`}
-          onChange={async (e) => {
-            const f = e.currentTarget.files?.[0];
-            e.currentTarget.value = "";
-            if (!f) return;
+          type="url"
+          maxLength={2048}
+          placeholder="https://example.com/image.png"
+          aria-label={`${label} URL`}
+          value={uploaded ? "" : value}
+          onChange={(e) => {
             setError("");
-            setBusy(true);
-            onBusy(true);
-            try {
-              const url = await prepareUpload(f, kind);
-              if (alive.current) change(url);
-            } catch (err) {
-              if (alive.current) setError((err as Error).message);
-            } finally {
-              if (alive.current) {
-                setBusy(false);
-                onBusy(false);
-              }
-            }
+            change(e.target.value);
           }}
         />
-        <label>
-          {label} URL
-          <input
-            type="url"
-            maxLength={2048}
-            placeholder="https://example.com/image.png"
-            value={uploaded ? "" : value}
-            onChange={(e) => {
-              setError("");
-              change(e.target.value);
-            }}
-          />
-        </label>
-      </div>
+      </label>
       <div className="image-field-meta">
         {value ? (
           <button
@@ -143,7 +173,7 @@ export default function ImageField({
         <p className="hint">
           {uploaded
             ? "Uploaded image is included in backups."
-            : (hint ?? "PNG, JPEG or WebP, up to 8 MiB.")}
+            : "Remote URLs stay as links; uploads are embedded in backups."}
         </p>
       </div>
       {error && (

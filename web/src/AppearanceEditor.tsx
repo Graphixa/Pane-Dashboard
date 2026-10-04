@@ -1,4 +1,11 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { createPortal } from "react-dom";
 import { Server, LayoutGrid, PanelsTopLeft, ImagePlus, X } from "lucide-react";
 import type { Config } from "./model";
@@ -243,39 +250,17 @@ function ColourSwatch({
   );
 }
 
-function BackgroundCustomSwatch({
-  settings,
-  onBusy,
-  background,
-}: {
-  settings: BackgroundSettings;
-  onBusy: (busy: boolean) => void;
-  background: (update: Partial<BackgroundSettings>) => void;
-}) {
+function useAnchorPopover(onCancel: () => void) {
   const button = useRef<HTMLButtonElement>(null);
   const popover = useRef<HTMLDivElement>(null);
-  const revert = useRef<Partial<BackgroundSettings> | null>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
-  const pressed = settings.kind === "image";
+  const cancelRef = useRef(onCancel);
+  cancelRef.current = onCancel;
   const portalHost =
     button.current?.closest("dialog") ??
     (typeof document !== "undefined" ? document.body : null);
 
-  const cancel = () => {
-    if (revert.current) background(revert.current);
-    revert.current = null;
-    setOpen(false);
-  };
-
-  const confirm = () => {
-    if (!settings.image) background({ kind: "none", image: "" });
-    revert.current = null;
-    setOpen(false);
-  };
-
-  const cancelRef = useRef(cancel);
-  cancelRef.current = cancel;
   useEffect(() => {
     if (!open) return;
     const dismiss = () => cancelRef.current();
@@ -301,7 +286,7 @@ function BackgroundCustomSwatch({
     };
   }, [open]);
 
-  const place = () => {
+  const place = (width = 380, height = 420) => {
     const anchor = button.current;
     if (!anchor) return;
     const box = anchor.getBoundingClientRect();
@@ -310,8 +295,6 @@ function BackgroundCustomSwatch({
     const ox = origin?.left ?? 0;
     const oy = origin?.top ?? 0;
     const hostW = origin?.width ?? window.innerWidth;
-    const width = 360;
-    const height = 300;
     const left = Math.min(Math.max(12, box.left - ox), hostW - width - 12);
     const spaceBelow = (origin?.bottom ?? window.innerHeight) - box.bottom;
     const top =
@@ -321,19 +304,159 @@ function BackgroundCustomSwatch({
     setPos({ top, left });
   };
 
-  const openPicker = () => {
-    revert.current = {
-      kind: settings.kind,
-      image: settings.image,
-      position: settings.position,
-      motion: settings.motion,
-      motionStyle: settings.motionStyle,
-    };
-    if (settings.kind !== "image") {
-      background({ kind: "image", ...withMotionStyle("none") });
-    }
-    place();
-    setOpen(true);
+  return { button, popover, open, setOpen, pos, place, portalHost };
+}
+
+function ImagePopoverShell({
+  title,
+  ariaLabel,
+  closeLabel,
+  open,
+  pos,
+  popoverRef,
+  portalHost,
+  onCancel,
+  onConfirm,
+  children,
+}: {
+  title: string;
+  ariaLabel: string;
+  closeLabel: string;
+  open: boolean;
+  pos: { top: number; left: number };
+  popoverRef: RefObject<HTMLDivElement | null>;
+  portalHost: Element | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+  children: ReactNode;
+}) {
+  if (!open || !portalHost) return null;
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="colour-popover image-popover"
+      role="dialog"
+      aria-label={ariaLabel}
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <div className="colour-popover-head">
+        <strong>{title}</strong>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={closeLabel}
+          onClick={onCancel}
+        >
+          <X size={16} />
+        </button>
+      </div>
+      {children}
+      <div className="image-popover-actions">
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+        <button type="button" className="primary" onClick={onConfirm}>
+          OK
+        </button>
+      </div>
+    </div>,
+    portalHost,
+  );
+}
+
+function BrandImagePicker({
+  title,
+  kind,
+  value,
+  hint,
+  triggerLabel,
+  onBusy,
+  onLive,
+}: {
+  title: string;
+  kind: "icon" | "logo";
+  value: string;
+  hint: string;
+  triggerLabel: string;
+  onBusy: (busy: boolean) => void;
+  onLive: (logo: string) => void;
+}) {
+  const revert = useRef(value);
+  const cancel = () => {
+    onLive(revert.current);
+    setOpen(false);
+  };
+  const { button, popover, open, setOpen, pos, place, portalHost } =
+    useAnchorPopover(cancel);
+  const confirm = () => setOpen(false);
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className="brand-image-trigger"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => {
+          if (open) {
+            cancel();
+            return;
+          }
+          revert.current = value;
+          place();
+          setOpen(true);
+        }}
+      >
+        <ImagePlus size={16} aria-hidden="true" />
+        {triggerLabel}
+      </button>
+      <ImagePopoverShell
+        title={title}
+        ariaLabel={title}
+        closeLabel={`Close ${title.toLowerCase()} picker`}
+        open={open}
+        pos={pos}
+        popoverRef={popover}
+        portalHost={portalHost}
+        onCancel={cancel}
+        onConfirm={confirm}
+      >
+        <ImageField
+          label="Logo image"
+          kind={kind}
+          value={value}
+          change={onLive}
+          onBusy={onBusy}
+          hint={hint}
+        />
+      </ImagePopoverShell>
+    </>
+  );
+}
+
+function BackgroundCustomSwatch({
+  settings,
+  onBusy,
+  background,
+}: {
+  settings: BackgroundSettings;
+  onBusy: (busy: boolean) => void;
+  background: (update: Partial<BackgroundSettings>) => void;
+}) {
+  const revert = useRef<Partial<BackgroundSettings> | null>(null);
+  const cancel = () => {
+    if (revert.current) background(revert.current);
+    revert.current = null;
+    setOpen(false);
+  };
+  const { button, popover, open, setOpen, pos, place, portalHost } =
+    useAnchorPopover(cancel);
+  const pressed = settings.kind === "image";
+
+  const confirm = () => {
+    if (!settings.image) background({ kind: "none", image: "" });
+    revert.current = null;
+    setOpen(false);
   };
 
   return (
@@ -345,7 +468,24 @@ function BackgroundCustomSwatch({
         aria-pressed={pressed}
         aria-expanded={open}
         aria-haspopup="dialog"
-        onClick={() => (open ? cancel() : openPicker())}
+        onClick={() => {
+          if (open) {
+            cancel();
+            return;
+          }
+          revert.current = {
+            kind: settings.kind,
+            image: settings.image,
+            position: settings.position,
+            motion: settings.motion,
+            motionStyle: settings.motionStyle,
+          };
+          if (settings.kind !== "image") {
+            background({ kind: "image", ...withMotionStyle("none") });
+          }
+          place();
+          setOpen(true);
+        }}
       >
         <span
           className={`swatch-custom ${settings.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
@@ -354,58 +494,41 @@ function BackgroundCustomSwatch({
         </span>
         Custom
       </button>
-      {open &&
-        portalHost &&
-        createPortal(
-          <div
-            ref={popover}
-            className="colour-popover image-popover"
-            role="dialog"
-            aria-label="Custom background image"
-            style={{ top: pos.top, left: pos.left }}
+      <ImagePopoverShell
+        title="Custom image"
+        ariaLabel="Custom background image"
+        closeLabel="Close custom image picker"
+        open={open}
+        pos={pos}
+        popoverRef={popover}
+        portalHost={portalHost}
+        onCancel={cancel}
+        onConfirm={confirm}
+      >
+        <ImageField
+          label="Background image"
+          kind="background"
+          value={settings.image}
+          change={(image) => background({ image, kind: "image" })}
+          onBusy={onBusy}
+          hint="PNG, JPEG or WebP, up to 8 MiB."
+        />
+        <label className="settings-row">
+          <span>Image position</span>
+          <select
+            value={settings.position}
+            onChange={(e) =>
+              background({
+                position: e.target.value as BackgroundSettings["position"],
+              })
+            }
           >
-            <div className="colour-popover-head">
-              <strong>Custom image</strong>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Close custom image picker"
-                onClick={cancel}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <ImageField
-              label="Background image"
-              kind="background"
-              value={settings.image}
-              change={(image) => background({ image, kind: "image" })}
-              onBusy={onBusy}
-              hint="PNG, JPEG or WebP, up to 8 MiB. Uploads are included in backups."
-            />
-            <label className="settings-row">
-              <span>Image position</span>
-              <select
-                value={settings.position}
-                onChange={(e) =>
-                  background({
-                    position: e.target.value as BackgroundSettings["position"],
-                  })
-                }
-              >
-                <option value="center">Centre</option>
-                <option value="top">Top</option>
-                <option value="bottom">Bottom</option>
-              </select>
-            </label>
-            <div className="image-popover-actions">
-              <button type="button" className="primary" onClick={confirm}>
-                OK
-              </button>
-            </div>
-          </div>,
-          portalHost,
-        )}
+            <option value="center">Centre</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+          </select>
+        </label>
+      </ImagePopoverShell>
     </>
   );
 }
@@ -500,7 +623,6 @@ export default function AppearanceEditor({
   const badContrast =
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
   const fullLogo = draft.dashboard.branding === "logo";
-  const hasCustomLogo = Boolean(draft.dashboard.logo);
 
   if (section === "general")
     return (
@@ -578,34 +700,33 @@ export default function AppearanceEditor({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-          {fullLogo ? (
-            <div className="settings-subsection">
-              <ImageField
-                label="Logo image"
-                kind="logo"
-                value={draft.dashboard.logo ?? ""}
-                change={(logo) => header({ logo })}
-                onBusy={onBusy}
-                hint="Rectangular artwork replaces the icon and name. PNG, JPEG or WebP."
-              />
-            </div>
-          ) : (
-            <details
-              className="settings-disclosure"
-              open={hasCustomLogo || undefined}
-            >
-              <summary>Custom image</summary>
-              <ImageField
-                label="Logo image"
+              <BrandImagePicker
+                title="Custom icon"
                 kind="icon"
                 value={draft.dashboard.logo ?? ""}
-                change={(logo) => header({ logo })}
+                triggerLabel={
+                  draft.dashboard.logo ? "Edit custom image" : "Custom image"
+                }
+                hint="Square artwork beside the name. PNG, JPEG or WebP, up to 8 MiB."
                 onBusy={onBusy}
-                hint="Square artwork beside the name. PNG, JPEG or WebP."
+                onLive={(logo) => header({ logo })}
               />
-            </details>
+            </div>
+          )}
+          {fullLogo && (
+            <div className="settings-subsection">
+              <BrandImagePicker
+                title="Full logo"
+                kind="logo"
+                value={draft.dashboard.logo ?? ""}
+                triggerLabel={
+                  draft.dashboard.logo ? "Edit logo image" : "Choose logo image"
+                }
+                hint="Rectangular artwork replaces the icon and name. PNG, JPEG or WebP, up to 8 MiB."
+                onBusy={onBusy}
+                onLive={(logo) => header({ logo })}
+              />
+            </div>
           )}
         </Section>
         <Section
