@@ -108,3 +108,8 @@ Environment variables:
 The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. Icons are fetched directly from the [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) catalogue through jsDelivr, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. Trademarks belong to their owners. No icon artwork is bundled.
 
 The root [SPEC.md](SPEC.md) defines behaviour and scope. [AGENTS.md](AGENTS.md) gives coding-agent instructions. Widgets, mobile editing, accounts and multi-dashboard support are intentionally outside v1. Full width adds workspace without stretching tiles. Narrow screens show a read-only layout without changing saved positions.
+
+
+## UI development
+
+Read [DESIGN.md](DESIGN.md) before changing the interface. Shared tokens and React components live in `web/src/design`. Run `npm run dev` in `web` and open `/design-system.html` on the Vite server to inspect the component reference. The same page is included in production builds and uses sample data without reading or saving dashboard configuration.

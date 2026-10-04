@@ -1,20 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import Dashboard from "./Dashboard";
-import "@fontsource/geist/latin-400.css";
-import "@fontsource/geist/latin-600.css";
-import "@fontsource/geist/latin-700.css";
-import "@fontsource/rubik/latin-400.css";
-import "@fontsource/rubik/latin-600.css";
-import "@fontsource/rubik/latin-700.css";
-import "@fontsource/oxanium/latin-400.css";
-import "@fontsource/oxanium/latin-600.css";
-import "@fontsource/oxanium/latin-700.css";
-import "./style.css";
-import "./appearance.css";
-import "./settings.css";
+import "./design/appStyles";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Dashboard />
   </React.StrictMode>,
 );
+

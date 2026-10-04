@@ -3,6 +3,7 @@ import { stringify } from "yaml";
 import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
 import { catalogue, iconURL } from "./icons";
 import Modal from "./Modal";
+import { Button, TextField } from "./design/components";
 export function download(name: string, value: unknown) {
   const url = URL.createObjectURL(
     new Blob([stringify(value)], { type: "application/yaml" }),
@@ -72,27 +73,19 @@ export function AppEditor({
           save();
         }}
       >
-        <label>
-          Name
-          <input
+        <TextField label="Name"
             required
             maxLength={100}
             autoFocus
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
           />
-        </label>
-        <label>
-          Address
-          <input
+        <TextField label="Address"
+            hint="Leave blank for a template. Only HTTP(S) addresses are supported."
             placeholder="https://service.example.com"
             value={draft.url}
             onChange={(e) => setDraft({ ...draft, url: e.target.value })}
           />
-        </label>
-        <p className="hint">
-          Leave blank for a template. Only HTTP(S) addresses are supported.
-        </p>
         <label className="check">
           <input
             type="checkbox"
@@ -190,9 +183,9 @@ export function AppEditor({
         )}
         <div className="actions">
           {app && (
-            <button
+            <Button
               type="button"
-              className="danger"
+              variant="danger"
               onClick={() => {
                 if (window.confirm(`Delete ${app.name}?`)) {
                   const n = clone(config);
@@ -205,14 +198,14 @@ export function AppEditor({
               }}
             >
               Delete app
-            </button>
+            </Button>
           )}
-          <button type="button" onClick={close}>
+          <Button type="button" onClick={close}>
             Cancel
-          </button>
-          <button className="primary" type="submit">
+          </Button>
+          <Button variant="primary" type="submit">
             Save app
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
@@ -286,7 +279,7 @@ export function PaneEditor({
           </p>
         )}
         <div className="actions">
-          <button
+          <Button
             type="button"
             onClick={() => {
               const p = clone(draft);
@@ -303,10 +296,10 @@ export function PaneEditor({
             }}
           >
             Export template
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="danger"
+            variant="danger"
             onClick={() => {
               if (
                 window.confirm(
@@ -322,12 +315,13 @@ export function PaneEditor({
             }}
           >
             Delete pane
-          </button>
-          <button className="primary" type="submit">
+          </Button>
+          <Button variant="primary" type="submit">
             Save pane
-          </button>
+          </Button>
         </div>
       </form>
     </Modal>
   );
 }
+

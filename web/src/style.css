@@ -10,6 +10,8 @@
   color: #e9eef7;
   background: #111720;
   font-synthesis: none;
+  font-size: 100%;
+  line-height: var(--leading-body);
   --bg: #111720;
   --panel: #1a222e;
   --panel-high: #222d3c;
@@ -24,6 +26,8 @@
   box-sizing: border-box;
 }
 body {
+  font-size: var(--type-body);
+  font-weight: var(--weight-regular);
   margin: 0;
   min-width: 320px;
 }
@@ -41,6 +45,9 @@ button,
 input,
 select {
   font: inherit;
+  font-size: var(--type-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
 }
 button,
 a,
@@ -49,6 +56,7 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 button {
+  font-weight: var(--weight-semibold);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -86,7 +94,7 @@ a {
   background: var(--accent);
   color: var(--accent-text);
   border-color: var(--accent);
-  font-weight: 650;
+  font-weight: var(--weight-semibold);
 }
 .primary:hover:not(:disabled) {
   background: #bcddce;
@@ -117,8 +125,8 @@ a {
   display: flex;
   gap: 11px;
   align-items: center;
-  font-weight: 700;
-  font-size: 30px;
+  font-weight: var(--weight-bold);
+  font-size: var(--type-brand);
   letter-spacing: -1.8px;
   min-width: 0;
   margin-right: 24px;
@@ -176,7 +184,8 @@ a {
   border-radius: 50%;
 }
 .nav-button small {
-  font-size: 10px;
+  font-weight: var(--weight-regular);
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .nav-button:hover:not(:disabled) {
@@ -188,7 +197,7 @@ a {
   color: var(--accent-text);
 }
 .save-status {
-  font-size: 11px;
+  font-size: var(--type-caption);
   color: var(--muted);
   display: flex;
   gap: 5px;
@@ -219,7 +228,7 @@ a {
   border: 0;
 }
 .dropdown small {
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 .dashboard-heading {
   display: flex;
@@ -230,18 +239,18 @@ a {
 .eyebrow {
   color: var(--accent);
   letter-spacing: 2.4px;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-bold);
   margin: 0 0 12px;
 }
 h1 {
-  font-size: 36px;
+  font-size: var(--type-title);
   letter-spacing: -1.2px;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
   margin: 0 0 12px;
 }
 .subtitle {
-  font-size: 13px;
+  font-size: var(--type-support);
   color: var(--muted);
   margin: 0;
 }
@@ -253,7 +262,7 @@ h1 {
   align-items: center;
   gap: 8px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 .mode-badge.editing {
   color: var(--accent);
@@ -325,7 +334,7 @@ h1 {
 }
 .pane-title {
   font-size: var(--pane-title-size, 18px);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
   line-height: 24px;
   display: block;
   text-align: left;
@@ -348,7 +357,7 @@ h1 {
   height: 26px;
   padding: 2px 6px;
   font-size: var(--pane-title-size, 18px);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .pane-title:hover:not(:disabled) {
   background: none;
@@ -420,8 +429,8 @@ h1 {
   border-radius: 15px;
   background: var(--panel-high);
   box-shadow: 0 3px 8px #0002;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
   color: var(--accent);
 }
 .artwork img {
@@ -596,24 +605,24 @@ h1 {
   transform: rotate(-5deg);
 }
 .empty-dashboard h2 {
-  font-size: 25px;
-  font-weight: 500;
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.6px;
   margin: 0 0 12px;
 }
 .empty-dashboard > p:not(.eyebrow) {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.9;
+  font-size: var(--type-support);
+  line-height: var(--leading-body);
   margin: 0 0 23px;
 }
 .empty-dashboard .eyebrow {
-  font-size: 9px;
+  font-size: var(--type-caption);
 }
 .text-button {
   background: none;
   border: 0;
-  font-size: 11px;
+  font-size: var(--type-body);
   color: var(--muted);
   margin-top: 10px;
 }
@@ -627,11 +636,11 @@ footer {
   border-top: 1px solid var(--line);
   padding: 25px 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: var(--type-caption);
 }
 .footer-mark {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: var(--type-section);
+  font-weight: var(--weight-bold);
   letter-spacing: -1px;
 }
 .local-dot {
@@ -688,16 +697,17 @@ dialog::backdrop {
   cursor: pointer;
 }
 .modal-title h2 {
-  font-size: 22px;
-  font-weight: 550;
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
   margin: 0;
 }
 label {
+  font-weight: var(--weight-semibold);
   display: flex;
   flex-direction: column;
   gap: 7px;
-  font-size: 12px;
-  color: var(--muted);
+  font-size: var(--type-body);
+  color: var(--text);
   margin: 15px 0;
 }
 input,
@@ -716,7 +726,7 @@ input[type="checkbox"] {
   accent-color: var(--accent);
 }
 input[type="file"] {
-  font-size: 12px;
+  font-size: var(--type-support);
 }
 .check {
   flex-direction: row;
@@ -732,9 +742,9 @@ input[type="file"] {
 }
 .hint,
 dialog p {
-  font-size: 12px;
+  font-size: var(--type-support);
   color: var(--muted);
-  line-height: 1.7;
+  line-height: var(--leading-body);
 }
 .actions {
   display: flex;
@@ -752,7 +762,7 @@ dialog p {
   padding: 12px;
   border-radius: 9px;
   color: #eea8a8 !important;
-  font-size: 12px;
+  font-size: var(--type-support);
 }
 .banner {
   display: flex;
@@ -766,7 +776,7 @@ dialog p {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg);
-  font-size: 12px;
+  font-size: var(--type-support);
 }
 .tabs {
   display: flex;
@@ -806,7 +816,7 @@ dialog p {
   object-fit: contain;
 }
 .icon-picker span {
-  font-size: 8px;
+  font-size: var(--type-caption);
   white-space: nowrap;
   overflow: hidden;
   max-width: 100%;
@@ -822,7 +832,7 @@ fieldset {
 }
 .export-options h3 {
   margin-top: 25px;
-  font-size: 15px;
+  font-size: var(--type-body);
 }
 .discovery-list {
   margin: 15px 0;
@@ -839,7 +849,7 @@ fieldset {
   margin: 6px 0;
 }
 .discovery-list small {
-  font-size: 10px;
+  font-size: var(--type-caption);
   color: var(--muted);
   overflow-wrap: anywhere;
 }
@@ -850,7 +860,7 @@ fieldset {
   margin-top: 12px;
 }
 .badge {
-  font-size: 9px;
+  font-size: var(--type-caption);
   color: var(--accent);
 }
 .mobile-panes {
@@ -867,7 +877,7 @@ fieldset {
 .mobile-note {
   text-align: center;
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-caption);
 }
 [data-theme="light"] {
   --bg: #f4f5f2;
@@ -910,16 +920,16 @@ fieldset {
     gap: 10px;
   }
   h1 {
-    font-size: 30px;
+    font-size: var(--type-title);
   }
   .mode-badge {
     display: none;
   }
   .subtitle {
-    line-height: 1.7;
+    line-height: var(--leading-body);
   }
   .brand {
-    font-size: 22px;
+    font-size: var(--type-brand-compact);
     gap: 8px;
     margin-right: 12px;
     letter-spacing: -0.6px;
@@ -935,7 +945,7 @@ fieldset {
     min-height: 380px;
   }
   .empty-dashboard h2 {
-    font-size: 22px;
+    font-size: var(--type-title);
   }
   footer > span:nth-child(2) {
     display: none;
@@ -959,3 +969,4 @@ fieldset {
     scroll-behavior: auto !important;
   }
 }
+

@@ -1,0 +1,105 @@
+/* Load after legacy styles. Explicit component selectors resist broad legacy rules. */
+.ui-text.ui-text {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--type-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+  letter-spacing: var(--tracking-body);
+  overflow-wrap: anywhere;
+}
+.ui-text.ui-text-title {
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-title);
+  letter-spacing: var(--tracking-title);
+}
+.ui-text.ui-text-section {
+  font-size: var(--type-section);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-section);
+}
+.ui-text.ui-text-label { font-weight: var(--weight-semibold); }
+.ui-text.ui-text-support { font-size: var(--type-support); color: var(--muted); }
+.ui-text.ui-text-caption { font-size: var(--type-caption); color: var(--muted); }
+button.ui-button {
+  min-height: var(--control-height);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  gap: var(--space-2);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel-high);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-body);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+button.ui-button-primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.ui-button-primary:hover:not(:disabled) { background: var(--accent); color: var(--accent-text); border-color: var(--text); }
+button.ui-button-quiet { background: transparent; border-color: transparent; }
+button.ui-button-danger { color: var(--danger-text); }
+button.ui-button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.ui-button[aria-busy="true"] { cursor: progress; }
+button.ui-icon-button { width: var(--control-height); padding: var(--space-2); flex: 0 0 var(--control-height); }
+.ui-field { display: grid; gap: var(--space-2); min-width: 0; }
+.ui-field > .ui-field-label {
+  display: block;
+  margin: 0;
+  color: var(--text);
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-body);
+}
+.ui-field .ui-control {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--type-body);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-body);
+}
+.ui-field .ui-control:disabled { opacity: 0.5; cursor: not-allowed; }
+.ui-field .ui-control[aria-invalid="true"] { border-color: var(--danger-text); }
+.ui-field > .ui-field-hint, .ui-field > .ui-field-error {
+  margin: 0;
+  font-size: var(--type-support);
+  line-height: var(--leading-body);
+  color: var(--muted);
+}
+.ui-field > .ui-field-error { color: var(--danger-text); }
+.ui-button:focus-visible, .ui-field .ui-control:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+.ui-notice {
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  overflow-wrap: anywhere;
+}
+.ui-notice-error { border-color: var(--danger-text); }
+.ui-notice-success { border-color: var(--accent); }
+.ui-section { min-width: 0; }
+.ui-section > .ui-text-support { margin-top: var(--space-2); }
+.ui-section-content { display: grid; gap: var(--space-4); margin-top: var(--space-4); }
+.ui-section + .ui-section { margin-top: var(--space-6); }
+
+.ui-text.settings-page-title { margin-bottom: var(--space-6); }
+
+form > .ui-field + .ui-field { margin-top: var(--space-4); }
+button.ui-button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }

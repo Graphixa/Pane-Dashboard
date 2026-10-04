@@ -11,6 +11,7 @@ import { Config, clone, sanitiseExport, validate } from "./model";
 import { appearanceStyle } from "./appearance";
 import AppearanceEditor from "./AppearanceEditor";
 import Modal from "./Modal";
+import { Button, Text } from "./design/components";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
@@ -126,9 +127,9 @@ export default function Settings({
           ))}
         </nav>
         <div className="settings-content" ref={content}>
-          <h2 className="settings-page-title">
+          <Text as="h2" variant="title" className="settings-page-title">
             {pages.find(([id]) => id === page)?.[1]}
-          </h2>
+          </Text>
           {readOnly && (
             <p className="notice">
               Use a wider desktop screen to change settings. Backups are still
@@ -261,19 +262,18 @@ export default function Settings({
           )}
         </div>
         <div className="settings-footer-actions">
-          <button type="button" onClick={requestClose}>
-            Cancel
-          </button>
-          <button
+          <Button onClick={requestClose}>Cancel</Button>
+          <Button
             type="submit"
             form="settings-form"
-            className="primary"
+            variant="primary"
             disabled={readOnly || busy}
           >
             Apply settings
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>
   );
 }
+
