@@ -211,6 +211,39 @@ describe("global appearance", () => {
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
   });
+  it("offers a Ken Burns toggle for custom images, off when first selected", () => {
+    const apply = vi.fn(),
+      c = config();
+    c.appearance.background = {
+      ...defaultBackground,
+      kind: "gradient",
+      image: png,
+      motion: true,
+    };
+    render(
+      <Settings
+        config={c}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    const toggle = screen.getByRole("switch", { name: "Ken Burns effect" });
+    expect(toggle).toHaveProperty("checked", false);
+    fireEvent.click(toggle);
+    fireEvent.change(screen.getByRole("slider", { name: "Speed" }), {
+      target: { value: "75" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
+      kind: "image",
+      motion: true,
+      intensity: 75,
+    });
+  });
   it("does not persist a cancelled settings draft", () => {
     const apply = vi.fn(),
       close = vi.fn();
@@ -256,9 +289,12 @@ describe("global appearance", () => {
           ...defaultBackground,
           kind: "image",
           image: "https://example.com/broken.png",
+          motion: true,
         }}
       />,
     );
+    expect(r.container.querySelector(".motion-paused")).toBeNull();
+    expect(r.container.querySelector(".scene-image")).not.toBeNull();
     fireEvent.error(r.container.querySelector("img")!);
     expect(r.container.querySelector("img")).toBeNull();
   });

@@ -638,7 +638,12 @@ export default function AppearanceEditor({
               type="button"
               className="background-swatch"
               aria-pressed={b.kind === "image"}
-              onClick={() => background({ kind: "image" })}
+              onClick={() =>
+                background({
+                  kind: "image",
+                  ...(b.kind !== "image" ? { motion: false } : {}),
+                })
+              }
             >
               <span
                 className={`swatch-custom ${b.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
@@ -676,6 +681,25 @@ export default function AppearanceEditor({
                   <option value="bottom">Bottom</option>
                 </select>
               </label>
+              <label className="setting-switch">
+                <span>Ken Burns effect</span>
+                <input
+                  role="switch"
+                  type="checkbox"
+                  checked={b.motion}
+                  onChange={(e) => background({ motion: e.target.checked })}
+                />
+              </label>
+              {b.motion && (
+                <Range
+                  label="Speed"
+                  value={b.intensity}
+                  min={0}
+                  max={100}
+                  unit="%"
+                  change={(intensity) => background({ intensity })}
+                />
+              )}
             </div>
           )}
         </Section>

@@ -35,7 +35,10 @@ export default function Background({
       style={
         {
           "--motion-strength": b.intensity / 100,
-          "--motion-duration": `${70 - b.intensity * 0.4}s`,
+          "--motion-duration":
+            b.kind === "image"
+              ? `${80 - b.intensity * 0.74}s`
+              : `${70 - b.intensity * 0.4}s`,
           background:
             b.kind === "none"
               ? "var(--bg)"
