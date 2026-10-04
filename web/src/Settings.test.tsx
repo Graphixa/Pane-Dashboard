@@ -244,4 +244,40 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
   });
+  it("drags from the Settings title bar without starting from Close", () => {
+    const { container } = setup();
+    const dialog = container.querySelector("dialog") as HTMLDialogElement;
+    const title = container.querySelector(".modal-title") as HTMLElement;
+    expect(title.classList.contains("modal-title-draggable")).toBe(true);
+    title.setPointerCapture = vi.fn();
+    title.hasPointerCapture = vi.fn(() => true);
+    title.releasePointerCapture = vi.fn();
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 80,
+      top: 80,
+      left: 100,
+      right: 500,
+      bottom: 600,
+      width: 400,
+      height: 520,
+      toJSON: () => ({}),
+    });
+    fireEvent.pointerDown(title, {
+      button: 0,
+      pointerId: 1,
+      clientX: 200,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(title, { pointerId: 1, clientX: 260, clientY: 140 });
+    expect(dialog.style.transform).toContain("translate(60px, 40px)");
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Close" }), {
+      button: 0,
+      pointerId: 2,
+      clientX: 480,
+      clientY: 100,
+    });
+    fireEvent.pointerMove(title, { pointerId: 2, clientX: 400, clientY: 200 });
+    expect(dialog.style.transform).toContain("translate(60px, 40px)");
+  });
 });

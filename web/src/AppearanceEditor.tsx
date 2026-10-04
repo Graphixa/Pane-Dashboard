@@ -10,6 +10,7 @@ import {
   defaultUiFont,
   gradients,
   migrateBackground,
+  normaliseGlass,
   overlayForTheme,
   accentPresets,
   paletteForThemeChange,
@@ -306,12 +307,14 @@ export default function AppearanceEditor({
   const accentHeadingId = useId();
   const a = draft.appearance,
     b = migrateBackground(a.background ?? defaultBackground, a.theme),
-    g = a.glass ?? defaultGlass,
+    g = normaliseGlass(a.glass ?? defaultGlass),
     p = a.palette ?? palettes[a.theme];
   const header = (update: Partial<Config["dashboard"]>) =>
     change({ ...draft, dashboard: { ...draft.dashboard, ...update } });
   const appearance = (update: Partial<Config["appearance"]>) =>
     change({ ...draft, appearance: { ...a, ...update } });
+  const setGlass = (update: Partial<typeof g>) =>
+    appearance({ glass: { ...g, ...update } });
   const background = (update: Partial<BackgroundSettings>) =>
     appearance({ background: { ...b, ...update } });
   const setTheme = (theme: "dark" | "light") =>
@@ -503,7 +506,7 @@ export default function AppearanceEditor({
           title="Pane finish"
           description={
             g.mode === "glass"
-              ? "Clear frosted panes that follow the theme tone; text and icons stay opaque."
+              ? "Clear panes with edge refraction where supported; text and icons stay opaque. Try low opacity and blur around 16–20 px."
               : "Opaque surfaces for a clear, uniform look."
           }
         >
@@ -517,7 +520,7 @@ export default function AppearanceEditor({
                 type="button"
                 key={mode}
                 aria-pressed={g.mode === mode}
-                onClick={() => appearance({ glass: { ...g, mode } })}
+                onClick={() => setGlass({ mode })}
               >
                 {mode === "solid" ? "Solid" : "Glass"}
               </button>
@@ -527,7 +530,7 @@ export default function AppearanceEditor({
         {g.mode === "glass" && (
           <Section
             title="Fine tuning"
-            description="Opacity and blur for every pane."
+            description="Tune frost and refraction. Displacement needs frost to bend what is behind the pane — below 6 px is raised automatically when displacement is on."
           >
             <div className="settings-control-group">
               <Range
@@ -536,7 +539,7 @@ export default function AppearanceEditor({
                 min={0}
                 max={100}
                 unit="%"
-                change={(opacity) => appearance({ glass: { ...g, opacity } })}
+                change={(opacity) => setGlass({ opacity })}
               />
               <Range
                 label="Blur"
@@ -544,7 +547,37 @@ export default function AppearanceEditor({
                 min={0}
                 max={24}
                 unit="px"
-                change={(blur) => appearance({ glass: { ...g, blur } })}
+                change={(blur) => setGlass({ blur })}
+              />
+              <Range
+                label="Saturation"
+                value={g.saturation}
+                min={100}
+                max={200}
+                unit="%"
+                change={(saturation) => setGlass({ saturation })}
+              />
+              <Range
+                label="Displacement"
+                value={g.displacement}
+                min={0}
+                max={150}
+                change={(displacement) => setGlass({ displacement })}
+              />
+              <Range
+                label="Chromatic aberration"
+                value={g.aberration}
+                min={0}
+                max={5}
+                change={(aberration) => setGlass({ aberration })}
+              />
+              <Range
+                label="Elasticity"
+                value={g.elasticity}
+                min={0}
+                max={100}
+                unit="%"
+                change={(elasticity) => setGlass({ elasticity })}
               />
             </div>
           </Section>

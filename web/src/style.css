@@ -676,6 +676,17 @@ dialog::backdrop {
   justify-content: space-between;
   margin-bottom: 18px;
 }
+.modal-title-draggable {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.modal-title-draggable:active {
+  cursor: grabbing;
+}
+.modal-title-draggable .icon-button {
+  cursor: pointer;
+}
 .modal-title h2 {
   font-size: 22px;
   font-weight: 550;

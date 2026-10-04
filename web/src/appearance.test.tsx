@@ -133,7 +133,9 @@ describe("global appearance", () => {
     expect(dark["--surface-fill"]).not.toContain("26,34,46");
     expect(dark["--surface-filter"]).toContain("20px");
     expect(dark["--surface-filter"]).toContain("saturate(140%)");
-    expect(dark["--surface-highlight"]).toContain("inset 0 1px 0");
+    expect(dark["--surface-depth"]).toContain("14px 44px");
+    expect(dark["--surface-depth"]).not.toContain("inset");
+    expect(dark["--surface-highlight"]).toBe("var(--surface-depth)");
     expect(dark["--surface-shine"]).toContain("linear-gradient");
     expect(dark["--surface-rim"]).toContain("linear-gradient");
     expect(dark.opacity).toBeUndefined();
@@ -150,6 +152,18 @@ describe("global appearance", () => {
     expect(Number(light["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0])).toBeGreaterThan(
       Number(dark["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0]),
     );
+  });
+  it("floors frost when displacement is on so refraction warps the backdrop", () => {
+    const style = appearanceStyle({
+      theme: "dark",
+      glass: { mode: "glass", opacity: 0, blur: 0, displacement: 68 },
+    }) as Record<string, string>;
+    expect(style["--surface-filter"]).toContain("blur(6px)");
+    const frosted = appearanceStyle({
+      theme: "dark",
+      glass: { mode: "glass", opacity: 0, blur: 18, displacement: 68 },
+    }) as Record<string, string>;
+    expect(frosted["--surface-filter"]).toContain("blur(18px)");
   });
   it("keeps solid finish free of glass rim tokens", () => {
     const style = appearanceStyle({

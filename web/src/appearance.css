@@ -86,6 +86,19 @@
     animation: none;
   }
 }
+.glass-filter-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pane-glass-warp,
+.pane-glass-tint,
+.pane-glass-shine,
+.pane-glass-rim {
+  display: none;
+}
 @supports (
   (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
 ) {
@@ -100,34 +113,64 @@
       inset 0 0 0 2px var(--accent),
       var(--surface-highlight, 0 0 0 transparent);
   }
-  /* Clear frost + face shine + one thin gradient rim (no blend-mode stacks). */
+  /*
+   * Layered glass: empty warp = backdrop + SVG refraction;
+   * tint/shine/rims stay unfiltered. No inset bevels (those read as metal).
+   */
   [data-pane-style="glass"] .pane {
     position: relative;
     overflow: hidden;
-    background: var(--surface-fill, var(--panel));
-    border: 1px solid var(--surface-edge, rgb(255 255 255 / 0.14));
-    -webkit-backdrop-filter: var(--surface-filter, none);
-    backdrop-filter: var(--surface-filter, none);
+    background: transparent;
+    border: 0;
     box-shadow: var(--surface-highlight, 0 0 0 transparent);
   }
-  [data-pane-style="glass"] .pane::before {
-    content: "";
+  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-warp,
+  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-tint,
+  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-shine,
+  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-rim,
+  [data-pane-style="glass"] .pane.pane-glass-elastic > .app-grid {
+    will-change: transform;
+    transition: transform 0.12s ease-out;
+  }
+  [data-pane-style="glass"] .pane-glass-warp {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background: transparent;
+    -webkit-backdrop-filter: var(--surface-filter, none);
+    backdrop-filter: var(--surface-filter, none);
+  }
+  [data-pane-style="glass"] .pane-glass-tint {
+    display: block;
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
     z-index: 1;
+    background: var(--surface-fill, var(--panel));
+  }
+  [data-pane-style="glass"] .pane-glass-shine {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 2;
     background: var(--surface-shine, none);
   }
-  [data-pane-style="glass"] .pane::after {
-    content: "";
+  [data-pane-style="glass"] .pane-glass-rim {
+    display: block;
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
-    z-index: 1;
-    padding: 1px;
+    z-index: 2;
+    padding: 1.5px;
     background: var(--surface-rim, none);
+    /* Gradient + mix-blend only — inset shadows read as carved metal. */
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
@@ -137,12 +180,20 @@
     -webkit-mask-composite: xor;
     mask-composite: exclude;
   }
+  [data-pane-style="glass"] .pane-glass-rim-screen {
+    mix-blend-mode: screen;
+    opacity: 0.2;
+  }
+  [data-pane-style="glass"] .pane-glass-rim-overlay {
+    mix-blend-mode: overlay;
+    opacity: 0.9;
+  }
+  /* Refraction filter is applied per-pane (sized map) via GlassPaneLayers. */
   [data-pane-style="glass"] .pane > .app-grid {
     position: relative;
-    z-index: 2;
+    z-index: 3;
   }
   [data-pane-style="glass"] .pane-frame.focused .pane {
-    border-color: color-mix(in srgb, var(--accent) 65%, white);
     box-shadow:
       inset 0 0 0 2px var(--accent),
       var(--surface-depth, 0 0 0 transparent);
@@ -155,9 +206,16 @@
     backdrop-filter: none;
     border-color: transparent;
   }
-  [data-pane-style="glass"] .pane::before,
-  [data-pane-style="glass"] .pane::after {
-    content: none;
+  [data-pane-style="glass"] .pane-glass-warp,
+  [data-pane-style="glass"] .pane-glass-tint,
+  [data-pane-style="glass"] .pane-glass-shine,
+  [data-pane-style="glass"] .pane-glass-rim {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pane-style="glass"] .pane-glass-warp {
+    filter: none !important;
   }
 }
 .shell .primary {

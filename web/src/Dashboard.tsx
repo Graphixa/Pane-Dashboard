@@ -1,6 +1,10 @@
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useState } from "react";
 import GridLayout, { useContainerWidth, type Layout } from "react-grid-layout";
-import { getCompactor, defaultConstraints } from "react-grid-layout/core";
+import {
+  absoluteStrategy,
+  getCompactor,
+  defaultConstraints,
+} from "react-grid-layout/core";
 import {
   Plus,
   Hammer,
@@ -33,12 +37,14 @@ import {
 import { tileResize, gridWidth, paneSnap } from "./layout";
 import { HeaderBrand } from "./BrandLogo";
 import Background from "./Background";
-import { appearanceStyle, uiFontFamily } from "./appearance";
+import { appearanceStyle, normaliseGlass, uiFontFamily } from "./appearance";
 import PaneTitle from "./PaneTitle";
 import { iconURL } from "./icons";
 import { useConfig } from "./useConfig";
 import { AppEditor, PaneEditor } from "./Editors";
 import Settings from "./Settings";
+import GlassPaneLayers from "./GlassPaneLayers";
+import { useGlassQuality } from "./useGlassQuality";
 const compactor = getCompactor(null, false, true);
 type Editor =
   | { type: "app"; paneId: string; app?: App; col: number; row: number }
@@ -94,7 +100,41 @@ function DashboardView({
     [dragged, setDragged] = useState<string | null>(null);
   const [preview, setPreview] = useState<Layout | null>(null);
   const [settingsPreview, setSettingsPreview] = useState<Config | null>(null);
+  const [glassInteracting, setGlassInteracting] = useState(false);
+  const [glassVisible, setGlassVisible] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [glassMouse, setGlassMouse] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const display = settingsPreview ?? config;
+  const glass = normaliseGlass(display.appearance.glass ?? { mode: "solid", opacity: 55, blur: 16 });
+  const glassMode = glass.mode === "glass";
+  const onGlassVisible = useCallback((id: string, visible: boolean) => {
+    setGlassVisible((prev) => {
+      const has = prev.has(id);
+      if (visible === has) return prev;
+      const next = new Set(prev);
+      if (visible) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const glassRefract = useGlassQuality({
+    glassMode,
+    visibleCount: glassVisible.size,
+    interacting: glassInteracting,
+  });
+  useEffect(() => {
+    if (!glassMode || glass.elasticity <= 0 || glassInteracting) {
+      setGlassMouse(null);
+      return;
+    }
+    const onMove = (e: MouseEvent) =>
+      setGlassMouse({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
+  }, [glassMode, glass.elasticity, glassInteracting]);
   const width = gridWidth(
     display.dashboard.widthMode === "full"
       ? availableWidth
@@ -295,6 +335,18 @@ function DashboardView({
           )}
         </div>
         <div className="pane">
+          {glassMode && (
+            <GlassPaneLayers
+              paneId={p.id}
+              onVisibleChange={onGlassVisible}
+              mouse={glassMouse}
+              elasticity={glass.elasticity}
+              elasticEnabled={!glassInteracting && glassRefract !== "off"}
+              refract={glassRefract}
+              displacement={glass.displacement}
+              aberration={glass.aberration}
+            />
+          )}
           <div
             className={`app-grid ${mobile ? "mobile-apps" : ""}`}
             style={
@@ -355,6 +407,7 @@ function DashboardView({
     <div
       className="shell"
       data-pane-style={display.appearance.glass?.mode ?? "solid"}
+      data-glass-refract={glassMode ? glassRefract : "off"}
       style={
         {
           ...appearanceStyle(display.appearance),
@@ -513,6 +566,9 @@ function DashboardView({
               <div className="grid-container" style={{ width }}>
                 <GridLayout
                   width={width}
+                  // top/left — CSS transforms on grid items isolate backdrop-filter
+                  // from the page background, so glass frost/refraction cannot sample it.
+                  positionStrategy={absoluteStrategy}
                   layout={config.items.map((p) => ({
                     i: p.id,
                     ...frame(p.layout),
@@ -535,15 +591,23 @@ function DashboardView({
                     bounded: false,
                   }}
                   resizeConfig={{ enabled: editing, handles: ["e", "s", "se"] }}
-                  onDragStop={updateLayout}
+                  onDragStop={(layout) => {
+                    setGlassInteracting(false);
+                    updateLayout(layout);
+                  }}
                   onDragStart={(_layout, _old, item) => {
+                    setGlassInteracting(true);
                     if (item) setSelected(item.i);
                   }}
                   onResizeStart={(_layout, _old, item) => {
+                    setGlassInteracting(true);
                     if (item) setSelected(item.i);
                   }}
                   onResize={(layout) => setPreview(layout)}
-                  onResizeStop={updateLayout}
+                  onResizeStop={(layout) => {
+                    setGlassInteracting(false);
+                    updateLayout(layout);
+                  }}
                 >
                   {config.items.map((p) => (
                     <div

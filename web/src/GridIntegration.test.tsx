@@ -101,9 +101,10 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   fireEvent.mouseDown(move, { clientX: 50, clientY: 10, button: 0 });
   fireEvent.mouseMove(document, { clientX: 50, clientY: 31, buttons: 1 });
   fireEvent.mouseUp(document, { clientX: 50, clientY: 31 });
+  // Absolute strategy (top/left) so glass backdrop-filter can sample the page.
   expect(
     (result.container.querySelector(".pane-grid-item") as HTMLElement).style
-      .transform,
+      .top,
   ).toContain("32px");
   cleanup();
   width = 390;

@@ -16,7 +16,31 @@ export type Background = {
   motion: boolean;
   intensity: number;
 };
-export type Glass = { mode: "solid" | "glass"; opacity: number; blur: number };
+export type Glass = {
+  mode: "solid" | "glass";
+  opacity: number;
+  blur: number;
+  /** Edge distortion intensity for the shared SVG displacement filter. */
+  displacement?: number;
+  /** RGB split at edges (0–5). */
+  aberration?: number;
+  /** Backdrop saturation percent (100–200). */
+  saturation?: number;
+  /** Cursor reach strength 0–100 (maps to 0–1). */
+  elasticity?: number;
+};
+export type GlassTuning = Required<
+  Pick<
+    Glass,
+    | "mode"
+    | "opacity"
+    | "blur"
+    | "displacement"
+    | "aberration"
+    | "saturation"
+    | "elasticity"
+  >
+>;
 export type Palette = {
   background: string;
   surface: string;
@@ -58,7 +82,27 @@ export const defaultBackground: Background = {
   motion: true,
   intensity: 40,
 };
-export const defaultGlass: Glass = { mode: "solid", opacity: 70, blur: 14 };
+// Defaults favour a visible edge bend with moderate frost and saturation.
+export const defaultGlass: GlassTuning = {
+  mode: "solid",
+  opacity: 55,
+  blur: 16,
+  displacement: 89,
+  aberration: 2,
+  saturation: 140,
+  elasticity: 0,
+};
+export function normaliseGlass(g: Glass): GlassTuning {
+  return {
+    mode: g.mode,
+    opacity: g.opacity,
+    blur: g.blur,
+    displacement: g.displacement ?? defaultGlass.displacement,
+    aberration: g.aberration ?? defaultGlass.aberration,
+    saturation: g.saturation ?? defaultGlass.saturation,
+    elasticity: g.elasticity ?? defaultGlass.elasticity,
+  };
+}
 export const palettes: Record<"dark" | "light", Palette> = {
   dark: {
     background: "#111720",
@@ -292,11 +336,24 @@ export function validateVisuals(a: AppearanceOptions) {
       throw Error("Invalid background settings or image.");
   }
   if (a.glass !== undefined) {
-    fields(a.glass, ["mode", "opacity", "blur"]);
+    a.glass = normaliseGlass(a.glass);
+    fields(a.glass, [
+      "mode",
+      "opacity",
+      "blur",
+      "displacement",
+      "aberration",
+      "saturation",
+      "elasticity",
+    ]);
     if (
       !["solid", "glass"].includes(a.glass.mode) ||
       !within(a.glass.opacity, 0, 100) ||
-      !within(a.glass.blur, 0, 24)
+      !within(a.glass.blur, 0, 24) ||
+      !within(a.glass.displacement, 0, 150) ||
+      !within(a.glass.aberration, 0, 5) ||
+      !within(a.glass.saturation, 100, 200) ||
+      !within(a.glass.elasticity, 0, 100)
     )
       throw Error("Invalid global glass settings.");
   }
@@ -329,7 +386,7 @@ export function glassFill(theme: "dark" | "light", opacity: number) {
 
 export function appearanceStyle(a: AppearanceOptions): CSSProperties {
   const p = a.palette ?? palettes[a.theme],
-    g = a.glass ?? defaultGlass;
+    g = normaliseGlass(a.glass ?? defaultGlass);
   const mix = (x: string, y: string, ratio: number) => {
     const b = rgb(y);
     return `rgb(${rgb(x)
@@ -353,43 +410,30 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
     "--glass-fill": clear,
     "--glass-blur": `${g.blur}px`,
     "--surface-fill": g.mode === "glass" ? clear : p.surface,
+    // Base frost when displacing so the filter warps backdrop, not the AA edge.
     "--surface-filter":
       g.mode === "glass"
-        ? `blur(${g.blur}px) saturate(140%)`
+        ? `blur(${g.displacement > 0 ? Math.max(g.blur, 6) : g.blur}px) saturate(${g.saturation}%)`
         : "none",
-    "--surface-edge":
-      g.mode === "glass"
-        ? a.theme === "light"
-          ? "rgb(255 255 255 / 0.42)"
-          : "rgb(255 255 255 / 0.14)"
-        : "transparent",
+    // Outer depth only — inset bevels read as embossed metal, not liquid glass.
+    "--surface-edge": "transparent",
     "--surface-depth":
       g.mode === "glass"
         ? a.theme === "light"
-          ? "0 12px 32px rgb(0 0 0 / 0.12)"
-          : "0 14px 40px rgb(0 0 0 / 0.3)"
+          ? "0 10px 36px rgb(0 0 0 / 0.12)"
+          : "0 14px 44px rgb(0 0 0 / 0.28)"
         : "0 0 0 transparent",
     "--surface-highlight":
-      g.mode === "glass"
-        ? [
-            "inset 0 1px 0 rgb(255 255 255 / 0.34)",
-            "inset 0 -1px 0 rgb(255 255 255 / 0.06)",
-            "inset 1px 0 0 rgb(255 255 255 / 0.14)",
-            "inset -1px 0 0 rgb(255 255 255 / 0.08)",
-            "var(--surface-depth)",
-          ].join(", ")
-        : "0 0 0 transparent",
+      g.mode === "glass" ? "var(--surface-depth)" : "0 0 0 transparent",
     "--surface-shine":
       g.mode === "glass"
         ? a.theme === "light"
-          ? "linear-gradient(150deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.12) 30%, transparent 55%, rgb(255 255 255 / 0.08) 100%)"
-          : "linear-gradient(150deg, rgb(255 255 255 / 0.26) 0%, rgb(255 255 255 / 0.06) 28%, transparent 52%, rgb(255 230 200 / 0.07) 100%)"
+          ? "linear-gradient(155deg, rgb(255 255 255 / 0.34) 0%, rgb(255 255 255 / 0.08) 32%, transparent 58%)"
+          : "linear-gradient(155deg, rgb(255 255 255 / 0.16) 0%, rgb(255 255 255 / 0.04) 32%, transparent 58%)"
         : "none",
     "--surface-rim":
       g.mode === "glass"
-        ? a.theme === "light"
-          ? "linear-gradient(135deg, rgb(255 255 255 / 0.7) 0%, rgb(255 255 255 / 0.18) 40%, rgb(255 255 255 / 0.35) 100%)"
-          : "linear-gradient(135deg, rgb(255 255 255 / 0.42) 0%, rgb(255 255 255 / 0.08) 38%, rgb(255 220 180 / 0.2) 100%)"
+        ? "linear-gradient(135deg, rgb(255 255 255 / 0) 0%, rgb(255 255 255 / 0.28) 34%, rgb(255 255 255 / 0.5) 62%, rgb(255 255 255 / 0) 100%)"
         : "none",
     color: p.text,
     colorScheme: a.theme,

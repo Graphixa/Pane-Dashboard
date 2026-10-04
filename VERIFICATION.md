@@ -14,7 +14,7 @@
 - `go test ./...` and `go vet ./...` pass. No backend schema or dependency changes.
 - General now includes Dashboard name and Logo; Appearance contains Theme, Colours, Background and Typography; Panes owns the global finish. Updated previews occupy normal flow and the action bar stays outside the scrolling content.
 - Browser visual QA remains outstanding: Chromium was unavailable and its download failed in this workspace. Review both themes, wide PNG logos, long names, short viewport heights and responsive navigation on the target browser.
-- Glass finish uses a clear theme-toned frost (not solid surface paint), one backdrop-filter per pane, soft shine and inset edge highlights (#2); reduced-transparency falls back to solid surfaces. Deferred: optional glass hue control, animated backgrounds #1, Google Fonts #3.
+- Glass finish uses always-on layered liquid glass: empty warp + gated per-pane SVG edge refraction, unfiltered tint, shine/rim (#2). Quality ladder covers capability, reduced motion/transparency, visibility, edit drag/resize and many-pane lite mode. Displacement maps are original Pane liquid-glass lip maps generated per pane size (centre-magnifying rim, edge-masked chroma). Deferred: optional glass hue control, animated backgrounds #1, Google Fonts #3.
 
 ## Global appearance and portable uploads
 

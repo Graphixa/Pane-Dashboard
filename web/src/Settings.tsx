@@ -108,6 +108,7 @@ export default function Settings({
       close={requestClose}
       className="settings-dialog"
       style={appearanceStyle(draft.appearance)}
+      draggable
     >
       <div className="settings-body">
         <nav className="settings-sidebar" aria-label="Settings sections">
