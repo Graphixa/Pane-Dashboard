@@ -117,7 +117,7 @@ func TestGlobalAppearanceValidation(t *testing.T) {
 	for _, mutate := range []func(*Config){
 		func(c *Config) { c.Dashboard.Branding = "anything" },
 		func(c *Config) { c.Dashboard.BuiltinIcon = "anything" },
-		func(c *Config) { c.Appearance.Glass = &Glass{Mode: "glass", Opacity: 10, Blur: 12} },
+		func(c *Config) { c.Appearance.Glass = &Glass{Mode: "glass", Opacity: -1, Blur: 12} },
 		func(c *Config) { c.Appearance.Glass = &Glass{Mode: "glass", Opacity: 70, Blur: 25} },
 		func(c *Config) {
 			c.Appearance.Background = &Background{Kind: "image", Preset: "ocean", Position: "center"}

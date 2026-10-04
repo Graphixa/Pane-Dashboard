@@ -295,7 +295,7 @@ export function validateVisuals(a: AppearanceOptions) {
     fields(a.glass, ["mode", "opacity", "blur"]);
     if (
       !["solid", "glass"].includes(a.glass.mode) ||
-      !within(a.glass.opacity, 30, 100) ||
+      !within(a.glass.opacity, 0, 100) ||
       !within(a.glass.blur, 0, 24)
     )
       throw Error("Invalid global glass settings.");
@@ -318,6 +318,15 @@ export function validateVisuals(a: AppearanceOptions) {
       );
   }
 }
+/** Clear glass wash: theme tone only, never the solid surface paint. */
+export function glassFill(theme: "dark" | "light", opacity: number) {
+  const t = Math.min(1, Math.max(0, opacity / 100));
+  // 0% = clear wash (testing); higher values add theme-toned frost.
+  return theme === "light"
+    ? `rgba(255,255,255,${(t * 0.72).toFixed(3)})`
+    : `rgba(255,255,255,${(t * 0.32).toFixed(3)})`;
+}
+
 export function appearanceStyle(a: AppearanceOptions): CSSProperties {
   const p = a.palette ?? palettes[a.theme],
     g = a.glass ?? defaultGlass;
@@ -327,6 +336,7 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
       .map((v, i) => Math.round(v * (1 - ratio) + b[i] * ratio))
       .join(",")})`;
   };
+  const clear = glassFill(a.theme, g.opacity);
   return {
     "--ui-font": uiFontFamily(a.fontFamily),
     "--bg": p.background,
@@ -340,18 +350,47 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
       contrast(p.accent, "#000000") >= contrast(p.accent, "#ffffff")
         ? "#000000"
         : "#ffffff",
-    "--glass-fill": `rgba(${rgb(p.surface).join(",")},${g.opacity / 100})`,
+    "--glass-fill": clear,
     "--glass-blur": `${g.blur}px`,
-    "--surface-fill":
-      g.mode === "glass"
-        ? `rgba(${rgb(p.surface).join(",")},${g.opacity / 100})`
-        : p.surface,
+    "--surface-fill": g.mode === "glass" ? clear : p.surface,
     "--surface-filter":
-      g.mode === "glass" ? `blur(${g.blur}px) saturate(1.2)` : "none",
+      g.mode === "glass"
+        ? `blur(${g.blur}px) saturate(140%)`
+        : "none",
+    "--surface-edge":
+      g.mode === "glass"
+        ? a.theme === "light"
+          ? "rgb(255 255 255 / 0.42)"
+          : "rgb(255 255 255 / 0.14)"
+        : "transparent",
+    "--surface-depth":
+      g.mode === "glass"
+        ? a.theme === "light"
+          ? "0 12px 32px rgb(0 0 0 / 0.12)"
+          : "0 14px 40px rgb(0 0 0 / 0.3)"
+        : "0 0 0 transparent",
     "--surface-highlight":
       g.mode === "glass"
-        ? "inset 0 1px 0 #ffffff45, 0 12px 32px #0002"
+        ? [
+            "inset 0 1px 0 rgb(255 255 255 / 0.34)",
+            "inset 0 -1px 0 rgb(255 255 255 / 0.06)",
+            "inset 1px 0 0 rgb(255 255 255 / 0.14)",
+            "inset -1px 0 0 rgb(255 255 255 / 0.08)",
+            "var(--surface-depth)",
+          ].join(", ")
         : "0 0 0 transparent",
+    "--surface-shine":
+      g.mode === "glass"
+        ? a.theme === "light"
+          ? "linear-gradient(150deg, rgb(255 255 255 / 0.5) 0%, rgb(255 255 255 / 0.12) 30%, transparent 55%, rgb(255 255 255 / 0.08) 100%)"
+          : "linear-gradient(150deg, rgb(255 255 255 / 0.26) 0%, rgb(255 255 255 / 0.06) 28%, transparent 52%, rgb(255 230 200 / 0.07) 100%)"
+        : "none",
+    "--surface-rim":
+      g.mode === "glass"
+        ? a.theme === "light"
+          ? "linear-gradient(135deg, rgb(255 255 255 / 0.7) 0%, rgb(255 255 255 / 0.18) 40%, rgb(255 255 255 / 0.35) 100%)"
+          : "linear-gradient(135deg, rgb(255 255 255 / 0.42) 0%, rgb(255 255 255 / 0.08) 38%, rgb(255 220 180 / 0.2) 100%)"
+        : "none",
     color: p.text,
     colorScheme: a.theme,
   } as CSSProperties;

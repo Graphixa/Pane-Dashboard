@@ -503,7 +503,7 @@ export default function AppearanceEditor({
           title="Pane finish"
           description={
             g.mode === "glass"
-              ? "Frosted surfaces with fully opaque text and icons."
+              ? "Clear frosted panes that follow the theme tone; text and icons stay opaque."
               : "Opaque surfaces for a clear, uniform look."
           }
         >
@@ -527,19 +527,19 @@ export default function AppearanceEditor({
         {g.mode === "glass" && (
           <Section
             title="Fine tuning"
-            description="Transparency and blur for every pane."
+            description="Opacity and blur for every pane."
           >
             <div className="settings-control-group">
               <Range
-                label="Pane opacity"
+                label="Opacity"
                 value={g.opacity}
-                min={30}
+                min={0}
                 max={100}
                 unit="%"
                 change={(opacity) => appearance({ glass: { ...g, opacity } })}
               />
               <Range
-                label="Glass blur"
+                label="Blur"
                 value={g.blur}
                 min={0}
                 max={24}

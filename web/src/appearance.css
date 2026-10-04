@@ -91,8 +91,6 @@
 ) {
   .pane {
     background: var(--surface-fill, var(--panel));
-    -webkit-backdrop-filter: var(--surface-filter, none);
-    backdrop-filter: var(--surface-filter, none);
     box-shadow:
       inset 0 0 0 1px var(--line),
       var(--surface-highlight, 0 0 0 transparent);
@@ -102,12 +100,64 @@
       inset 0 0 0 2px var(--accent),
       var(--surface-highlight, 0 0 0 transparent);
   }
+  /* Clear frost + face shine + one thin gradient rim (no blend-mode stacks). */
+  [data-pane-style="glass"] .pane {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-fill, var(--panel));
+    border: 1px solid var(--surface-edge, rgb(255 255 255 / 0.14));
+    -webkit-backdrop-filter: var(--surface-filter, none);
+    backdrop-filter: var(--surface-filter, none);
+    box-shadow: var(--surface-highlight, 0 0 0 transparent);
+  }
+  [data-pane-style="glass"] .pane::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+    background: var(--surface-shine, none);
+  }
+  [data-pane-style="glass"] .pane::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+    padding: 1px;
+    background: var(--surface-rim, none);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  [data-pane-style="glass"] .pane > .app-grid {
+    position: relative;
+    z-index: 2;
+  }
+  [data-pane-style="glass"] .pane-frame.focused .pane {
+    border-color: color-mix(in srgb, var(--accent) 65%, white);
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      var(--surface-depth, 0 0 0 transparent);
+  }
 }
 @media (prefers-reduced-transparency: reduce) {
   .pane {
     background: var(--panel);
-    backdrop-filter: none;
     -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: transparent;
+  }
+  [data-pane-style="glass"] .pane::before,
+  [data-pane-style="glass"] .pane::after {
+    content: none;
   }
 }
 .shell .primary {

@@ -124,15 +124,42 @@ describe("global appearance", () => {
       }),
     ).toBeUndefined();
   });
-  it("uses global finish variables without setting content opacity", () => {
-    const style = appearanceStyle({
+  it("uses clear theme-toned glass instead of solid surface paint", () => {
+    const dark = appearanceStyle({
       theme: "dark",
       glass: { mode: "glass", opacity: 40, blur: 20 },
     }) as Record<string, string>;
-    expect(style["--surface-fill"]).toBe("rgba(26,34,46,0.4)");
-    expect(style["--surface-filter"]).toContain("20px");
-    expect(style["--ui-font"]).toBe("Geist");
-    expect(style.opacity).toBeUndefined();
+    expect(dark["--surface-fill"]).toBe("rgba(255,255,255,0.128)");
+    expect(dark["--surface-fill"]).not.toContain("26,34,46");
+    expect(dark["--surface-filter"]).toContain("20px");
+    expect(dark["--surface-filter"]).toContain("saturate(140%)");
+    expect(dark["--surface-highlight"]).toContain("inset 0 1px 0");
+    expect(dark["--surface-shine"]).toContain("linear-gradient");
+    expect(dark["--surface-rim"]).toContain("linear-gradient");
+    expect(dark.opacity).toBeUndefined();
+    const clear = appearanceStyle({
+      theme: "dark",
+      glass: { mode: "glass", opacity: 0, blur: 20 },
+    }) as Record<string, string>;
+    expect(clear["--surface-fill"]).toBe("rgba(255,255,255,0.000)");
+    const light = appearanceStyle({
+      theme: "light",
+      glass: { mode: "glass", opacity: 40, blur: 20 },
+    }) as Record<string, string>;
+    expect(light["--surface-fill"]).toBe("rgba(255,255,255,0.288)");
+    expect(Number(light["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0])).toBeGreaterThan(
+      Number(dark["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0]),
+    );
+  });
+  it("keeps solid finish free of glass rim tokens", () => {
+    const style = appearanceStyle({
+      theme: "dark",
+      glass: { mode: "solid", opacity: 70, blur: 14 },
+    }) as Record<string, string>;
+    expect(style["--surface-fill"]).toBe("#1a222e");
+    expect(style["--surface-filter"]).toBe("none");
+    expect(style["--surface-shine"]).toBe("none");
+    expect(style["--surface-rim"]).toBe("none");
   });
   it("maps selected UI fonts onto the cascade variable", () => {
     const style = appearanceStyle({
@@ -157,7 +184,7 @@ describe("global appearance", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
-    fireEvent.change(screen.getByRole("slider", { name: "Pane opacity" }), {
+    fireEvent.change(screen.getByRole("slider", { name: "Opacity" }), {
       target: { value: "55" },
     });
     expect(apply).not.toHaveBeenCalled();

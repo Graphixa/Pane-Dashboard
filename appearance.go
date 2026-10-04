@@ -103,7 +103,7 @@ func validateAppearance(c Config) error {
 		}
 	}
 	if g := c.Appearance.Glass; g != nil {
-		if !slices.Contains([]string{"solid", "glass"}, g.Mode) || g.Opacity < 30 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
+		if !slices.Contains([]string{"solid", "glass"}, g.Mode) || g.Opacity < 0 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
 			return fmt.Errorf("invalid global glass settings")
 		}
 	}

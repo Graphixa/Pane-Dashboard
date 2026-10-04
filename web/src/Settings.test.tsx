@@ -152,9 +152,9 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen
         .getByRole("region", { name: "Fine tuning" })
-        .contains(screen.getByRole("slider", { name: "Pane opacity" })),
+        .contains(screen.getByRole("slider", { name: "Opacity" })),
     ).toBe(true);
-    fireEvent.change(screen.getByRole("slider", { name: "Pane opacity" }), {
+    fireEvent.change(screen.getByRole("slider", { name: "Opacity" }), {
       target: { value: "55" },
     });
     page("Solid");
@@ -162,7 +162,7 @@ describe("settings navigation and draft safety", () => {
     page("Panes");
     page("Glass");
     expect(
-      (screen.getByRole("slider", { name: "Pane opacity" }) as HTMLInputElement)
+      (screen.getByRole("slider", { name: "Opacity" }) as HTMLInputElement)
         .value,
     ).toBe("55");
     expect(
