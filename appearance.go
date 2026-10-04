@@ -47,9 +47,12 @@ type Palette struct {
 	Accent     string `json:"accent" yaml:"accent"`
 }
 
+func imageBoundsOK(w, h int, format string) bool {
+	return slices.Contains([]string{"png", "jpeg"}, format) && w >= 1 && h >= 1 && w <= 4096 && h <= 4096 && int64(w)*int64(h) <= 4_000_000
+}
 func decodeImage(data []byte) (image.Config, string, error) {
 	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || !slices.Contains([]string{"png", "jpeg"}, format) || cfg.Width < 1 || cfg.Height < 1 || cfg.Width > 4096 || cfg.Height > 4096 || int64(cfg.Width)*int64(cfg.Height) > 4_000_000 {
+	if err != nil || !imageBoundsOK(cfg.Width, cfg.Height, format) {
 		return cfg, format, fmt.Errorf("use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
 	}
 	return cfg, format, nil
@@ -98,12 +101,20 @@ func validateAppearance(c Config) error {
 		if !slices.Contains([]string{"none", "gradient", "image", "waves", "aurora"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") {
 			return fmt.Errorf("invalid background settings or image")
 		}
-		if b.Overlay != "" {
-			if !slices.Contains([]string{"dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom"}, b.Overlay) || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
-				return fmt.Errorf("invalid background overlay settings")
+		if b.Overlay == "" {
+			if b.Dimming < 0 || b.Dimming > 80 {
+				return fmt.Errorf("invalid background settings or image")
 			}
-		} else if b.Dimming < 0 || b.Dimming > 80 {
-			return fmt.Errorf("invalid background settings or image")
+			if c.Appearance.Theme == "light" {
+				b.Overlay, b.OverlayColour = "light-solid", "#f5f6f2"
+			} else {
+				b.Overlay, b.OverlayColour = "dark-solid", "#111720"
+			}
+			b.OverlayOpacity = b.Dimming
+			b.Dimming = 0
+		}
+		if !slices.Contains([]string{"dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom"}, b.Overlay) || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
+			return fmt.Errorf("invalid background overlay settings")
 		}
 	}
 	if g := c.Appearance.Glass; g != nil {
@@ -145,7 +156,7 @@ func prepareImage(w http.ResponseWriter, r *http.Request) {
 	}
 	b := img.Bounds()
 	wPx, hPx := b.Dx(), b.Dy()
-	if !slices.Contains([]string{"png", "jpeg"}, format) || wPx < 1 || hPx < 1 || wPx > 4096 || hPx > 4096 || int64(wPx)*int64(hPx) > 4_000_000 {
+	if !imageBoundsOK(wPx, hPx, format) {
 		apiError(w, 400, "use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
 		return
 	}

@@ -180,29 +180,24 @@ func validate(c Config) error {
 	}
 	return nil
 }
-func decodeJSON(data []byte) (Config, error) {
+func decodeOne(d interface{ Decode(v any) error }, trailing string) (Config, error) {
 	var c Config
-	d := json.NewDecoder(bytes.NewReader(data))
-	d.DisallowUnknownFields()
 	if e := d.Decode(&c); e != nil {
 		return c, e
 	}
 	var extra any
 	if e := d.Decode(&extra); e != io.EOF {
-		return c, fmt.Errorf("expected one configuration document")
+		return c, fmt.Errorf("%s", trailing)
 	}
 	return c, validate(c)
 }
+func decodeJSON(data []byte) (Config, error) {
+	d := json.NewDecoder(bytes.NewReader(data))
+	d.DisallowUnknownFields()
+	return decodeOne(d, "expected one configuration document")
+}
 func decodeYAML(data []byte) (Config, error) {
-	var c Config
 	d := yaml.NewDecoder(bytes.NewReader(data))
 	d.KnownFields(true)
-	if e := d.Decode(&c); e != nil {
-		return c, e
-	}
-	var extra any
-	if e := d.Decode(&extra); e != io.EOF {
-		return c, fmt.Errorf("expected one YAML document")
-	}
-	return c, validate(c)
+	return decodeOne(d, "expected one YAML document")
 }

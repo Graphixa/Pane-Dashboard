@@ -42,7 +42,7 @@ export type Config = {
     paneTitleSize?: number;
     fontFamily?: UiFont;
     background?: Background;
-    glass?: Glass;
+    glass?: Partial<Glass> & Pick<Glass, "mode" | "opacity" | "blur">;
     palette?: Palette;
   };
   items: Pane[];

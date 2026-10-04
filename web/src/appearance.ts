@@ -20,27 +20,11 @@ export type Glass = {
   mode: "solid" | "glass";
   opacity: number;
   blur: number;
-  /** Edge distortion intensity for the shared SVG displacement filter. */
-  displacement?: number;
-  /** RGB split at edges (0–5). */
-  aberration?: number;
-  /** Backdrop saturation percent (100–200). */
-  saturation?: number;
-  /** Cursor reach strength 0–100 (maps to 0–1). */
-  elasticity?: number;
+  displacement: number;
+  aberration: number;
+  saturation: number;
+  elasticity: number;
 };
-export type GlassTuning = Required<
-  Pick<
-    Glass,
-    | "mode"
-    | "opacity"
-    | "blur"
-    | "displacement"
-    | "aberration"
-    | "saturation"
-    | "elasticity"
-  >
->;
 export type Palette = {
   background: string;
   surface: string;
@@ -52,7 +36,7 @@ export type AppearanceOptions = {
   theme: "dark" | "light";
   fontFamily?: UiFont;
   background?: Background;
-  glass?: Glass;
+  glass?: Partial<Glass> & Pick<Glass, "mode" | "opacity" | "blur">;
   palette?: Palette;
 };
 export const uiFonts: { id: UiFont; label: string; family: string }[] = [
@@ -83,16 +67,18 @@ export const defaultBackground: Background = {
   intensity: 40,
 };
 // Defaults favour a visible edge bend with moderate frost and saturation.
-export const defaultGlass: GlassTuning = {
+export const defaultGlass: Glass = {
   mode: "solid",
   opacity: 55,
   blur: 16,
-  displacement: 89,
+  displacement: 70,
   aberration: 2,
   saturation: 140,
   elasticity: 0,
 };
-export function normaliseGlass(g: Glass): GlassTuning {
+export function normaliseGlass(
+  g: Partial<Glass> & Pick<Glass, "mode" | "opacity" | "blur">,
+): Glass {
   return {
     mode: g.mode,
     opacity: g.opacity,
@@ -387,27 +373,22 @@ export function glassFill(theme: "dark" | "light", opacity: number) {
 export function appearanceStyle(a: AppearanceOptions): CSSProperties {
   const p = a.palette ?? palettes[a.theme],
     g = normaliseGlass(a.glass ?? defaultGlass);
-  const mix = (x: string, y: string, ratio: number) => {
-    const b = rgb(y);
-    return `rgb(${rgb(x)
-      .map((v, i) => Math.round(v * (1 - ratio) + b[i] * ratio))
-      .join(",")})`;
-  };
   const clear = glassFill(a.theme, g.opacity);
+  const mix = (pct: number) =>
+    `color-mix(in srgb, ${p.surface} ${100 - pct}%, ${p.text})`;
   return {
     "--ui-font": uiFontFamily(a.fontFamily),
     "--bg": p.background,
     "--panel": p.surface,
     "--text": p.text,
     "--accent": p.accent,
-    "--panel-high": mix(p.surface, p.text, 0.045),
-    "--line": mix(p.surface, p.text, 0.2),
-    "--muted": mix(p.surface, p.text, 0.72),
+    "--panel-high": mix(4.5),
+    "--line": mix(20),
+    "--muted": mix(72),
     "--accent-text":
       contrast(p.accent, "#000000") >= contrast(p.accent, "#ffffff")
         ? "#000000"
         : "#ffffff",
-    "--glass-fill": clear,
     "--glass-blur": `${g.blur}px`,
     "--surface-fill": g.mode === "glass" ? clear : p.surface,
     // Base frost when displacing so the filter warps backdrop, not the AA edge.
@@ -416,7 +397,6 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
         ? `blur(${g.displacement > 0 ? Math.max(g.blur, 6) : g.blur}px) saturate(${g.saturation}%)`
         : "none",
     // Outer depth only — inset bevels read as embossed metal, not liquid glass.
-    "--surface-edge": "transparent",
     "--surface-depth":
       g.mode === "glass"
         ? a.theme === "light"

@@ -26,7 +26,6 @@ export function resolveGlassRefract(opts: {
   reducedMotion: boolean;
   interacting: boolean;
   visibleCount: number;
-  manyPaneLimit?: number;
 }): GlassRefract {
   if (
     !opts.glassMode ||
@@ -35,9 +34,8 @@ export function resolveGlassRefract(opts: {
     opts.interacting
   )
     return "off";
-  // Lite only when the dashboard is genuinely crowded — 6 was too eager and
-  // dropped the edge-masked full filter on typical home layouts.
-  if (opts.visibleCount > (opts.manyPaneLimit ?? 14)) return "lite";
+  // Triple RGB displacement is expensive; drop to lite once a few panes share the viewport.
+  if (opts.visibleCount > 6) return "lite";
   return "full";
 }
 

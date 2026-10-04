@@ -130,10 +130,21 @@ function DashboardView({
       setGlassMouse(null);
       return;
     }
-    const onMove = (e: MouseEvent) =>
-      setGlassMouse({ x: e.clientX, y: e.clientY });
+    let raf = 0;
+    let pending: { x: number; y: number } | null = null;
+    const onMove = (e: MouseEvent) => {
+      pending = { x: e.clientX, y: e.clientY };
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (pending) setGlassMouse(pending);
+      });
+    };
     window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMove);
+    };
   }, [glassMode, glass.elasticity, glassInteracting]);
   const width = gridWidth(
     display.dashboard.widthMode === "full"
@@ -407,7 +418,6 @@ function DashboardView({
     <div
       className="shell"
       data-pane-style={display.appearance.glass?.mode ?? "solid"}
-      data-glass-refract={glassMode ? glassRefract : "off"}
       style={
         {
           ...appearanceStyle(display.appearance),

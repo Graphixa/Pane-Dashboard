@@ -1,109 +1,86 @@
-/** Pane corner radius in CSS (`.pane`). */
-export const PANE_CORNER_RADIUS = 14;
-/** Screen-space width of the refractive lip, in CSS pixels. */
-export const GLASS_BEVEL_PX = 28;
-/** How strongly the lip pulls samples toward the centre (0–1). */
-export const GLASS_REFRACT_AMOUNT = 0.42;
+/**
+ * Pane lip displacement map (shader-parity with liquid-glass-react MIT).
+ * Algorithm adapted from rdev/liquid-glass-react `ShaderDisplacementGenerator`
+ * + `fragmentShaders.liquidGlass` (MIT).
+ *
+ * Map layout: R = X shift, G = Y shift, B = Y shift (SVG yChannelSelector="B"),
+ * A = 255 (opaque so Chromium does not premultiply).
+ */
 
 const mapCache = new Map<string, string>();
+/** Keep maps small — UV lip scales with slice; large bakes stall the main thread. */
+const MAX_SIDE = 160;
+const QUANT = 8;
 
-function sdRoundBox(
-  px: number,
-  py: number,
-  hx: number,
-  hy: number,
-  r: number,
-): number {
-  const ax = Math.abs(px) - hx + r;
-  const ay = Math.abs(py) - hy + r;
-  const ox = Math.max(ax, 0);
-  const oy = Math.max(ay, 0);
-  return Math.min(Math.max(ax, ay), 0) + Math.hypot(ox, oy) - r;
+function smoothStep(a: number, b: number, t: number): number {
+  const x = Math.max(0, Math.min(1, (t - a) / (b - a)));
+  return x * x * (3 - 2 * x);
 }
 
-function smoothstep(edge0: number, edge1: number, x: number): number {
-  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
+function roundedRectSdf(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): number {
+  const qx = Math.abs(x) - width + radius;
+  const qy = Math.abs(y) - height + radius;
+  return (
+    Math.min(Math.max(qx, qy), 0) +
+    Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) -
+    radius
+  );
+}
+
+/** UV-space centre-magnifying lip (liquid-glass-react shader fragment). */
+function liquidGlassUv(uvX: number, uvY: number): { x: number; y: number } {
+  const ix = uvX - 0.5;
+  const iy = uvY - 0.5;
+  const distanceToEdge = roundedRectSdf(ix, iy, 0.3, 0.2, 0.6);
+  const displacement = smoothStep(0.8, 0, distanceToEdge - 0.15);
+  const scaled = smoothStep(0, 1, displacement);
+  return { x: ix * scaled + 0.5, y: iy * scaled + 0.5 };
 }
 
 /**
- * Original Pane lip map.
- * R = X shift, G = Y shift (128 = neutral), B = lip strength for the edge mask,
- * A = 255 (keep opaque so Chromium does not premultiply the displacement).
+ * Fill an RGBA buffer with a shader-parity displacement map.
+ * Neutral centre is ~128; rim encodes centre-magnifying offsets.
  */
 export function fillGlassDisplacementRgba(
   rgba: Uint8ClampedArray | Uint8Array,
   width: number,
   height: number,
-  radius: number,
-  bevel: number,
-  amount = GLASS_REFRACT_AMOUNT,
 ): void {
-  const cx = width / 2;
-  const cy = height / 2;
-  const hx = Math.max(1, width / 2 - 1);
-  const hy = Math.max(1, height / 2 - 1);
-  const r = Math.min(radius, hx, hy);
-  const band = Math.max(3, bevel);
-  const raw: number[] = [];
-  let maxScale = 0;
+  // Peak pull is toward UV centre → bounded by half the long side.
+  const maxScale = Math.max(width, height, 2) * 0.5;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const px = x + 0.5 - cx;
-      const py = y + 0.5 - cy;
-      const d = sdRoundBox(px, py, hx, hy, r);
-      let dx = 0;
-      let dy = 0;
-      let strength = 0;
-      if (d < 0) {
-        const fromEdge = -d;
-        // Rounded SDF falloff only — rectangular edgeFade drew hard L-steps.
-        const lip = 1 - smoothstep(0, band, fromEdge);
-        const shaped = lip * lip * (3 - 2 * lip);
-        // Soften the outermost SDF ring so feDisplacementMap does not tear,
-        // still following the round (not axis-aligned min(x,y)).
-        const rimSoft = smoothstep(0, 2, fromEdge);
-        strength = shaped * rimSoft;
-        const scaled = 1 - shaped * amount * rimSoft;
-        dx = px * scaled - px;
-        dy = py * scaled - py;
-      }
-      maxScale = Math.max(maxScale, Math.abs(dx), Math.abs(dy));
-      raw.push(dx, dy, strength);
+      const pos = liquidGlassUv((x + 0.5) / width, (y + 0.5) / height);
+      const dx = pos.x * width - (x + 0.5);
+      const dy = pos.y * height - (y + 0.5);
+      const edgeDistance = Math.min(x, y, width - x - 1, height - y - 1);
+      const edgeFactor = Math.min(1, edgeDistance / 2);
+      const r = (dx * edgeFactor) / maxScale + 0.5;
+      const g = (dy * edgeFactor) / maxScale + 0.5;
+      const o = (y * width + x) * 4;
+      rgba[o] = Math.max(0, Math.min(255, (r * 255 + 0.5) | 0));
+      rgba[o + 1] = Math.max(0, Math.min(255, (g * 255 + 0.5) | 0));
+      rgba[o + 2] = rgba[o + 1];
+      rgba[o + 3] = 255;
     }
-  }
-
-  maxScale = Math.max(maxScale, 1);
-  let i = 0;
-  for (let p = 0; p < width * height; p++) {
-    const dx = raw[i++];
-    const dy = raw[i++];
-    const strength = raw[i++];
-    const o = p * 4;
-    rgba[o] = Math.max(
-      0,
-      Math.min(255, Math.round((dx / maxScale) * 0.5 * 255 + 128)),
-    );
-    rgba[o + 1] = Math.max(
-      0,
-      Math.min(255, Math.round((dy / maxScale) * 0.5 * 255 + 128)),
-    );
-    rgba[o + 2] = Math.max(0, Math.min(255, Math.round(strength * 255)));
-    rgba[o + 3] = 255;
   }
 }
 
-/** Build a displacement map sized to a pane (fixed screen-space lip). */
+function quantize(n: number): number {
+  return Math.max(QUANT, Math.round(n / QUANT) * QUANT);
+}
+
+/** Build a displacement map sized to a pane (UV lip, capped + quantised). */
 export function buildGlassDisplacementMap(
   cssWidth: number,
   cssHeight: number,
-  options?: {
-    radius?: number;
-    bevel?: number;
-    amount?: number;
-    maxSide?: number;
-  },
 ): string | null {
   if (
     typeof document === "undefined" ||
@@ -114,16 +91,10 @@ export function buildGlassDisplacementMap(
   ) {
     return null;
   }
-  const radius = options?.radius ?? PANE_CORNER_RADIUS;
-  const bevel = options?.bevel ?? GLASS_BEVEL_PX;
-  const amount = options?.amount ?? GLASS_REFRACT_AMOUNT;
-  const maxSide = options?.maxSide ?? 256;
-  const scale = Math.min(1, maxSide / Math.max(cssWidth, cssHeight));
-  const width = Math.max(12, Math.round(cssWidth * scale));
-  const height = Math.max(12, Math.round(cssHeight * scale));
-  const mapRadius = Math.max(2, radius * scale);
-  const mapBevel = Math.max(6, bevel * scale);
-  const key = `${width}x${height}r${mapRadius.toFixed(1)}b${mapBevel.toFixed(1)}a${amount}v8`;
+  const scale = Math.min(1, MAX_SIDE / Math.max(cssWidth, cssHeight));
+  const width = quantize(Math.max(QUANT, cssWidth * scale));
+  const height = quantize(Math.max(QUANT, cssHeight * scale));
+  const key = `${width}x${height}shader-v2`;
   const cached = mapCache.get(key);
   if (cached) return cached;
 
@@ -133,20 +104,9 @@ export function buildGlassDisplacementMap(
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   if (!ctx) return null;
   const image = ctx.createImageData(width, height);
-  fillGlassDisplacementRgba(
-    image.data,
-    width,
-    height,
-    mapRadius,
-    mapBevel,
-    amount,
-  );
+  fillGlassDisplacementRgba(image.data, width, height);
   ctx.putImageData(image, 0, 0);
   const url = canvas.toDataURL("image/png");
   mapCache.set(key, url);
   return url;
-}
-
-export function clearGlassDisplacementCache(): void {
-  mapCache.clear();
 }

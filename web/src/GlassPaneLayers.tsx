@@ -58,6 +58,8 @@ export default function GlassPaneLayers({
   aberration: number;
 }) {
   const warpRef = useRef<HTMLSpanElement>(null);
+  const mapUrlRef = useRef<string | null>(null);
+  const lastElasticRef = useRef("");
   const reactId = useId().replace(/\W/g, "");
   const filterId = `pg${reactId || paneId.replace(/\W/g, "").slice(0, 12)}`;
   const [visible, setVisible] = useState(false);
@@ -87,27 +89,33 @@ export default function GlassPaneLayers({
   }, [paneId, onVisibleChange]);
 
   useEffect(() => {
-    const pane = warpRef.current?.parentElement;
-    if (!pane) return;
-    if (visible) pane.setAttribute("data-glass-visible", "");
-    else pane.removeAttribute("data-glass-visible");
-  }, [visible]);
-
-  useEffect(() => {
     const pane = warpRef.current?.parentElement as HTMLElement | null;
     if (!pane || !visible || refract === "off" || displacement <= 0) {
+      mapUrlRef.current = null;
       setMapUrl(null);
       return;
     }
+    let raf = 0;
     const update = () => {
-      const rect = pane.getBoundingClientRect();
-      setMapUrl(buildGlassDisplacementMap(rect.width, rect.height));
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const rect = pane.getBoundingClientRect();
+        const next = buildGlassDisplacementMap(rect.width, rect.height);
+        if (next === mapUrlRef.current) return;
+        mapUrlRef.current = next;
+        setMapUrl(next);
+      });
     };
     update();
-    if (typeof ResizeObserver === "undefined") return;
+    if (typeof ResizeObserver === "undefined") {
+      return () => cancelAnimationFrame(raf);
+    }
     const ro = new ResizeObserver(update);
     ro.observe(pane);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [visible, refract, displacement, paneId]);
 
   useEffect(() => {
@@ -128,20 +136,25 @@ export default function GlassPaneLayers({
     );
     const strength = elasticity / 100;
     if (!elasticEnabled || strength <= 0 || !mouse || !visible) {
-      pane.classList.remove("pane-glass-elastic");
-      layers.forEach((el) => {
-        el.style.transform = "";
-      });
+      if (lastElasticRef.current !== "") {
+        lastElasticRef.current = "";
+        pane.classList.remove("pane-glass-elastic");
+        layers.forEach((el) => {
+          el.style.transform = "";
+        });
+      }
       return;
     }
-    pane.classList.add("pane-glass-elastic");
     const next = elasticTransform(
       pane.getBoundingClientRect(),
       mouse,
       strength,
     );
+    if (next === lastElasticRef.current) return;
+    lastElasticRef.current = next;
+    pane.classList.add("pane-glass-elastic");
     layers.forEach((el) => {
-      el.style.transform = next;
+      el.style.transform = next === "none" ? "" : next;
     });
   }, [mouse, elasticity, elasticEnabled, visible]);
 
@@ -167,7 +180,6 @@ export default function GlassPaneLayers({
     <>
       {mapUrl && refract !== "off" && displacement > 0 && (
         <GlassFilters
-          key={`${filterId}-${refract}-${displacement}-${aberration}-${mapUrl.slice(-24)}`}
           filterId={filterId}
           mapUrl={mapUrl}
           displacement={displacement}

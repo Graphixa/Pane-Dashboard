@@ -135,7 +135,6 @@ describe("global appearance", () => {
     expect(dark["--surface-filter"]).toContain("saturate(140%)");
     expect(dark["--surface-depth"]).toContain("14px 44px");
     expect(dark["--surface-depth"]).not.toContain("inset");
-    expect(dark["--surface-highlight"]).toBe("var(--surface-depth)");
     expect(dark["--surface-shine"]).toContain("linear-gradient");
     expect(dark["--surface-rim"]).toContain("linear-gradient");
     expect(dark.opacity).toBeUndefined();

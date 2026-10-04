@@ -13,8 +13,8 @@ describe("resolveGlassRefract", () => {
     expect(resolveGlassRefract(base)).toBe("full");
   });
   it("drops to lite when many panes are refracting", () => {
-    expect(resolveGlassRefract({ ...base, visibleCount: 7 })).toBe("full");
-    expect(resolveGlassRefract({ ...base, visibleCount: 15 })).toBe("lite");
+    expect(resolveGlassRefract({ ...base, visibleCount: 6 })).toBe("full");
+    expect(resolveGlassRefract({ ...base, visibleCount: 7 })).toBe("lite");
   });
   it("turns refraction off while dragging or resizing", () => {
     expect(resolveGlassRefract({ ...base, interacting: true })).toBe("off");
