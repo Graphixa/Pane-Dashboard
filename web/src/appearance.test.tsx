@@ -16,6 +16,8 @@ import {
   defaultBackground,
   imageReference,
   migrateBackground,
+  motionDurationSeconds,
+  parseIntegerInput,
   paletteForThemeChange,
   palettes,
   validateVisuals,
@@ -53,6 +55,128 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe("global appearance", () => {
+  it("parses integer inputs without committing empty or out-of-range values", () => {
+    expect(parseIntegerInput("18", 14, 22)).toBe(18);
+    expect(parseIntegerInput("", 14, 22)).toBeUndefined();
+    expect(parseIntegerInput(" ", 14, 22)).toBeUndefined();
+    expect(parseIntegerInput("13", 14, 22)).toBeUndefined();
+    expect(parseIntegerInput("22.5", 14, 22)).toBeUndefined();
+    expect(parseIntegerInput("960", 768, 3840)).toBe(960);
+    expect(motionDurationSeconds(0)).toBe(80);
+    expect(motionDurationSeconds(100)).toBe(6);
+    expect(motionDurationSeconds(40)).toBe(50.4);
+  });
+  it("keeps motion duration stable while intensity changes during playback", () => {
+    const r = render(
+      <Background
+        settings={{
+          ...defaultBackground,
+          kind: "waves",
+          motion: true,
+          motionStyle: "drift",
+          intensity: 40,
+        }}
+      />,
+    );
+    const scene = () => r.container.querySelector(".scene") as HTMLElement;
+    expect(scene().style.getPropertyValue("--motion-duration")).toBe("50.4s");
+    r.rerender(
+      <Background
+        settings={{
+          ...defaultBackground,
+          kind: "waves",
+          motion: true,
+          motionStyle: "drift",
+          intensity: 80,
+        }}
+      />,
+    );
+    // Strength updates immediately; duration stays put so CSS animations do not restart.
+    expect(scene().style.getPropertyValue("--motion-duration")).toBe("50.4s");
+    expect(scene().style.getPropertyValue("--motion-strength")).toBe("0.8");
+    r.rerender(
+      <Background
+        settings={{
+          ...defaultBackground,
+          kind: "waves",
+          motion: false,
+          motionStyle: "none",
+          intensity: 80,
+        }}
+      />,
+    );
+    expect(scene().style.getPropertyValue("--motion-duration")).toBe("20.8s");
+  });
+  it("keeps font and motion when visiting Appearance then Background", () => {
+    const cfg = config();
+    cfg.appearance.fontFamily = "rubik";
+    cfg.appearance.background = {
+      ...defaultBackground,
+      kind: "gradient",
+      preset: "ocean",
+      motion: false,
+      motionStyle: "none",
+    };
+    validate(cfg);
+    const previews: Config[] = [];
+    render(
+      <Settings
+        config={cfg}
+        apply={vi.fn()}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+        onPreview={(draft) => {
+          if (draft) previews.push(draft);
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    const last = previews.at(-1)!;
+    expect(last.appearance.fontFamily).toBe("rubik");
+    expect(last.appearance.background?.motion).toBe(false);
+    expect(last.appearance.background?.motionStyle).toBe("none");
+  });
+  it("applies settings when fontFamily was empty in the draft", () => {
+    const apply = vi.fn();
+    const broken = config();
+    (broken.appearance as { fontFamily?: string }).fontFamily = "";
+    render(
+      <Settings
+        config={broken}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    expect(screen.getByRole("combobox", { name: "Font" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply).toHaveBeenCalledOnce();
+    expect(apply.mock.calls[0][0].appearance.fontFamily).toBeUndefined();
+  });
+  it("does not poison the settings draft when pane title size is cleared", () => {
+    const apply = vi.fn();
+    render(
+      <Settings
+        config={config()}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    const field = screen.getByLabelText("Pane title size (px)");
+    fireEvent.change(field, { target: { value: "" } });
+    expect(screen.getByText(/whole number from 14 to 22/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply).toHaveBeenCalledOnce();
+    expect(apply.mock.calls[0][0].appearance.paneTitleSize).toBeUndefined();
+  });
   it("validates safe portable images and rejects scripts, CSS injection and low contrast", () => {
     expect(imageReference(png)).toBe(true);
     for (const url of [
@@ -198,9 +322,8 @@ describe("global appearance", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
-    fireEvent.change(screen.getByRole("slider", { name: "Opacity" }), {
-      target: { value: "55" },
-    });
+    fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "Home"});
+    for(let i=0; i<55; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "ArrowRight"});
     expect(apply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply).toHaveBeenCalledOnce();
@@ -212,7 +335,7 @@ describe("global appearance", () => {
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
   });
-  it("offers shared motion styles for backgrounds, starting at None for Custom", () => {
+  it("keeps motion when switching from a preset background to Custom", () => {
     const apply = vi.fn(),
       c = config();
     c.appearance.background = {
@@ -238,11 +361,11 @@ describe("global appearance", () => {
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
     const style = screen.getByLabelText("Motion style");
-    expect(style).toHaveProperty("value", "none");
-    fireEvent.change(style, { target: { value: "ken-burns" } });
-    fireEvent.change(screen.getByRole("slider", { name: "Speed" }), {
-      target: { value: "75" },
-    });
+    expect(style.textContent).toContain("Drift");
+    fireEvent.keyDown(style, {key: "ArrowDown"});
+    fireEvent.click(screen.getByRole("option", {name: "Ken Burns"}));
+    fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "Home"});
+    for(let i=0; i<75; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "ArrowRight"});
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "image",
@@ -298,7 +421,7 @@ describe("global appearance", () => {
         .motionStyle,
     ).toBe("drift");
   });
-  it("does not persist a cancelled settings draft", () => {
+  it("does not persist a cancelled settings draft", async () => {
     const apply = vi.fn(),
       close = vi.fn();
     render(
@@ -316,10 +439,10 @@ describe("global appearance", () => {
       target: { value: "https://example.com/wordmark.png" },
     });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", {name: "Discard"}));
     expect(apply).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledOnce();
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
   it("renders wide logos without duplicate visible titles and falls back on failure", () => {
     const r = render(
@@ -434,3 +557,4 @@ describe("image preparation", () => {
     expect(busy).toHaveBeenLastCalledWith(false);
   });
 });
+

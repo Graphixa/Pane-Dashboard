@@ -1,3 +1,4 @@
+import { Button, Input, Label, Notice } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { imageReference } from "./appearance";
@@ -95,7 +96,7 @@ export default function ImageField({
   };
   return (
     <div className="image-field">
-      <button
+      <Button variant="surface"
         type="button"
         className="image-dropzone"
         data-drag={drag ? "true" : undefined}
@@ -130,8 +131,8 @@ export default function ImageField({
               : "Drop an image here, or click to browse"}
         </span>
         <span className="image-dropzone-hint">{formats}</span>
-      </button>
-      <input
+      </Button>
+      <Input
         ref={input}
         className="file-picker"
         type="file"
@@ -146,9 +147,9 @@ export default function ImageField({
       <div className="image-or" aria-hidden="true">
         or
       </div>
-      <label className="image-url-field">
+      <Label className="image-url-field">
         <span>From URL</span>
-        <input
+        <Input
           type="url"
           maxLength={2048}
           placeholder="https://example.com/image.png"
@@ -159,16 +160,16 @@ export default function ImageField({
             change(e.target.value);
           }}
         />
-      </label>
+      </Label>
       <div className="image-field-meta">
         {value ? (
-          <button
+          <Button variant="surface"
             type="button"
             className="text-button"
             onClick={() => change("")}
           >
             Remove
-          </button>
+          </Button>
         ) : null}
         <p className="hint">
           {uploaded
@@ -177,10 +178,9 @@ export default function ImageField({
         </p>
       </div>
       {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <Notice tone="error">{error}</Notice>
       )}
     </div>
   );
 }
+

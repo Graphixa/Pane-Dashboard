@@ -4,6 +4,7 @@ import {
   gradients,
   imageReference,
   migrateBackground,
+  motionDurationSeconds,
   overlayBackground,
   type Background as BackgroundSettings,
 } from "./appearance";
@@ -18,6 +19,10 @@ export default function Background({
   const [failed, setFailed] = useState(false),
     [hidden, setHidden] = useState(false);
   const b = migrateBackground(settings, theme);
+  const targetDuration = motionDurationSeconds(b.intensity);
+  const paused = b.motionStyle === "none" || !b.motion || hidden;
+  // Keep duration stable while playing so intensity ticks do not restart CSS animations.
+  const [playDuration, setPlayDuration] = useState(targetDuration);
   useEffect(() => setFailed(false), [b.image]);
   useEffect(() => {
     const update = () => setHidden(document.hidden);
@@ -25,10 +30,20 @@ export default function Background({
     document.addEventListener("visibilitychange", update);
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
+  useEffect(() => {
+    setPlayDuration(targetDuration);
+  }, [b.motionStyle, b.kind]);
+  useEffect(() => {
+    if (paused) {
+      setPlayDuration(targetDuration);
+      return;
+    }
+    const timer = window.setTimeout(() => setPlayDuration(targetDuration), 400);
+    return () => window.clearTimeout(timer);
+  }, [targetDuration, paused]);
   const animated = b.kind === "waves" || b.kind === "aurora";
   const activeImage =
     b.kind === "image" && imageReference(b.image) && b.image && !failed;
-  const paused = b.motionStyle === "none" || !b.motion || hidden;
   const paint =
     b.kind === "none" ? "var(--bg)" : (gradients[b.preset] ?? gradients.dusk);
   return (
@@ -38,7 +53,7 @@ export default function Background({
       style={
         {
           "--motion-strength": b.intensity / 100,
-          "--motion-duration": `${80 - b.intensity * 0.74}s`,
+          "--motion-duration": `${playDuration}s`,
           background: paint,
         } as CSSProperties
       }

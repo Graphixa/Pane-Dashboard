@@ -14,7 +14,7 @@ conventions. Do not resolve conflicts by silently changing either document.
 | Shared component styles | [components.css](web/src/design/components.css) |
 | Font loading and stylesheet order | [appStyles.ts](web/src/design/appStyles.ts) |
 | Theme/custom palette resolution and validation | [appearance.ts](web/src/appearance.ts), [appearance.go](appearance.go) |
-| Native modal lifecycle and focus containment | [Modal.tsx](web/src/Modal.tsx) |
+| Radix-backed interaction primitives and focus containment | [controls.tsx](web/src/design/controls.tsx), [overlays.tsx](web/src/design/overlays.tsx) |
 | Interactive component reference | [ComponentReference.tsx](web/src/design/ComponentReference.tsx) |
 | Fixed dashboard geometry | [model.ts](web/src/model.ts), [SPEC.md](SPEC.md#measurements) |
 
@@ -113,19 +113,25 @@ are unsupported. Do not use large inset bevels or claim physical refraction.
 
 ## Component contract
 
-Import primitives from `web/src/design/components.tsx`. Reuse `Modal` for dialogs.
+Import primitives from `web/src/design/components.tsx`. This is the only application-facing
+component entry point. Its interaction primitives are built on Radix UI and are styled by
+the Pane tokens; screens must not mix a second component library or bespoke copies.
 
 | Component | Required usage |
 | --- | --- |
 | `Text` | Named `variant`; explicit `as` for headings/inline text |
-| `Button` | `primary`, `secondary`, `quiet` or `danger`; defaults to `type="button"` |
+| `Button` | `primary`, `secondary`, `quiet`, `danger` or `surface` (artwork/nav tiles); defaults to `type="button"` |
 | `IconButton` | Required `label`, decorative icon child; retain label if visible text is hidden |
 | `Field` | Render-prop wrapper for one custom control; spread generated ID/ARIA props onto it |
 | `TextField` | Native input props plus `label`, optional `hint` and `error` |
-| `SelectField` | Native select props plus the same label/help/error contract |
-| `Notice` | `info`, `success` or `error`; explain status in words |
+| `SelectField` | Radix select props plus the same label/help/error contract |
+| `SwitchRow` | Settings-style row: label (and optional hint) left, Radix switch right |
+| `Notice` | `info`, `success` or `error`; optional `banner` for message plus inline actions |
 | `Section` | Heading and optional description with consistent spacing; choose `h2` or `h3` |
-| `Modal` | Native modal dialog; required title and close handler; caller owns discard policy |
+| `Modal` | Radix Dialog with required title and close handler; caller owns discard policy |
+| `Popover`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling |
+| `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure`, `Tooltip` | Radix controls with Pane keyboard, focus and theme treatment |
+| `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
 
 ```tsx
 import { Button, Section, TextField } from "./design/components";
@@ -149,21 +155,21 @@ report the eventual result. Field errors set `aria-invalid` and are connected to
 the control alongside hints through `aria-describedby`. Do not nest controls in
 buttons or labels. Group related switches/radios with a fieldset and legend.
 
-The foundation does not yet provide a shared switch, popover or specialised pane
-tile. Use their existing implementation until deliberately extracted; do not
-create another independent copy. When a primitive is missing: define its API and
-states, add it to this module (or a focused module exported here), add a reference
-example and meaningful interaction/accessibility tests, then migrate its consumers.
+Do not render raw interactive HTML controls in production screens. Native elements
+are implementation details inside this shared layer; this keeps semantics and
+keyboard behaviour consistent while allowing Radix to own difficult interaction
+state. When a primitive is missing, define its API and states, add it to this
+module (or a focused module exported here), add a reference example and meaningful
+interaction/accessibility tests, then migrate its consumers.
 
 ## Interaction and responsive behaviour
 
 - Keyboard focus is visible: 2 px accent outline with a 3 px offset. Never remove
   an outline without providing a visible replacement. Check focus is not clipped.
-- Use native buttons, inputs and select elements; preserve labels, keyboard access,
-  disabled behaviour and form semantics. Submit actions explicitly use `type="submit"`.
+- Preserve native form semantics through the shared controls. Submit actions explicitly use `type="submit"`.
 - Selected controls expose `aria-pressed` or the appropriate native state. Current
   navigation uses `aria-current`. Hover must not be the only indication of meaning.
-- Native dialogs contain keyboard focus and support Escape. Return focus to the
+- Radix dialogs contain keyboard focus and support Escape. Return focus to the
   opener. Dirty Settings drafts must survive navigation and responsive preview;
   never dismiss or discard them as a side effect of a size calculation.
 - Settings preview remains temporary; Cancel restores applied appearance. Reference
@@ -208,8 +214,7 @@ For UI changes, inspect the reference and affected production screen with:
 - Reduced motion/transparency and solid fallback whenever glass/backgrounds change.
 
 The reference is a review surface, not proof of accessibility or a replacement for
-production-flow testing. The initial implementation centralises typography and
-adopts shared primitives in dialogs, Settings actions and app-editor fields/actions.
-Other forms, specialised controls, popovers, legacy selector cleanup, draft safety
-and glass performance remain follow-up work. Do not claim those review findings
-are resolved merely because these guidelines now exist.
+production-flow testing. The Radix migration is complete only when all production
+screens use the shared entry point and the full verification matrix passes. A branch
+must not claim a screen is migrated while it still owns raw interactive controls or
+a duplicate overlay implementation.

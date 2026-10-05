@@ -4,6 +4,7 @@ import {
   type Palette,
   type UiFont,
   imageReference,
+  normaliseAppearanceFont,
   uiFonts,
   validateVisuals,
 } from "./appearance";
@@ -142,6 +143,7 @@ export function validate(value: unknown): asserts value is Config {
     "glass",
     "palette",
   ]);
+  c.appearance = normaliseAppearanceFont(c.appearance);
   if (
     c.version !== 2 ||
     !text(c.dashboard.title, 100) ||
@@ -150,16 +152,24 @@ export function validate(value: unknown): asserts value is Config {
       !["icon", "logo"].includes(c.dashboard.branding)) ||
     (c.dashboard.builtinIcon !== undefined &&
       !["grid", "server", "panels"].includes(c.dashboard.builtinIcon)) ||
-    !["fixed", "full"].includes(c.dashboard.widthMode) ||
-    !integer(c.dashboard.width, 768, 3840)
+    !["fixed", "full"].includes(c.dashboard.widthMode)
   )
     throw Error("Unsupported version or dashboard settings.");
+  if (!integer(c.dashboard.width, 768, 3840))
+    throw Error("Dashboard width must be a whole number from 768 to 3840.");
+  if (!["dark", "light"].includes(c.appearance.theme))
+    throw Error("Invalid appearance settings.");
   if (
-    !["dark", "light"].includes(c.appearance.theme) ||
-    (c.appearance.paneTitleSize !== undefined &&
-      !integer(c.appearance.paneTitleSize, 14, 22)) ||
-    (c.appearance.fontFamily !== undefined &&
-      !uiFonts.some((f) => f.id === c.appearance.fontFamily)) ||
+    c.appearance.paneTitleSize !== undefined &&
+    !integer(c.appearance.paneTitleSize, 14, 22)
+  )
+    throw Error("Pane title size must be a whole number from 14 to 22.");
+  if (
+    c.appearance.fontFamily !== undefined &&
+    !uiFonts.some((f) => f.id === c.appearance.fontFamily)
+  )
+    throw Error("Choose Geist, Rubik or Oxanium.");
+  if (
     typeof c.appearance.showAppLabels !== "boolean" ||
     typeof c.appearance.showButtonLabels !== "boolean"
   )

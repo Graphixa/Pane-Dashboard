@@ -300,14 +300,6 @@
     filter: none !important;
   }
 }
-.shell .primary {
-  color: var(--accent-text);
-}
-.shell .primary:hover:not(:disabled) {
-  background: var(--accent);
-  color: var(--accent-text);
-  filter: brightness(1.08);
-}
 .brand-logo {
   width: min(280px, 28vw);
   height: 48px;

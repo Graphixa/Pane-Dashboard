@@ -1,8 +1,12 @@
+import { ThemeSurface } from "./components";
+import { SelectOption } from "./components";
 import { CSSProperties, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
-import Modal from "../Modal";
-import { Button, IconButton, Notice, Section, SelectField, Text, TextField } from "./components";
+import {
+  Button, Checkbox, Disclosure, DropdownMenu, IconButton, Modal, Notice, Popover,
+  Range, Section, SelectField, SwitchRow, Text, TextField, useConfirmation,
+} from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
 export default function ComponentReference() {
@@ -14,9 +18,16 @@ export default function ComponentReference() {
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(false);
   const [paneSize, setPaneSize] = useState(18);
+  const [labels, setLabels] = useState(true);
+  const [blur, setBlur] = useState(16);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [checked, setChecked] = useState(true);
+  const { confirm, confirmation } = useConfirmation();
   const style = { ...appearanceStyle({ theme, fontFamily: font }),
     "--pane-title-size": `${paneSize}px`, "--icon-size": "80px" } as CSSProperties;
-  return <div className="design-reference" data-theme={theme} style={style}>
+  return <ThemeSurface className="design-reference" theme={theme} style={style}>
+    {confirmation}
     <main className={`reference-content${compact ? " reference-compact" : ""}`}>
       <header className="reference-header">
         <Text as="h1" variant="title">Pane component reference</Text>
@@ -25,11 +36,11 @@ export default function ComponentReference() {
       </header>
       <Section title="Preview controls" description="Check every font and theme. Narrow preview constrains this page to 360 px; also test a real narrow browser viewport and zoom.">
         <div className="reference-grid">
-          <SelectField label="Theme" value={theme} onChange={e => setTheme(e.target.value as "dark" | "light")}>
-            <option value="dark">Midnight</option><option value="light">Daylight</option>
+          <SelectField label="Theme" value={theme} onValueChange={value => setTheme(value as "dark" | "light")}>
+            <SelectOption value="dark">Midnight</SelectOption><SelectOption value="light">Daylight</SelectOption>
           </SelectField>
-          <SelectField label="Font" value={font} onChange={e => setFont(e.target.value as UiFont)}>
-            {uiFonts.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          <SelectField label="Font" value={font} onValueChange={value => setFont(value as UiFont)}>
+            {uiFonts.map(f => <SelectOption key={f.id} value={f.id}>{f.label}</SelectOption>)}
           </SelectField>
         </div>
         <div className="reference-actions"><Button aria-pressed={compact} onClick={() => setCompact(!compact)}>Narrow preview</Button></div>
@@ -42,28 +53,71 @@ export default function ComponentReference() {
         <div className="reference-specimen"><Text variant="support">Supporting text provides one useful detail.</Text><Text variant="caption">support · 13 / 400 / 1.5</Text></div>
         <div className="reference-specimen"><Text variant="caption">Compact metadata · 12 / 400 / 1.5</Text></div>
       </Section>
-      <Section title="Buttons and states" description="Use Tab to inspect focus. Disabled and busy actions cannot fire. Selected state is also conveyed through aria-pressed.">
+      <Section title="Buttons and states" description="Use Tab to inspect focus. Disabled and busy actions cannot fire. Selected state is also conveyed through aria-pressed. Surface is for specialised artwork and navigation tiles.">
         <div className="reference-actions">
           <Button variant="primary" onClick={() => setCount(count + 1)}>Apply example</Button>
           <Button onClick={() => setModal(true)}>Open dialog</Button>
           <Button variant="quiet" onClick={() => setCount(0)}>Reset example</Button>
           <Button variant="danger" onClick={() => setCount(0)}>Clear example</Button>
+          <Button variant="surface" className="ui-settings-nav" type="button"><Settings2 size={18} aria-hidden="true" /><span>Settings nav</span></Button>
           <IconButton label="Open example settings" onClick={() => setModal(true)}><Settings2 size={18} aria-hidden="true" /></IconButton>
           <Button disabled>Unavailable</Button>
           <Button busy>Saving…</Button>
           <Button aria-pressed={selected} onClick={() => setSelected(!selected)}>Selected example</Button>
         </div>
         <Notice>Example applied {count} times. No dashboard changes are saved.</Notice>
+        <Notice tone="error" banner>
+          <span>Example save failed. Your changes are still available.</span>
+          <div className="ui-actions"><Button>Retry save</Button></div>
+        </Notice>
       </Section>
       <Section title="Fields and validation">
         <div className="reference-grid">
           <TextField label="Dashboard name" hint="Use a short, recognisable name." value={name} onChange={e => setName(e.target.value)} />
-          <SelectField label="Open links" defaultValue="new"><option value="new">In a new tab</option><option value="same">In this tab</option></SelectField>
+          <SelectField label="Open links" defaultValue="new"><SelectOption value="new">In a new tab</SelectOption><SelectOption value="same">In this tab</SelectOption></SelectField>
           <TextField label="Invalid address example" defaultValue="service" error="Enter a full HTTP(S) address, such as https://example.com." />
           <TextField label="Disabled field" value="Read-only presentation" disabled />
         </div>
         <Notice tone="success">Example settings are ready.</Notice>
         <Notice tone="error">Example save failed. Your changes are still available.</Notice>
+      </Section>
+      <Section title="Switches, ranges and disclosure" description="Settings-style rows keep the label left and control right.">
+        <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
+        <label className="ui-label check"><Checkbox checked={checked} onCheckedChange={setChecked} /> Open in a new tab</label>
+        <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+        <Disclosure title="Fine tuning">
+          <Text variant="support">Disclosure content uses the same spacing as sections.</Text>
+        </Disclosure>
+      </Section>
+      <Section title="Overlays" description="Popover, dropdown and confirmation share portal surface styling.">
+        <div className="reference-actions">
+          <Popover label="Example popover" open={popoverOpen} onOpenChange={setPopoverOpen}
+            trigger={<Button>Open popover <ChevronDown size={16} aria-hidden="true" /></Button>}>
+            <Text variant="support">Anchored content for compact choices.</Text>
+          </Popover>
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}
+            trigger={<Button>Open menu <Plus size={16} aria-hidden="true" /></Button>}
+            items={[
+              { label: "Add pane", onSelect: () => setMenuOpen(false) },
+              { label: "Close menu", onSelect: () => setMenuOpen(false) },
+            ]} />
+          <Button onClick={async () => {
+            await confirm({
+              title: "Delete app?",
+              description: "Delete Plex? This removes it from the pane and cannot be undone.",
+              cancelLabel: "Cancel",
+              actionLabel: "Delete app",
+            });
+          }}>Delete confirmation</Button>
+          <Button onClick={async () => {
+            await confirm({
+              title: "Discard changes?",
+              description: "Discard unsaved settings changes?",
+              cancelLabel: "Keep changes",
+              actionLabel: "Discard",
+            });
+          }}>Discard confirmation</Button>
+        </div>
       </Section>
       <Section title="Palette roles" description="These swatches use the same appearanceStyle palette resolver as the dashboard.">
         <div className="reference-colours">{["bg", "panel", "panel-high", "text", "muted", "accent", "accent-text", "line"].map(role =>
@@ -71,8 +125,8 @@ export default function ComponentReference() {
         )}</div>
       </Section>
       <Section title="Pane geometry" description="Pane titles remain bold with a global 14–22 px size. App labels stay 13 px and icons stay 80 px.">
-        <SelectField label="Pane title size" value={paneSize} onChange={e => setPaneSize(Number(e.target.value))}>
-          {[14, 18, 22].map(size => <option key={size} value={size}>{size} px</option>)}
+        <SelectField label="Pane title size" value={paneSize} onValueChange={value => setPaneSize(Number(value))}>
+          {[14, 18, 22].map(size => <SelectOption key={size} value={size}>{size} px</SelectOption>)}
         </SelectField>
         <div className="reference-pane">
           <div className="pane-header"><h3 className="pane-title" title="Home services with a deliberately long pane title">Home services with a deliberately long pane title</h3></div>
@@ -87,9 +141,9 @@ export default function ComponentReference() {
       {modal && <Modal title="Example dialog" close={() => setModal(false)} style={style}>
         <Section title="Shared form" level="h3" description="This is the production Modal component. Escape or Close returns to the reference page.">
           <TextField label="Example name" defaultValue="Pane" autoFocus />
-          <div className="reference-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
+          <div className="ui-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
         </Section>
       </Modal>}
     </main>
-  </div>;
+  </ThemeSurface>;
 }

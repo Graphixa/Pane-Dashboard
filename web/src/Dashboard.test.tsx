@@ -21,6 +21,13 @@ vi.mock("react-grid-layout", () => ({
     containerRef: { current: null },
   }),
 }));
+vi.mock("./design/components", async () => {
+  const actual = await vi.importActual<typeof import("./design/components")>("./design/components");
+  return {
+    ...actual,
+    DropdownMenu: ({ trigger, items }: { trigger: React.ReactElement; items: {label: string; disabled?: boolean; onSelect?: () => void}[] }) => <>{trigger}<div role="menu">{items.map(item => <button key={item.label} role="menuitem" disabled={item.disabled} onClick={item.onSelect}>{item.label}</button>)}</div></>,
+  };
+});
 const initial = (): Config => ({
   version: 2,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
@@ -197,7 +204,7 @@ describe("interaction boundary", () => {
   it("moves the selected highlight and supports keyboard pane movement", async () => {
     const result = render(<Dashboard />);
     fireEvent.click(await screen.findByRole("button", { name: "Add" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add pane" }));
     expect(
       result.container.querySelector(".focused")?.getAttribute("aria-label"),
     ).toBe("Untitled pane");
@@ -238,7 +245,7 @@ describe("interaction boundary", () => {
   it("adding a pane enters edit mode and autosaves with revision protection", async () => {
     render(<Dashboard />);
     fireEvent.click(await screen.findByRole("button", { name: "Add" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add pane" }));
     expect(screen.getByRole("button", { name: "Done editing" })).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Button, IconButton, SelectField, TextField } from "./components";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Button, IconButton, Notice, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -9,14 +9,14 @@ it("connects labels, hints and errors with unique IDs and preserves external des
   render(<><p id="external">External context</p>
     <TextField label="Name" hint="Short name" error="Name is required" aria-describedby="external" />
     <TextField label="Other name" />
-    <SelectField label="Theme"><option>Midnight</option></SelectField>
+    <SelectField label="Theme"><SelectOption value="dark">Midnight</SelectOption></SelectField>
   </>);
   const input = screen.getByLabelText("Name");
   expect(input.getAttribute("aria-invalid")).toBe("true");
   const ids = input.getAttribute("aria-describedby")!.split(" ");
   expect(ids.map(id => document.getElementById(id)?.textContent)).toEqual(["External context", "Short name", "Name is required"]);
   expect(input.id).not.toBe(screen.getByLabelText("Other name").id);
-  expect(screen.getByLabelText("Theme").tagName).toBe("SELECT");
+  expect(screen.getByRole("combobox", { name: "Theme" })).toBeTruthy();
 });
 
 it("keeps ordinary buttons from submitting forms and blocks busy actions", () => {
@@ -35,4 +35,49 @@ it("keeps ordinary buttons from submitting forms and blocks busy actions", () =>
 it("gives icon-only actions an accessible name", () => {
   render(<IconButton label="Open settings"><svg aria-hidden="true" /></IconButton>);
   expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+});
+
+function DeleteConfirmExample({ onResult }: { onResult: (value: boolean) => void }) {
+  const { confirm, confirmation } = useConfirmation();
+  return <>
+    {confirmation}
+    <Button onClick={async () => onResult(await confirm({
+      title: "Delete app?",
+      description: "Delete Plex? This removes it from the pane and cannot be undone.",
+      cancelLabel: "Cancel",
+      actionLabel: "Delete app",
+    }))}>Delete</Button>
+  </>;
+}
+
+it("shows delete confirmation with cancel and delete actions, not discard copy", async () => {
+  const onResult = vi.fn();
+  render(<DeleteConfirmExample onResult={onResult} />);
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog.textContent).toContain("Delete app?");
+  expect(dialog.textContent).toContain("Delete Plex?");
+  expect(screen.queryByRole("button", { name: "Keep changes" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Delete app" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
+});
+
+it("associates SwitchRow labels and optional hints with the switch control", () => {
+  const change = vi.fn();
+  render(<SwitchRow label="Show app labels" hint="Names beneath icons." checked={false} onCheckedChange={change} />);
+  const control = screen.getByRole("switch", { name: "Show app labels" });
+  expect(control.getAttribute("aria-describedby")).toBeTruthy();
+  expect(document.getElementById(control.getAttribute("aria-describedby")!)?.textContent).toBe("Names beneath icons.");
+  fireEvent.click(control);
+  expect(change).toHaveBeenCalledWith(true);
+});
+
+it("renders Notice banners with alert semantics for errors", () => {
+  render(<Notice tone="error" banner><span>Save failed</span><div className="ui-actions"><Button>Retry</Button></div></Notice>);
+  expect(screen.getByRole("alert").textContent).toContain("Save failed");
+  expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
 });
