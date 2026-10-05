@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { IconButton, Text } from "./design/components";
 import { X } from "lucide-react";
 
 export default function Modal({
@@ -117,17 +118,18 @@ export default function Modal({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        <h2>{title}</h2>
-        <button
-          type="button"
+        <Text as="h2" variant="title">{title}</Text>
+        <IconButton
+          variant="quiet"
           className="icon-button"
-          aria-label="Close"
+          label="Close"
           onClick={close}
         >
           <X size={20} />
-        </button>
+        </IconButton>
       </div>
       {children}
     </dialog>
   );
 }
+

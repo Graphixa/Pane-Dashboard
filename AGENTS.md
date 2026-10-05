@@ -1,6 +1,6 @@
 # Working on Pane
 
-Read [SPEC.md](SPEC.md) before changing behaviour. Pane is a single-user self-hosted launcher, not a general-purpose canvas or Docker manager.
+Read [SPEC.md](SPEC.md) before changing behaviour and [DESIGN.md](DESIGN.md) before any UI work. Reuse the central tokens and shared components in `web/src/design`; add reference examples for new components or variants. Pane is a single-user self-hosted launcher, not a general-purpose canvas or Docker manager.
 
 - Keep the Go server small and the React state explicit. No database or second layout engine.
 - React Grid Layout owns outer dragging, resizing and collision handling. CSS Grid owns app slots.
@@ -22,3 +22,4 @@ Read [SPEC.md](SPEC.md) before changing behaviour. Pane is a single-user self-ho
 - Update tests and SPEC.md when behaviour changes. Run `npm ci && npm test && npm run build` in web, then `go test ./... && go vet ./...` at the root.
 - Keep Docker socket access warnings prominent. Do not claim a read-only socket mount makes the Docker API read-only.
 - Do not commit runtime configuration, credentials, node_modules, generated binaries or private service URLs.
+

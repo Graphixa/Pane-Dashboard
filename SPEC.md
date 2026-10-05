@@ -107,3 +107,8 @@ Tests cover fixed geometry, gutters, snapping, occupied destinations/minima, imm
 - Typography offers a Font dropdown (Geist, Rubik, Oxanium; Geist default) plus global pane-title sizing. The chosen typeface applies to the whole dashboard UI. App-label visibility belongs to Panes → Labels. Google Fonts import remains deferred to issue #3.
 - One global pane finish remains mandatory. Product/repository naming remains Pane/Pane-Dashboard; LucentDash and Docks are uncommitted naming ideas.
 - Live dashboard draft preview without backdrop blur and with Cancel rollback is implemented ([#4](https://github.com/Graphixa/Pane-Dashboard/issues/4)). Global glass uses always-on edge refraction with automatic performance gates ([#2](https://github.com/Graphixa/Pane-Dashboard/issues/2)). Deferred work: optional glass hue control, animated background reliability ([#1](https://github.com/Graphixa/Pane-Dashboard/issues/1)) and Google Fonts ([#3](https://github.com/Graphixa/Pane-Dashboard/issues/3)).
+
+
+## Design system implementation
+
+[DESIGN.md](DESIGN.md) defines the visual contract: semantic typography, tokens, components, states and contribution checks. The dashboard and standalone `/design-system.html` component reference share locally bundled fonts and the same stylesheet entry point. General UI uses rem-based typography at weights 400, 600 and 700; pane titles and app labels preserve the fixed geometry above. The reference uses temporary sample data and never accesses configuration or saves changes. It is not a Settings preview or a new navigation section. New UI uses the shared components in `web/src/design`; existing specialised controls are migrated incrementally.

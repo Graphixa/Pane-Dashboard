@@ -46,9 +46,9 @@
   border-color: transparent;
   text-align: left;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-section);
 }
 .settings-sidebar button svg {
   width: 18px;
@@ -72,11 +72,11 @@
   scrollbar-gutter: stable;
 }
 .settings-page-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: var(--type-title);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.4px;
-  line-height: 1.3;
-  margin: 0 0 32px;
+  line-height: var(--leading-title);
+  margin: 0 0 var(--space-6);
 }
 .settings-section,
 .settings-card {
@@ -93,21 +93,21 @@
 .settings-section h3,
 .settings-card h3 {
   margin: 0 0 16px;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.4;
+  font-size: var(--type-section);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-section);
   letter-spacing: -0.15px;
 }
 .settings-section h4,
 .settings-card h4 {
   margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-body);
 }
 .settings-dialog p {
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: var(--type-support);
+  line-height: var(--leading-body);
   margin: 10px 0 0;
   max-width: 64ch;
 }
@@ -132,8 +132,8 @@
   margin: 0 0 8px;
 }
 .settings-dialog label {
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
   color: var(--text);
   margin: 14px 0 0;
   gap: 8px;
@@ -143,7 +143,7 @@
 }
 .settings-dialog input,
 .settings-dialog select {
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .settings-subsection {
   margin-top: 26px;
@@ -159,7 +159,7 @@
   margin-top: 14px;
 }
 .settings-dialog .range-field output {
-  font-size: 13px;
+  font-size: var(--type-support);
   font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
@@ -199,8 +199,8 @@
   margin: 24px 0 12px;
 }
 .settings-disclosure > summary {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
   padding: 6px 0;
   cursor: pointer;
 }
@@ -210,7 +210,7 @@
 }
 .settings-dialog .text-button {
   padding-left: 0;
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .settings-footer {
   border-top: 1px solid var(--line);
@@ -228,7 +228,7 @@
 }
 .settings-status {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-support);
   min-width: 0;
 }
 .settings-status p {
@@ -244,7 +244,7 @@
   margin: 12px 0 0;
 }
 .settings-dialog .choice-row button {
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .settings-dialog .choice-row button[aria-pressed="true"] {
   background: var(--accent);
@@ -260,7 +260,7 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 .settings-dialog .upload-tile {
-  font-size: 13px;
+  font-size: var(--type-body);
 }
 .logo-choices,
 .theme-choices {
@@ -292,12 +292,12 @@
   gap: 8px;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: var(--type-body);
 }
 .logo-choice-wide {
   min-width: 100px;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--type-brand-compact);
+  font-weight: var(--weight-semibold);
   letter-spacing: -0.6px;
 }
 .theme-thumbnail {
@@ -346,9 +346,9 @@
 }
 .overlay-group-label {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.5;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-body);
   color: var(--text);
 }
 .overlay-swatches {
@@ -423,8 +423,8 @@
   display: grid;
   place-items: center;
   z-index: 1;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
   color: var(--text);
   filter: drop-shadow(0 0 1.5px var(--bg));
   pointer-events: none;
@@ -448,8 +448,8 @@
   margin-bottom: 10px;
 }
 .colour-popover-head strong {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
 }
 .colour-popover-head .icon-button {
   width: 28px;
@@ -487,16 +487,16 @@
   gap: 4px;
   flex: 1;
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
   color: var(--muted);
 }
 .colour-popover-hex input {
   width: 100%;
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--line);
@@ -528,8 +528,8 @@
   height: 36px;
   border-radius: 50%;
   padding: 0;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: var(--type-body);
+  font-weight: var(--weight-semibold);
   border: 2px solid transparent;
   color: var(--accent-text);
   cursor: pointer;
@@ -617,7 +617,7 @@
   height: 28px;
 }
 .logo-choice-wide {
-  font-size: 16px;
+  font-size: var(--type-body);
 }
 .settings-disclosure .image-field {
   margin-top: 12px;
@@ -625,7 +625,7 @@
 .about-links {
   display: flex;
   gap: 20px;
-  font-size: 14px;
+  font-size: var(--type-body);
   margin-top: 22px;
 }
 @media (max-width: 700px) {
@@ -652,7 +652,7 @@
     grid-template-columns: 18px max-content;
     gap: 8px;
     padding: 9px;
-    font-size: 13px;
+    font-size: var(--type-support);
   }
   .settings-content {
     padding: 24px 20px 32px;
@@ -671,3 +671,4 @@
     width: 130px;
   }
 }
+
