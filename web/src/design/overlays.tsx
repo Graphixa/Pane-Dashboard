@@ -56,26 +56,47 @@ export function Tooltip({label, children}: {label: string; children: ReactElemen
   const surface = useSurface();
   return <TooltipPrimitive.Provider delayDuration={400}><TooltipPrimitive.Root><TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger><TooltipPrimitive.Portal><TooltipPrimitive.Content {...surface} className="ui-tooltip ui-overlay-surface" sideOffset={6}>{label}</TooltipPrimitive.Content></TooltipPrimitive.Portal></TooltipPrimitive.Root></TooltipPrimitive.Provider>;
 }
+/** Caller-owned copy for discard, delete and replace confirmations. */
+export type ConfirmRequest = {
+  title: string;
+  description: string;
+  cancelLabel: string;
+  actionLabel: string;
+  actionVariant?: "danger" | "primary" | "secondary";
+};
+
 /** Promise-based caller API; the dialog and focus behaviour remain centralised. */
 export function useConfirmation() {
-  const [message, setMessage] = useState<string | null>(null);
+  const [request, setRequest] = useState<ConfirmRequest | null>(null);
   const pending = useRef<((value: boolean) => void) | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   useEffect(() => () => {pending.current?.(false);}, []);
-  const finish = (value: boolean) => {pending.current?.(value); pending.current = null; setMessage(null);};
-  const confirm = (text: string) => new Promise<boolean>(resolve => {pending.current?.(false); opener.current = document.activeElement as HTMLElement; pending.current = resolve; setMessage(text);});
-  const confirmation = <ConfirmationDialog message={message} finish={finish} opener={opener} />;
+  const finish = (value: boolean) => {pending.current?.(value); pending.current = null; setRequest(null);};
+  const confirm = (next: ConfirmRequest) => new Promise<boolean>(resolve => {
+    pending.current?.(false);
+    opener.current = document.activeElement as HTMLElement;
+    pending.current = resolve;
+    setRequest(next);
+  });
+  const confirmation = <ConfirmationDialog request={request} finish={finish} opener={opener} />;
   return {confirm, confirmation};
 }
 
-function ConfirmationDialog({message, finish, opener}: {message: string | null; finish: (value: boolean) => void; opener: React.RefObject<HTMLElement | null>}) {
+function ConfirmationDialog({request, finish, opener}: {
+  request: ConfirmRequest | null;
+  finish: (value: boolean) => void;
+  opener: React.RefObject<HTMLElement | null>;
+}) {
   const surface = useSurface();
-  return <AlertDialog.Root open={message !== null} onOpenChange={open => {if (!open) finish(false);}}><AlertDialog.Portal>
+  return <AlertDialog.Root open={request !== null} onOpenChange={open => {if (!open) finish(false);}}><AlertDialog.Portal>
     <AlertDialog.Overlay className="ui-dialog-backdrop" />
     <AlertDialog.Content {...surface} className="ui-dialog ui-confirm ui-overlay-surface" onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}>
-      <AlertDialog.Title asChild><Text as="h2" variant="title">Confirm action</Text></AlertDialog.Title>
-      <AlertDialog.Description className="ui-confirm-description">{message}</AlertDialog.Description>
-      <div className="ui-actions"><AlertDialog.Cancel asChild><Button onClick={() => finish(false)}>Keep changes</Button></AlertDialog.Cancel><AlertDialog.Action asChild><Button variant="danger" onClick={() => finish(true)}>Continue</Button></AlertDialog.Action></div>
+      <AlertDialog.Title asChild><Text as="h2" variant="title">{request?.title}</Text></AlertDialog.Title>
+      <AlertDialog.Description className="ui-confirm-description">{request?.description}</AlertDialog.Description>
+      <div className="ui-actions">
+        <AlertDialog.Cancel asChild><Button onClick={() => finish(false)}>{request?.cancelLabel}</Button></AlertDialog.Cancel>
+        <AlertDialog.Action asChild><Button variant={request?.actionVariant ?? "danger"} onClick={() => finish(true)}>{request?.actionLabel}</Button></AlertDialog.Action>
+      </div>
     </AlertDialog.Content>
   </AlertDialog.Portal></AlertDialog.Root>;
 }

@@ -316,7 +316,7 @@ describe("global appearance", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", {name: "Continue"}));
+    fireEvent.click(screen.getByRole("button", {name: "Discard"}));
     expect(apply).not.toHaveBeenCalled();
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });

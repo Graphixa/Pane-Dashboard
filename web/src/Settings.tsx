@@ -67,7 +67,12 @@ const [page, setPage] = useState<Page>("general");
   const requestClose = async () => {
     if (
       (!dirty && !busy) ||
-      await confirm("Discard unsaved settings changes?")
+      await confirm({
+        title: "Discard changes?",
+        description: "Discard unsaved settings changes?",
+        cancelLabel: "Keep changes",
+        actionLabel: "Discard",
+      })
     )
       close();
   };

@@ -190,7 +190,12 @@ const [draft, setDraft] = useState<App>(
               type="button"
               variant="danger"
               onClick={async () => {
-                if (await confirm(`Delete ${app.name}?`)) {
+                if (await confirm({
+                  title: "Delete app?",
+                  description: `Delete ${app.name}? This removes it from the pane and cannot be undone.`,
+                  cancelLabel: "Cancel",
+                  actionLabel: "Delete app",
+                })) {
                   const n = clone(config);
                   n.items.find((p) => p.id === paneId)!.apps = n.items
                     .find((p) => p.id === paneId)!
@@ -306,11 +311,12 @@ const [draft, setDraft] = useState(clone(pane)),
             type="button"
             variant="danger"
             onClick={async () => {
-              if (
-                await confirm(
-                  `Delete this pane and its ${pane.apps.length} apps?`,
-                )
-              ) {
+              if (await confirm({
+                title: "Delete pane?",
+                description: `Delete this pane and its ${pane.apps.length} apps? This cannot be undone.`,
+                cancelLabel: "Cancel",
+                actionLabel: "Delete pane",
+              })) {
                 apply({
                   ...config,
                   items: config.items.filter((p) => p.id !== pane.id),

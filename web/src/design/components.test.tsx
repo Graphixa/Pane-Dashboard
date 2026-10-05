@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Button, IconButton, SelectField, SelectOption, TextField } from "./components";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Button, IconButton, SelectField, SelectOption, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -35,4 +35,33 @@ it("keeps ordinary buttons from submitting forms and blocks busy actions", () =>
 it("gives icon-only actions an accessible name", () => {
   render(<IconButton label="Open settings"><svg aria-hidden="true" /></IconButton>);
   expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+});
+
+function DeleteConfirmExample({ onResult }: { onResult: (value: boolean) => void }) {
+  const { confirm, confirmation } = useConfirmation();
+  return <>
+    {confirmation}
+    <Button onClick={async () => onResult(await confirm({
+      title: "Delete app?",
+      description: "Delete Plex? This removes it from the pane and cannot be undone.",
+      cancelLabel: "Cancel",
+      actionLabel: "Delete app",
+    }))}>Delete</Button>
+  </>;
+}
+
+it("shows delete confirmation with cancel and delete actions, not discard copy", async () => {
+  const onResult = vi.fn();
+  render(<DeleteConfirmExample onResult={onResult} />);
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog.textContent).toContain("Delete app?");
+  expect(dialog.textContent).toContain("Delete Plex?");
+  expect(screen.queryByRole("button", { name: "Keep changes" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(false));
+  fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Delete app" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
 });

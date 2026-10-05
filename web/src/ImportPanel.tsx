@@ -200,9 +200,12 @@ const [source, setSource] = useState("file"),
                   try {
                     if (
                       replacement &&
-                      !await confirm(
-                        "Replace your entire dashboard with this file? Download a backup first if needed.",
-                      )
+                      !await confirm({
+                        title: "Replace dashboard?",
+                        description: "Replace your entire dashboard with this file? Download a backup first if needed.",
+                        cancelLabel: "Cancel",
+                        actionLabel: "Replace dashboard",
+                      })
                     )
                       return;
                     imported(

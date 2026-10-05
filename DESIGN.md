@@ -130,7 +130,7 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | `Modal` | Radix Dialog with required title and close handler; caller owns discard policy |
 | `Popover`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling |
 | `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure`, `Tooltip` | Radix controls with Pane keyboard, focus and theme treatment |
-| `useConfirmation` | Radix Alert Dialog for destructive or draft-discard confirmation |
+| `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
 
 ```tsx
 import { Button, Section, TextField } from "./design/components";

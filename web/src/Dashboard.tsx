@@ -514,9 +514,12 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
               <Button
                 onClick={async () =>
                   status === "Conflict"
-                    ? await confirm(
-                        "Reload and discard unsaved changes from this session?",
-                      ) && window.location.reload()
+                    ? await confirm({
+                        title: "Reload dashboard?",
+                        description: "Reload and discard unsaved changes from this session?",
+                        cancelLabel: "Cancel",
+                        actionLabel: "Reload",
+                      }) && window.location.reload()
                     : retry()
                 }
               >

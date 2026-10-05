@@ -82,4 +82,5 @@ export function Section({ title, description, children, className = "", level = 
 
 export { Input, Label, Select, SelectOption, Switch, Checkbox, Range, Disclosure, FieldGroup } from "./controls";
 export { Modal, Popover, DropdownMenu, Tooltip, useConfirmation } from "./overlays";
+export type { ConfirmRequest } from "./overlays";
 export { ThemeSurface } from "./surface";

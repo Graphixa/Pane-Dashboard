@@ -88,7 +88,7 @@ describe("settings navigation and draft safety", () => {
       page("Keep changes");
       expect(close).not.toHaveBeenCalled();
     }
-    page("Cancel"); page("Continue");
+    page("Cancel"); page("Discard");
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
   it("validates hidden sections before applying", () => {
@@ -234,7 +234,7 @@ describe("settings navigation and draft safety", () => {
     expect(
       (preview.mock.calls.at(-1)?.[0] as Config).appearance.theme,
     ).toBe("light");
-    page("Cancel"); page("Continue");
+    page("Cancel"); page("Discard");
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
