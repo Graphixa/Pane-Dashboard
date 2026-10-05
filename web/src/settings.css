@@ -5,13 +5,9 @@
   padding: 0;
   overflow: hidden;
 }
-.settings-dialog[open] {
+.ui-dialog.settings-dialog {
   display: flex;
   flex-direction: column;
-}
-.settings-dialog::backdrop {
-  background: #080c1380;
-  backdrop-filter: none;
 }
 .settings-dialog > .modal-title {
   padding: 20px 24px;
@@ -125,13 +121,13 @@
 .settings-subsection > .image-field {
   margin-top: 10px;
 }
-.settings-disclosure .colour-grid {
+.ui-disclosure .colour-grid {
   margin-top: 14px;
 }
 .settings-dialog .accent-swatches {
   margin: 0 0 8px;
 }
-.settings-dialog label {
+.settings-dialog .ui-label {
   font-size: var(--type-body);
   line-height: var(--leading-body);
   color: var(--text);
@@ -141,8 +137,8 @@
 .settings-section > label:first-of-type {
   margin-top: 0;
 }
-.settings-dialog input,
-.settings-dialog select {
+.settings-dialog .ui-input,
+.settings-dialog .ui-select {
   font-size: var(--type-body);
 }
 .settings-subsection {
@@ -182,11 +178,11 @@
   width: 90px;
   flex-shrink: 0;
 }
-.settings-row select {
+.settings-row .ui-select {
   width: 180px;
   flex-shrink: 0;
 }
-.settings-row select[aria-label="Font"] {
+.settings-row .ui-select[aria-label="Font"] {
   width: 200px;
 }
 .settings-dialog .fields {
@@ -195,18 +191,8 @@
 .settings-dialog .fields label {
   margin-top: 0;
 }
-.settings-disclosure {
+.ui-disclosure {
   margin: 24px 0 12px;
-}
-.settings-disclosure > summary {
-  font-size: var(--type-body);
-  font-weight: var(--weight-semibold);
-  padding: 6px 0;
-  cursor: pointer;
-}
-.settings-disclosure > summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
 }
 .settings-dialog .text-button {
   padding-left: 0;
@@ -429,17 +415,6 @@
   filter: drop-shadow(0 0 1.5px var(--bg));
   pointer-events: none;
 }
-.colour-popover {
-  position: absolute;
-  z-index: 1000;
-  width: 220px;
-  padding: 10px 12px 12px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  background: var(--panel-high);
-  box-shadow: 0 16px 40px rgb(0 0 0 / 35%);
-  color: var(--text);
-}
 .colour-popover-head {
   display: flex;
   align-items: center;
@@ -549,31 +524,6 @@
     0 0 0 2px var(--panel),
     0 0 0 4px var(--accent);
 }
-.settings-dialog input[role="switch"] {
-  appearance: none;
-  width: 38px;
-  height: 22px;
-  padding: 2px;
-  border-radius: 20px;
-  background: var(--muted);
-  border: 0;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.settings-dialog input[role="switch"]::before {
-  content: "";
-  display: block;
-  width: 18px;
-  height: 18px;
-  background: #fff;
-  border-radius: 50%;
-}
-.settings-dialog input[role="switch"]:checked {
-  background: var(--accent);
-}
-.settings-dialog input[role="switch"]:checked::before {
-  transform: translateX(16px);
-}
 .backup-option {
   display: flex;
   flex-wrap: wrap;
@@ -619,7 +569,7 @@
 .logo-choice-wide {
   font-size: var(--type-body);
 }
-.settings-disclosure .image-field {
+.ui-disclosure .image-field {
   margin-top: 12px;
 }
 .about-links {
@@ -667,7 +617,7 @@
   .settings-dialog .fields {
     flex-direction: column;
   }
-  .settings-row select {
+  .settings-row .ui-select {
     width: 130px;
   }
 }

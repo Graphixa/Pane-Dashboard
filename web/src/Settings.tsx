@@ -1,3 +1,5 @@
+import { useConfirmation } from "./design/components";
+import { FieldGroup } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import {
   Settings2,
@@ -10,7 +12,7 @@ import {
 import { Config, clone, sanitiseExport, validate } from "./model";
 import { appearanceStyle } from "./appearance";
 import AppearanceEditor from "./AppearanceEditor";
-import Modal from "./Modal";
+import { Modal } from "./design/components";
 import { Button, Text } from "./design/components";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
@@ -43,7 +45,8 @@ export default function Settings({
   readOnly: boolean;
   onPreview?: (draft: Config | null) => void;
 }) {
-  const [page, setPage] = useState<Page>("general");
+  const { confirm, confirmation } = useConfirmation();
+const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,10 +64,10 @@ export default function Settings({
     setError("");
     previewFrom(c);
   };
-  const requestClose = () => {
+  const requestClose = async () => {
     if (
       (!dirty && !busy) ||
-      window.confirm("Discard unsaved settings changes?")
+      await confirm("Discard unsaved settings changes?")
     )
       close();
   };
@@ -109,12 +112,14 @@ export default function Settings({
       close={requestClose}
       className="settings-dialog"
       style={appearanceStyle(draft.appearance)}
+      theme={draft.appearance.theme}
       draggable
     >
+      {confirmation}
       <div className="settings-body">
         <nav className="settings-sidebar" aria-label="Settings sections">
           {pages.map(([id, label, Icon]) => (
-            <button
+            <Button
               type="button"
               key={id}
               disabled={busy}
@@ -123,7 +128,7 @@ export default function Settings({
             >
               <Icon size={18} />
               <span>{label}</span>
-            </button>
+            </Button>
           ))}
         </nav>
         <div className="settings-content" ref={content}>
@@ -145,7 +150,7 @@ export default function Settings({
             }}
           >
             {editable && (
-              <fieldset disabled={readOnly || busy}>
+              <FieldGroup disabled={readOnly || busy}>
                 <div className="settings-sections">
                   <AppearanceEditor
                     draft={draft}
@@ -154,7 +159,7 @@ export default function Settings({
                     section={page}
                   />
                 </div>
-              </fieldset>
+              </FieldGroup>
             )}
           </form>
           {page === "backup" && (
@@ -174,13 +179,13 @@ export default function Settings({
                       images.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     disabled={dirty || busy}
                     onClick={() => download("pane-backup.yaml", config)}
                   >
                     Download full backup
-                  </button>
+                  </Button>
                 </div>
                 <div className="backup-option">
                   <div className="backup-option-copy">
@@ -190,7 +195,7 @@ export default function Settings({
                       before sharing.
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     disabled={dirty || busy}
                     onClick={() =>
@@ -198,7 +203,7 @@ export default function Settings({
                     }
                   >
                     Export shareable layout
-                  </button>
+                  </Button>
                 </div>
               </section>
               <section className="settings-section">

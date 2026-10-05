@@ -1,3 +1,5 @@
+import { useConfirmation } from "./design/components";
+import { Button, Label, Input, Checkbox, Select, SelectOption } from "./design/components";
 import { useState } from "react";
 import { parse } from "yaml";
 import {
@@ -42,7 +44,8 @@ export default function ImportPanel({
   config: Config;
   imported: (c: Config, id?: string) => void;
 }) {
-  const [source, setSource] = useState("file"),
+  const { confirm, confirmation } = useConfirmation();
+const [source, setSource] = useState("file"),
     [error, setError] = useState(""),
     [preview, setPreview] = useState<Config | null>(null),
     [replacement, setReplacement] = useState(false),
@@ -77,35 +80,35 @@ export default function ImportPanel({
   const patch = (i: number, update: Partial<Selection>) =>
     setApps(apps.map((a, j) => (j === i ? { ...a, ...update } : a)));
   return (
-    <div className="import-panel">
+    <> {confirmation} <div className="import-panel">
       <div
         className="choice-row finish-choices import-source"
         role="group"
         aria-label="Import source"
       >
-        <button
+        <Button
           type="button"
           aria-pressed={source === "file"}
           onClick={() => setSource("file")}
         >
           Layout file
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           aria-pressed={source === "docker"}
           onClick={() => setSource("docker")}
         >
           Docker
-        </button>
+        </Button>
       </div>
       {source === "file" ? (
         <>
           <p className="section-description">
             Import a dashboard backup or shared pane template.
           </p>
-          <label>
+          <Label>
             YAML or JSON file
-            <input
+            <Input
               type="file"
               accept=".yaml,.yml,.json"
               onChange={async (e) => {
@@ -171,7 +174,7 @@ export default function ImportPanel({
                 }
               }}
             />
-          </label>
+          </Label>
           {preview && (
             <div className="notice">
               <h4>{replacement ? "Replace dashboard" : "Add shared pane"}</h4>
@@ -191,13 +194,13 @@ export default function ImportPanel({
                 Imported icon addresses will be contacted by your browser. Only
                 import files you trust.
               </p>
-              <button
-                className="primary"
-                onClick={() => {
+              <Button
+                variant="primary"
+                onClick={async () => {
                   try {
                     if (
                       replacement &&
-                      !window.confirm(
+                      !await confirm(
                         "Replace your entire dashboard with this file? Download a backup first if needed.",
                       )
                     )
@@ -212,7 +215,7 @@ export default function ImportPanel({
                 }}
               >
                 Confirm import
-              </button>
+              </Button>
             </div>
           )}
         </>
@@ -227,9 +230,9 @@ export default function ImportPanel({
             even with a read-only mount. Use a restricted socket proxy where
             possible.
           </p>
-          <label>
+          <Label>
             Docker host address
-            <input
+            <Input
               value={host}
               placeholder="192.168.1.10"
               onChange={(e) => {
@@ -243,14 +246,14 @@ export default function ImportPanel({
                 );
               }}
             />
-          </label>
+          </Label>
           <p className="hint">
             Use a hostname or IP only. Review HTTPS, reverse-proxy and port
             choices below; detection does not prove a port serves a web app.
           </p>
-          <button disabled={busy} onClick={scan}>
+          <Button disabled={busy} onClick={scan}>
             {busy ? "Scanning…" : "Scan Docker"}
-          </button>
+          </Button>
           {enabled === false && (
             <p className="notice">
               Discovery is disabled. Configure PANE_DOCKER_ENDPOINT on the
@@ -265,61 +268,60 @@ export default function ImportPanel({
               );
               return (
                 <article key={a.id}>
-                  <label className="check">
-                    <input
-                      type="checkbox"
+                  <Label className="check">
+                    <Checkbox
                       checked={a.selected}
                       disabled={exists}
-                      onChange={(e) => patch(i, { selected: e.target.checked })}
+                      onCheckedChange={(checked) => patch(i, { selected: checked })}
                     />
                     <strong>{a.name}</strong>
                     {exists && <span className="badge">Already added</span>}
-                  </label>
+                  </Label>
                   <small>{a.image}</small>
                   {a.selected && (
                     <div className="discovery-fields">
-                      <label>
+                      <Label>
                         App name
-                        <input
+                        <Input
                           value={a.name}
                           maxLength={100}
                           onChange={(e) => patch(i, { name: e.target.value })}
                         />
-                      </label>
+                      </Label>
                       {a.ports.length > 0 && (
-                        <label>
+                        <Label>
                           Published TCP port
-                          <select
-                            onChange={(e) =>
+                          <Select
+                            onValueChange={(value) =>
                               patch(i, {
-                                url: address(host, Number(e.target.value)),
+                                url: address(host, Number(value)),
                               })
                             }
                             defaultValue={a.ports[0].port}
                           >
                             {a.ports.map((p, j) => (
-                              <option key={j} value={p.port}>
+                              <SelectOption key={j} value={p.port}>
                                 {p.port} → {p.privatePort} (
                                 {p.ip || "all interfaces"})
-                              </option>
+                              </SelectOption>
                             ))}
-                          </select>
-                        </label>
+                          </Select>
+                        </Label>
                       )}
-                      <label>
+                      <Label>
                         App address
-                        <input
+                        <Input
                           value={a.url}
                           onChange={(e) => patch(i, { url: e.target.value })}
                         />
-                      </label>
-                      <label>
+                      </Label>
+                      <Label>
                         Icon
-                        <input
+                        <Input
                           value={a.icon}
                           onChange={(e) => patch(i, { icon: e.target.value })}
                         />
-                      </label>
+                      </Label>
                     </div>
                   )}
                   {a.ports.length === 0 && (
@@ -341,32 +343,32 @@ export default function ImportPanel({
           </div>
           {apps.some((a) => a.selected) && (
             <>
-              <label>
+              <Label>
                 Destination
-                <select
+                <Select
                   value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
+                  onValueChange={(value) => setDestination(value)}
                 >
-                  <option value="new">Create new pane</option>
+                  <SelectOption value="new">Create new pane</SelectOption>
                   {config.items.map((p) => (
-                    <option value={p.id} key={p.id}>
+                    <SelectOption value={p.id} key={p.id}>
                       {p.title || "Untitled pane"}
-                    </option>
+                    </SelectOption>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
               {destination === "new" && (
-                <label>
+                <Label>
                   Pane title (optional)
-                  <input
+                  <Input
                     maxLength={100}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                   />
-                </label>
+                </Label>
               )}
-              <button
-                className="primary"
+              <Button
+                variant="primary"
                 onClick={() => {
                   try {
                     const selected: App[] = apps
@@ -398,7 +400,7 @@ export default function ImportPanel({
                 }}
               >
                 Import {apps.filter((a) => a.selected).length} apps
-              </button>
+              </Button>
             </>
           )}
         </>
@@ -408,6 +410,6 @@ export default function ImportPanel({
           {error}
         </p>
       )}
-    </div>
+    </div> </>
   );
 }

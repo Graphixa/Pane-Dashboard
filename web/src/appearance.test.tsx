@@ -198,9 +198,8 @@ describe("global appearance", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
-    fireEvent.change(screen.getByRole("slider", { name: "Opacity" }), {
-      target: { value: "55" },
-    });
+    fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "Home"});
+    for(let i=0; i<55; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "ArrowRight"});
     expect(apply).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply).toHaveBeenCalledOnce();
@@ -238,11 +237,11 @@ describe("global appearance", () => {
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
     const style = screen.getByLabelText("Motion style");
-    expect(style).toHaveProperty("value", "none");
-    fireEvent.change(style, { target: { value: "ken-burns" } });
-    fireEvent.change(screen.getByRole("slider", { name: "Speed" }), {
-      target: { value: "75" },
-    });
+    expect(style.textContent).toContain("None");
+    fireEvent.keyDown(style, {key: "ArrowDown"});
+    fireEvent.click(screen.getByRole("option", {name: "Ken Burns"}));
+    fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "Home"});
+    for(let i=0; i<75; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "ArrowRight"});
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "image",
@@ -298,7 +297,7 @@ describe("global appearance", () => {
         .motionStyle,
     ).toBe("drift");
   });
-  it("does not persist a cancelled settings draft", () => {
+  it("does not persist a cancelled settings draft", async () => {
     const apply = vi.fn(),
       close = vi.fn();
     render(
@@ -316,10 +315,10 @@ describe("global appearance", () => {
       target: { value: "https://example.com/wordmark.png" },
     });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(screen.getByRole("button", {name: "Continue"}));
     expect(apply).not.toHaveBeenCalled();
-    expect(close).toHaveBeenCalledOnce();
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
   it("renders wide logos without duplicate visible titles and falls back on failure", () => {
     const r = render(
@@ -434,3 +433,4 @@ describe("image preparation", () => {
     expect(busy).toHaveBeenLastCalledWith(false);
   });
 });
+

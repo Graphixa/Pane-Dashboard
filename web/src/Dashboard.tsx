@@ -1,3 +1,6 @@
+import { ThemeSurface, DropdownMenu } from "./design/components";
+import { useConfirmation } from "./design/components";
+import { Button } from "./design/components";
 import { CSSProperties, useCallback, useEffect, useState } from "react";
 import GridLayout, { useContainerWidth, type Layout } from "react-grid-layout";
 import {
@@ -77,7 +80,7 @@ export default function Dashboard() {
         {state.error ? (
           <>
             <p role="alert">{state.error}</p>
-            <button onClick={() => window.location.reload()}>Retry</button>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
           </>
         ) : null}
       </main>
@@ -91,7 +94,8 @@ function DashboardView({
   error,
   retry,
 }: ReturnType<typeof useConfig> & { config: Config }) {
-  const { width: availableWidth, containerRef, mounted } = useContainerWidth();
+  const { confirm, confirmation } = useConfirmation();
+const { width: availableWidth, containerRef, mounted } = useContainerWidth();
   const [edit, setEdit] = useState(false),
     [editor, setEditor] = useState<Editor>(null),
     [addMenu, setAddMenu] = useState(false),
@@ -160,9 +164,8 @@ function DashboardView({
   useEffect(() => {
     if (mobile) {
       setEdit(false);
-      setEditor(null);
+      setEditor(current => current?.type === "settings" ? current : null);
       setAddMenu(false);
-      setSettingsPreview(null);
     }
   }, [mobile]);
   useEffect(() => {
@@ -245,7 +248,7 @@ function DashboardView({
       onDragEnd={() => setDragged(null)}
     >
       {editing ? (
-        <button
+        <Button variant="surface"
           className="app-link"
           aria-label={`Edit ${a.name}`}
           onClick={() => openApp(p, a)}
@@ -255,7 +258,7 @@ function DashboardView({
           {display.appearance.showAppLabels && (
             <span className="app-name">{a.name}</span>
           )}
-        </button>
+        </Button>
       ) : (
         <a
           className="app-link"
@@ -290,7 +293,7 @@ function DashboardView({
       >
         <div className={`pane-header ${editing ? "pane-header-editing" : ""}`}>
           {editing && (
-            <button
+            <Button variant="surface"
               className="icon-button pane-move"
               aria-label={`Move ${p.title || "untitled pane"}`}
               title="Drag to move; arrow keys nudge"
@@ -319,7 +322,7 @@ function DashboardView({
               }}
             >
               <Grip size={18} />
-            </button>
+            </Button>
           )}
           <PaneTitle
             title={p.title}
@@ -336,13 +339,13 @@ function DashboardView({
             }
           />
           {editing && (
-            <button
+            <Button variant="surface"
               className="icon-button pane-controls"
               aria-label={`Edit ${p.title || "untitled pane"}`}
               onClick={() => setEditor({ type: "pane", pane: p })}
             >
               <Ellipsis size={20} />
-            </button>
+            </Button>
           )}
         </div>
         <div className="pane">
@@ -376,7 +379,7 @@ function DashboardView({
                 if (p.apps.some((a) => a.col === col && a.row === row))
                   return null;
                 return (
-                  <button
+                  <Button variant="surface"
                     key={`slot-${i}`}
                     className={`empty-slot ${dragged ? "drop-ready" : ""}`}
                     aria-label={`Add app at column ${col + 1}, row ${row + 1}`}
@@ -403,7 +406,7 @@ function DashboardView({
                     <span className="placeholder-artwork">
                       <Plus size={20} />
                     </span>
-                  </button>
+                  </Button>
                 );
               })}
             {[...p.apps]
@@ -415,7 +418,7 @@ function DashboardView({
     );
   };
   return (
-    <div
+    <ThemeSurface theme={display.appearance.theme}
       className="shell"
       data-pane-style={display.appearance.glass?.mode ?? "solid"}
       style={
@@ -428,6 +431,7 @@ function DashboardView({
         } as CSSProperties
       }
     >
+      {confirmation}
       <Background
         settings={display.appearance.background}
         theme={display.appearance.theme}
@@ -453,34 +457,23 @@ function DashboardView({
             {status}
           </span>
           <div className="nav-actions">
-            <div className="add-wrap">
-              <button
+            <DropdownMenu open={addMenu} onOpenChange={setAddMenu} trigger={<Button variant="surface"
                 className="nav-button"
                 disabled={mobile || status === "Conflict"}
                 title="Add"
                 aria-label="Add"
                 aria-expanded={addMenu}
-                onClick={() => setAddMenu(!addMenu)}
               >
                 <span>
                   <Plus size={21} />
                 </span>
                 {labels && <small>Add</small>}
-              </button>
-              {addMenu && (
-                <div className="dropdown">
-                  <button onClick={add}>
-                    <LayoutGrid size={16} />
-                    Add pane
-                  </button>
-                  <button disabled>
-                    Widget <small>Coming later</small>
-                  </button>
-                  <button onClick={() => setAddMenu(false)}>Close menu</button>
-                </div>
-              )}
-            </div>
-            <button
+              </Button>} items={[
+              {label: "Add pane", icon: <LayoutGrid size={16} aria-hidden="true" />, onSelect: add},
+              {label: "Widget — coming later", disabled: true},
+              {label: "Close menu", onSelect: () => setAddMenu(false)},
+            ]} />
+            <Button variant="surface"
               className={`nav-button ${editing ? "active" : ""}`}
               disabled={mobile || status === "Conflict"}
               aria-label={editing ? "Done editing" : "Edit dashboard"}
@@ -495,8 +488,8 @@ function DashboardView({
                 <Hammer size={20} />
               </span>
               {labels && <small>{editing ? "Done" : "Edit"}</small>}
-            </button>
-            <button
+            </Button>
+            <Button variant="surface"
               className="nav-button"
               title="Settings"
               aria-label="Settings"
@@ -509,7 +502,7 @@ function DashboardView({
                 <Gear size={20} />
               </span>
               {labels && <small>Settings</small>}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -518,19 +511,19 @@ function DashboardView({
           <div className="error banner" role="alert">
             {message || error}
             {error && (
-              <button
-                onClick={() =>
+              <Button
+                onClick={async () =>
                   status === "Conflict"
-                    ? window.confirm(
+                    ? await confirm(
                         "Reload and discard unsaved changes from this session?",
                       ) && window.location.reload()
                     : retry()
                 }
               >
                 {status === "Conflict" ? "Reload" : "Retry save"}
-              </button>
+              </Button>
             )}
-            {message && <button onClick={() => setMessage("")}>Dismiss</button>}
+            {message && <Button onClick={() => setMessage("")}>Dismiss</Button>}
           </div>
         )}
         <div
@@ -544,17 +537,17 @@ function DashboardView({
               </span>
               <h2>No panes yet</h2>
               <p>Add a pane or import a layout to get started.</p>
-              <button className="primary" disabled={mobile} onClick={add}>
+              <Button variant="primary" disabled={mobile} onClick={add}>
                 <Plus size={17} />
                 Create a pane
-              </button>
-              <button
+              </Button>
+              <Button variant="surface"
                 className="text-button"
                 disabled={mobile}
                 onClick={() => setEditor({ type: "settings" })}
               >
                 Or import an existing layout <ArrowUpRight size={14} />
-              </button>
+              </Button>
               {mobile && (
                 <small>Open on a wider desktop screen to get started.</small>
               )}
@@ -658,7 +651,7 @@ function DashboardView({
             setSettingsPreview(null);
             setEditor(null);
           }}
-          readOnly={mobile}
+          readOnly={availableWidth < 768 || (config.dashboard.widthMode === "fixed" && availableWidth < config.dashboard.width) || !canPresent(config, gridWidth(config.dashboard.widthMode === "full" ? availableWidth : config.dashboard.width))}
         />
       )}
       {editor?.type === "pane" && editing && (
@@ -679,6 +672,7 @@ function DashboardView({
           close={() => setEditor(null)}
         />
       )}
-    </div>
+    </ThemeSurface>
   );
 }
+

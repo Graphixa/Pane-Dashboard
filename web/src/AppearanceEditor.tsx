@@ -1,12 +1,10 @@
+import { Button, Label, Input, Select, SelectOption, Switch, Popover, IconButton, Text, Section, Range, Disclosure } from "./design/components";
 import {
   useEffect,
   useId,
   useRef,
   useState,
-  type ReactNode,
-  type RefObject,
 } from "react";
-import { createPortal } from "react-dom";
 import { Server, LayoutGrid, PanelsTopLeft, ImagePlus, X } from "lucide-react";
 import type { Config } from "./model";
 import {
@@ -48,7 +46,7 @@ function OverlayModeSwatch({
   onSelect: (id: OverlayMode) => void;
 }) {
   return (
-    <button
+    <Button variant="surface"
       type="button"
       aria-label={label}
       title={label}
@@ -60,531 +58,62 @@ function OverlayModeSwatch({
       <span className="colour-tile-tick" aria-hidden="true">
         {pressed ? "✓" : ""}
       </span>
-    </button>
+    </Button>
   );
 }
 
-function ColourSwatch({
-  label,
-  colour,
-  pressed = false,
-  hueDefault = false,
-  onSelect,
-  onColour,
-}: {
-  label: string;
-  colour: string;
-  pressed?: boolean;
-  /** HSL-style spectrum until a custom colour is chosen. */
-  hueDefault?: boolean;
-  onSelect?: () => void;
-  onColour: (colour: string) => void;
+function ColourSwatch({label, colour, pressed = false, hueDefault = false, onSelect, onColour}: {
+  label: string; colour: string; pressed?: boolean; hueDefault?: boolean; onSelect?: () => void; onColour: (colour: string) => void;
 }) {
-  const button = useRef<HTMLButtonElement>(null);
-  const popover = useRef<HTMLDivElement>(null);
-  const colourInput = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
-  const [hex, setHex] = useState(colour);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const portalHost =
-    button.current?.closest("dialog") ??
-    (typeof document !== "undefined" ? document.body : null);
-
-  useEffect(() => {
-    setHex(colour);
-  }, [colour]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-      }
-    };
-    const onPointer = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (popover.current?.contains(t) || button.current?.contains(t)) return;
-      setOpen(false);
-    };
-    // Defer so the opening click does not immediately dismiss.
-    const timer = window.setTimeout(() => {
-      document.addEventListener("keydown", onKey, true);
-      document.addEventListener("pointerdown", onPointer, true);
-    }, 0);
-    const el = colourInput.current;
-    if (el && typeof el.showPicker === "function") {
-      try {
-        el.showPicker();
-      } catch {
-        /* Ignore if the browser blocks the picker. */
-      }
-    }
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("keydown", onKey, true);
-      document.removeEventListener("pointerdown", onPointer, true);
-    };
-  }, [open]);
-
-  const place = () => {
-    const anchor = button.current;
-    if (!anchor) return;
-    const box = anchor.getBoundingClientRect();
-    const host = anchor.closest("dialog");
-    const origin = host?.getBoundingClientRect();
-    const ox = origin?.left ?? 0;
-    const oy = origin?.top ?? 0;
-    const hostW = origin?.width ?? window.innerWidth;
-    const width = 220;
-    const height = 120;
-    const left = Math.min(
-      Math.max(12, box.left - ox),
-      hostW - width - 12,
-    );
-    const spaceBelow = (origin?.bottom ?? window.innerHeight) - box.bottom;
-    const top =
-      spaceBelow < height + 12
-        ? Math.max(12, box.top - oy - height - 8)
-        : box.bottom - oy + 8;
-    setPos({ top, left });
-  };
-
-  const openPicker = () => {
-    onSelect?.();
-    place();
-    setOpen(true);
-  };
-
+  const [open, setOpen] = useState(false), [hex, setHex] = useState(colour);
+  useEffect(() => setHex(colour), [colour]);
   const applyHex = (value: string) => {
-    const next = value.startsWith("#") ? value : `#${value}`;
-    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
-      setHex(colour);
-      return;
-    }
-    setHex(next);
-    onSelect?.();
-    onColour(next.toLowerCase());
+    const next = value.startsWith('#') ? value : `#${value}`;
+    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {setHex(colour); return;}
+    setHex(next); onSelect?.(); onColour(next.toLowerCase());
   };
-
-  const onColourInput = (value: string) => {
-    onSelect?.();
-    onColour(value);
-    setHex(value);
-  };
-
-  return (
-    <>
-      <button
-        ref={button}
-        type="button"
-        aria-label={label}
-        title={label}
-        aria-pressed={pressed}
-        aria-expanded={open}
-        className="colour-tile overlay-swatch overlay-custom"
-        onClick={openPicker}
-      >
-        <span
-          className={`colour-tile-paint${hueDefault ? " overlay-custom-hue" : ""}`}
-          style={hueDefault ? undefined : { background: colour }}
-          aria-hidden="true"
-        />
-        <span className="colour-tile-tick" aria-hidden="true">
-          {pressed ? "✓" : ""}
-        </span>
-      </button>
-      {open &&
-        portalHost &&
-        createPortal(
-          <div
-            ref={popover}
-            className="colour-popover"
-            role="dialog"
-            aria-label={label}
-            style={{ top: pos.top, left: pos.left }}
-          >
-            <div className="colour-popover-head">
-              <strong>{label}</strong>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label={`Close ${label} picker`}
-                onClick={() => setOpen(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="colour-popover-body">
-              <label className="colour-popover-swatch">
-                <input
-                  ref={colourInput}
-                  type="color"
-                  aria-label={`Pick ${label}`}
-                  value={colour}
-                  onChange={(e) => onColourInput(e.target.value)}
-                />
-              </label>
-              <label className="colour-popover-hex">
-                <span>Hex</span>
-                <input
-                  type="text"
-                  spellCheck={false}
-                  maxLength={7}
-                  value={hex}
-                  onChange={(e) => setHex(e.target.value)}
-                  onBlur={(e) => applyHex(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      applyHex((e.target as HTMLInputElement).value);
-                    }
-                  }}
-                />
-              </label>
-            </div>
-          </div>,
-          portalHost,
-        )}
-    </>
-  );
+  return <Popover label={label} open={open} onOpenChange={next => {if(next) onSelect?.(); setOpen(next);}} trigger={
+    <Button variant="surface" aria-label={label} title={label} aria-pressed={pressed} className="colour-tile overlay-swatch overlay-custom">
+      <span className={`colour-tile-paint${hueDefault ? ' overlay-custom-hue' : ''}`} style={hueDefault ? undefined : {background: colour}} aria-hidden="true" />
+      <span className="colour-tile-tick" aria-hidden="true">{pressed ? '✓' : ''}</span>
+    </Button>
+  }>
+    <div className="colour-popover-head"><Text as="span" variant="label">{label}</Text><IconButton variant="quiet" label={`Close ${label} picker`} onClick={() => setOpen(false)}><X size={16} aria-hidden="true" /></IconButton></div>
+    <div className="colour-popover-body">
+      <Label className="colour-popover-swatch"><Input type="color" aria-label={`Pick ${label}`} value={colour} onChange={e => {onSelect?.(); onColour(e.target.value); setHex(e.target.value);}} /></Label>
+      <Label className="colour-popover-hex"><span>Hex</span><Input spellCheck={false} maxLength={7} value={hex} onChange={e => setHex(e.target.value)} onBlur={e => applyHex(e.target.value)} onKeyDown={e => {if(e.key === 'Enter') {e.preventDefault(); applyHex(e.currentTarget.value);}}} /></Label>
+    </div>
+  </Popover>;
 }
-
-function useAnchorPopover(onCancel: () => void) {
-  const button = useRef<HTMLButtonElement>(null);
-  const popover = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const cancelRef = useRef(onCancel);
-  cancelRef.current = onCancel;
-  const portalHost =
-    button.current?.closest("dialog") ??
-    (typeof document !== "undefined" ? document.body : null);
-
-  useEffect(() => {
-    if (!open) return;
-    const dismiss = () => cancelRef.current();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        dismiss();
-      }
-    };
-    const onPointer = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (popover.current?.contains(t) || button.current?.contains(t)) return;
-      dismiss();
-    };
-    const timer = window.setTimeout(() => {
-      document.addEventListener("keydown", onKey, true);
-      document.addEventListener("pointerdown", onPointer, true);
-    }, 0);
-    return () => {
-      window.clearTimeout(timer);
-      document.removeEventListener("keydown", onKey, true);
-      document.removeEventListener("pointerdown", onPointer, true);
-    };
-  }, [open]);
-
-  const place = (width = 380, height = 420) => {
-    const anchor = button.current;
-    if (!anchor) return;
-    const box = anchor.getBoundingClientRect();
-    const host = anchor.closest("dialog");
-    const origin = host?.getBoundingClientRect();
-    const ox = origin?.left ?? 0;
-    const oy = origin?.top ?? 0;
-    const hostW = origin?.width ?? window.innerWidth;
-    const left = Math.min(Math.max(12, box.left - ox), hostW - width - 12);
-    const spaceBelow = (origin?.bottom ?? window.innerHeight) - box.bottom;
-    const top =
-      spaceBelow < height + 12
-        ? Math.max(12, box.top - oy - height - 8)
-        : box.bottom - oy + 8;
-    setPos({ top, left });
-  };
-
-  return { button, popover, open, setOpen, pos, place, portalHost };
+function ImagePopoverActions({cancel, confirm}: {cancel: () => void; confirm: () => void}) {
+  return <div className="ui-actions"><Button onClick={cancel}>Cancel</Button><Button variant="primary" onClick={confirm}>OK</Button></div>;
 }
-
-function ImagePopoverShell({
-  title,
-  ariaLabel,
-  closeLabel,
-  open,
-  pos,
-  popoverRef,
-  portalHost,
-  onCancel,
-  onConfirm,
-  children,
-}: {
-  title: string;
-  ariaLabel: string;
-  closeLabel: string;
-  open: boolean;
-  pos: { top: number; left: number };
-  popoverRef: RefObject<HTMLDivElement | null>;
-  portalHost: Element | null;
-  onCancel: () => void;
-  onConfirm: () => void;
-  children: ReactNode;
+function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLive}: {
+  title: string; kind: 'icon' | 'logo'; value: string; hint: string; triggerLabel: string; onBusy: (busy: boolean) => void; onLive: (value: string) => void;
 }) {
-  if (!open || !portalHost) return null;
-  return createPortal(
-    <div
-      ref={popoverRef}
-      className="colour-popover image-popover"
-      role="dialog"
-      aria-label={ariaLabel}
-      style={{ top: pos.top, left: pos.left }}
-    >
-      <div className="colour-popover-head">
-        <strong>{title}</strong>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={closeLabel}
-          onClick={onCancel}
-        >
-          <X size={16} />
-        </button>
-      </div>
-      {children}
-      <div className="image-popover-actions">
-        <button type="button" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="button" className="primary" onClick={onConfirm}>
-          OK
-        </button>
-      </div>
-    </div>,
-    portalHost,
-  );
+  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), revert = useRef(value);
+  const cancel = () => {if(busy) return; onLive(revert.current); setOpen(false);};
+  return <Popover label={title} size="image" open={open} onOpenChange={next => {if(next) {revert.current = value; setOpen(true);} else cancel();}} trigger={<Button><ImagePlus size={16} aria-hidden="true" />{triggerLabel}</Button>}>
+    <div className="colour-popover-head"><Text as="span" variant="label">{title}</Text><IconButton variant="quiet" label={`Close ${title.toLowerCase()} picker`} disabled={busy} onClick={cancel}><X size={16} aria-hidden="true" /></IconButton></div>
+    <ImageField label="Logo image" kind={kind} value={value} change={onLive} onBusy={v => {setBusy(v); onBusy(v);}} hint={hint} />
+    <ImagePopoverActions cancel={cancel} confirm={() => {if(!busy) setOpen(false);}} />
+  </Popover>;
 }
-
-function BrandImagePicker({
-  title,
-  kind,
-  value,
-  hint,
-  triggerLabel,
-  onBusy,
-  onLive,
-}: {
-  title: string;
-  kind: "icon" | "logo";
-  value: string;
-  hint: string;
-  triggerLabel: string;
-  onBusy: (busy: boolean) => void;
-  onLive: (logo: string) => void;
-}) {
-  const revert = useRef(value);
-  const cancel = () => {
-    onLive(revert.current);
-    setOpen(false);
-  };
-  const { button, popover, open, setOpen, pos, place, portalHost } =
-    useAnchorPopover(cancel);
-  const confirm = () => setOpen(false);
-  return (
-    <>
-      <button
-        ref={button}
-        type="button"
-        className="brand-image-trigger"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => {
-          if (open) {
-            cancel();
-            return;
-          }
-          revert.current = value;
-          place();
-          setOpen(true);
-        }}
-      >
-        <ImagePlus size={16} aria-hidden="true" />
-        {triggerLabel}
-      </button>
-      <ImagePopoverShell
-        title={title}
-        ariaLabel={title}
-        closeLabel={`Close ${title.toLowerCase()} picker`}
-        open={open}
-        pos={pos}
-        popoverRef={popover}
-        portalHost={portalHost}
-        onCancel={cancel}
-        onConfirm={confirm}
-      >
-        <ImageField
-          label="Logo image"
-          kind={kind}
-          value={value}
-          change={onLive}
-          onBusy={onBusy}
-          hint={hint}
-        />
-      </ImagePopoverShell>
-    </>
-  );
-}
-
-function BackgroundCustomSwatch({
-  settings,
-  onBusy,
-  background,
-}: {
-  settings: BackgroundSettings;
-  onBusy: (busy: boolean) => void;
-  background: (update: Partial<BackgroundSettings>) => void;
-}) {
+function BackgroundCustomSwatch({settings, onBusy, background}: {settings: BackgroundSettings; onBusy: (busy: boolean) => void; background: (update: Partial<BackgroundSettings>) => void}) {
+  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false);
   const revert = useRef<Partial<BackgroundSettings> | null>(null);
-  const cancel = () => {
-    if (revert.current) background(revert.current);
-    revert.current = null;
-    setOpen(false);
-  };
-  const { button, popover, open, setOpen, pos, place, portalHost } =
-    useAnchorPopover(cancel);
-  const pressed = settings.kind === "image";
-
-  const confirm = () => {
-    if (!settings.image) background({ kind: "none", image: "" });
-    revert.current = null;
-    setOpen(false);
-  };
-
-  return (
-    <>
-      <button
-        ref={button}
-        type="button"
-        className="background-swatch"
-        aria-pressed={pressed}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => {
-          if (open) {
-            cancel();
-            return;
-          }
-          revert.current = {
-            kind: settings.kind,
-            image: settings.image,
-            position: settings.position,
-            motion: settings.motion,
-            motionStyle: settings.motionStyle,
-          };
-          if (settings.kind !== "image") {
-            background({ kind: "image", ...withMotionStyle("none") });
-          }
-          place();
-          setOpen(true);
-        }}
-      >
-        <span
-          className={`swatch-custom ${settings.image ? "swatch-custom-set" : "swatch-custom-empty"}`}
-        >
-          <ImagePlus size={18} aria-hidden="true" />
-        </span>
-        Custom
-      </button>
-      <ImagePopoverShell
-        title="Custom image"
-        ariaLabel="Custom background image"
-        closeLabel="Close custom image picker"
-        open={open}
-        pos={pos}
-        popoverRef={popover}
-        portalHost={portalHost}
-        onCancel={cancel}
-        onConfirm={confirm}
-      >
-        <ImageField
-          label="Background image"
-          kind="background"
-          value={settings.image}
-          change={(image) => background({ image, kind: "image" })}
-          onBusy={onBusy}
-          hint="PNG, JPEG or WebP, up to 8 MiB."
-        />
-        <label className="settings-row">
-          <span>Image position</span>
-          <select
-            value={settings.position}
-            onChange={(e) =>
-              background({
-                position: e.target.value as BackgroundSettings["position"],
-              })
-            }
-          >
-            <option value="center">Centre</option>
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-          </select>
-        </label>
-      </ImagePopoverShell>
-    </>
-  );
-}
-
-function Section({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  const id = useId();
-  return (
-    <section className="settings-section" aria-labelledby={id}>
-      <h3 id={id}>{title}</h3>
-      {description && <p className="section-description">{description}</p>}
-      {children}
-    </section>
-  );
-}
-function Range({
-  label,
-  value,
-  min,
-  max,
-  unit = "",
-  change,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  unit?: string;
-  change: (n: number) => void;
-}) {
-  return (
-    <label className="range-field">
-      <span>
-        {label}
-        <output>
-          {value}
-          {unit}
-        </output>
-      </span>
-      <input
-        aria-label={label}
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => change(Number(e.target.value))}
-      />
-    </label>
-  );
+  const cancel = () => {if(busy) return; if(revert.current) background(revert.current); revert.current = null; setOpen(false);};
+  const confirm = () => {if(busy) return; if(!settings.image) background({kind: 'none', image: ''}); revert.current = null; setOpen(false);};
+  return <Popover label="Custom background image" size="image" open={open} onOpenChange={next => {
+    if(!next) {cancel(); return;}
+    revert.current = {kind: settings.kind, image: settings.image, position: settings.position, motion: settings.motion, motionStyle: settings.motionStyle};
+    if(settings.kind !== 'image') background({kind: 'image', ...withMotionStyle('none')}); setOpen(true);
+  }} trigger={<Button variant="surface" className="background-swatch" aria-pressed={settings.kind === 'image'}><span className={`swatch-custom ${settings.image ? 'swatch-custom-set' : 'swatch-custom-empty'}`}><ImagePlus size={18} aria-hidden="true" /></span>Custom</Button>}>
+    <div className="colour-popover-head"><Text as="span" variant="label">Custom image</Text><IconButton variant="quiet" label="Close custom image picker" disabled={busy} onClick={cancel}><X size={16} aria-hidden="true" /></IconButton></div>
+    <ImageField label="Background image" kind="background" value={settings.image} change={image => background({image, kind: 'image'})} onBusy={v => {setBusy(v); onBusy(v);}} hint="PNG, JPEG or WebP, up to 8 MiB." />
+    <Label className="settings-row"><span>Image position</span><Select value={settings.position} onValueChange={value => background({position: value as BackgroundSettings['position']})}><SelectOption value="center">Centre</SelectOption><SelectOption value="top">Top</SelectOption><SelectOption value="bottom">Bottom</SelectOption></Select></Label>
+    <ImagePopoverActions cancel={cancel} confirm={confirm} />
+  </Popover>;
 }
 
 export default function AppearanceEditor({
@@ -627,20 +156,20 @@ export default function AppearanceEditor({
   if (section === "general")
     return (
       <>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Dashboard"
           description="Also used for the browser tab and accessible name."
         >
-          <label>
+          <Label>
             Dashboard name
-            <input
+            <Input
               maxLength={100}
               value={draft.dashboard.title}
               onChange={(e) => header({ title: e.target.value })}
             />
-          </label>
+          </Label>
         </Section>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Logo"
           description="How your name and artwork appear in the header."
         >
@@ -649,7 +178,7 @@ export default function AppearanceEditor({
             role="group"
             aria-label="Logo style"
           >
-            <button
+            <Button
               type="button"
               aria-pressed={!fullLogo}
               onClick={() => header({ branding: "icon" })}
@@ -659,8 +188,8 @@ export default function AppearanceEditor({
                 <span>Name</span>
               </span>
               Icon + name
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               aria-pressed={fullLogo}
               onClick={() => header({ branding: "logo" })}
@@ -669,7 +198,7 @@ export default function AppearanceEditor({
                 Logo
               </span>
               Full logo
-            </button>
+            </Button>
           </div>
           {!fullLogo && (
             <div className="settings-subsection">
@@ -686,7 +215,7 @@ export default function AppearanceEditor({
                     ["panels", "Panels", PanelsTopLeft],
                   ] as const
                 ).map(([id, label, Icon]) => (
-                  <button
+                  <Button
                     type="button"
                     key={id}
                     aria-pressed={
@@ -697,7 +226,7 @@ export default function AppearanceEditor({
                   >
                     <Icon size={18} />
                     {label}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <BrandImagePicker
@@ -729,14 +258,14 @@ export default function AppearanceEditor({
             </div>
           )}
         </Section>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Workspace"
           description="Tiles keep their size. Narrow screens use a read-only layout."
         >
           <div className="fields">
-            <label>
+            <Label>
               Dashboard width
-              <select
+              <Select
                 value={
                   draft.dashboard.widthMode === "full"
                     ? "full"
@@ -744,49 +273,47 @@ export default function AppearanceEditor({
                       ? String(draft.dashboard.width)
                       : "custom"
                 }
-                onChange={(e) =>
+                onValueChange={(value) =>
                   header({
-                    widthMode: e.target.value === "full" ? "full" : "fixed",
-                    width: ["960", "1200"].includes(e.target.value)
-                      ? Number(e.target.value)
-                      : e.target.value === "custom"
+                    widthMode: value === "full" ? "full" : "fixed",
+                    width: ["960", "1200"].includes(value)
+                      ? Number(value)
+                      : value === "custom"
                         ? 1000
                         : draft.dashboard.width,
                   })
                 }
               >
-                <option value="full">Full width</option>
-                <option value="960">960 px</option>
-                <option value="1200">1200 px</option>
-                <option value="custom">Custom</option>
-              </select>
-            </label>
-            <label>
+                <SelectOption value="full">Full width</SelectOption>
+                <SelectOption value="960">960 px</SelectOption>
+                <SelectOption value="1200">1200 px</SelectOption>
+                <SelectOption value="custom">Custom</SelectOption>
+              </Select>
+            </Label>
+            <Label>
               {draft.dashboard.widthMode === "full"
                 ? "Saved workspace width (px)"
                 : "Width (px)"}
-              <input
+              <Input
                 type="number"
                 min={768}
                 max={3840}
                 value={draft.dashboard.width}
                 onChange={(e) => header({ width: Number(e.target.value) })}
               />
-            </label>
+            </Label>
           </div>
         </Section>
-        <Section title="Navigation">
-          <label className="setting-switch">
+        <Section level="h3" className="settings-section" title="Navigation">
+          <Label className="setting-switch">
             <span>Show button labels</span>
-            <input
-              type="checkbox"
-              role="switch"
+            <Switch
               checked={a.showButtonLabels}
-              onChange={(e) =>
-                appearance({ showButtonLabels: e.target.checked })
+              onCheckedChange={(checked) =>
+                appearance({ showButtonLabels: checked })
               }
             />
-          </label>
+          </Label>
         </Section>
       </>
     );
@@ -794,7 +321,7 @@ export default function AppearanceEditor({
   if (section === "panes")
     return (
       <>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Pane finish"
           description={
             g.mode === "glass"
@@ -808,19 +335,19 @@ export default function AppearanceEditor({
             aria-label="Pane finish"
           >
             {(["solid", "glass"] as const).map((mode) => (
-              <button
+              <Button
                 type="button"
                 key={mode}
                 aria-pressed={g.mode === mode}
                 onClick={() => setGlass({ mode })}
               >
                 {mode === "solid" ? "Solid" : "Glass"}
-              </button>
+              </Button>
             ))}
           </div>
         </Section>
         {g.mode === "glass" && (
-          <Section
+          <Section level="h3" className="settings-section"
             title="Fine tuning"
             description="Tune frost and refraction. Displacement needs frost to bend what is behind the pane — below 6 px is raised automatically when displacement is on."
           >
@@ -874,16 +401,14 @@ export default function AppearanceEditor({
             </div>
           </Section>
         )}
-        <Section title="Labels" description="Show names beneath app icons.">
-          <label className="setting-switch">
+        <Section level="h3" className="settings-section" title="Labels" description="Show names beneath app icons.">
+          <Label className="setting-switch">
             <span>Show app labels</span>
-            <input
-              type="checkbox"
-              role="switch"
+            <Switch
               checked={a.showAppLabels}
-              onChange={(e) => appearance({ showAppLabels: e.target.checked })}
+              onCheckedChange={(checked) => appearance({ showAppLabels: checked })}
             />
-          </label>
+          </Label>
         </Section>
       </>
     );
@@ -891,7 +416,7 @@ export default function AppearanceEditor({
   if (section === "background")
     return (
       <>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Static"
           description="Solid colour, gradients, or your own image."
         >
@@ -900,7 +425,7 @@ export default function AppearanceEditor({
             role="group"
             aria-label="Static backgrounds"
           >
-            <button
+            <Button variant="surface"
               type="button"
               className="background-swatch"
               aria-pressed={b.kind === "none"}
@@ -908,9 +433,9 @@ export default function AppearanceEditor({
             >
               <span style={{ background: "var(--bg)" }} />
               None
-            </button>
+            </Button>
             {Object.entries(gradients).map(([id, gradient]) => (
-              <button
+              <Button variant="surface"
                 type="button"
                 className="background-swatch"
                 key={id}
@@ -924,7 +449,7 @@ export default function AppearanceEditor({
               >
                 <span style={{ background: gradient }} />
                 {id[0].toUpperCase() + id.slice(1)}
-              </button>
+              </Button>
             ))}
             <BackgroundCustomSwatch
               settings={b}
@@ -933,7 +458,7 @@ export default function AppearanceEditor({
             />
           </div>
         </Section>
-        <Section
+        <Section level="h3" className="settings-section"
           title="Animated"
           description="Motion backgrounds. Improvements are still underway."
         >
@@ -943,7 +468,7 @@ export default function AppearanceEditor({
             aria-label="Animated backgrounds"
           >
             {(["waves", "aurora"] as const).map((kind) => (
-              <button
+              <Button variant="surface"
                 type="button"
                 className="background-swatch"
                 key={kind}
@@ -962,53 +487,53 @@ export default function AppearanceEditor({
                   style={{ background: gradients[b.preset] }}
                 />
                 {kind === "waves" ? "Waves" : "Aurora"}
-              </button>
+              </Button>
             ))}
           </div>
           {(b.kind === "waves" || b.kind === "aurora") && (
             <div className="settings-subsection">
-              <label className="settings-row">
+              <Label className="settings-row">
                 <span>Animation palette</span>
-                <select
+                <Select
                   value={b.preset}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     background({
-                      preset: e.target.value as BackgroundSettings["preset"],
+                      preset: value as BackgroundSettings["preset"],
                     })
                   }
                 >
                   {Object.keys(gradients).map((k) => (
-                    <option key={k} value={k}>
+                    <SelectOption key={k} value={k}>
                       {k[0].toUpperCase() + k.slice(1)}
-                    </option>
+                    </SelectOption>
                   ))}
-                </select>
-              </label>
+                </Select>
+              </Label>
             </div>
           )}
         </Section>
         {b.kind !== "none" && (
-          <Section
+          <Section level="h3" className="settings-section"
             title="Motion"
             description="Optional movement for the whole background. Try each style; keep None for a still scene."
           >
-            <label className="settings-row">
+            <Label className="settings-row">
               <span>Motion style</span>
-              <select
+              <Select
                 value={b.motionStyle}
-                onChange={(e) =>
+                onValueChange={(value) =>
                   background(
-                    withMotionStyle(e.target.value as MotionStyle),
+                    withMotionStyle(value as MotionStyle),
                   )
                 }
               >
                 {motionStyles.map((id) => (
-                  <option key={id} value={id}>
+                  <SelectOption key={id} value={id}>
                     {motionStyleLabels[id]}
-                  </option>
+                  </SelectOption>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Label>
             {b.motionStyle !== "none" && (
               <Range
                 label="Speed"
@@ -1022,7 +547,7 @@ export default function AppearanceEditor({
           </Section>
         )}
         {b.kind !== "none" && (
-          <Section
+          <Section level="h3" className="settings-section"
             title="Overlay"
             description="Improve contrast over the background. Theme changes keep solid or gradient unless Custom is selected."
           >
@@ -1111,7 +636,7 @@ export default function AppearanceEditor({
 
   return (
     <>
-      <Section
+      <Section level="h3" className="settings-section"
         title="Theme"
         description="Changing theme resets custom colours."
       >
@@ -1121,7 +646,7 @@ export default function AppearanceEditor({
           aria-label="Theme"
         >
           {(["dark", "light"] as const).map((theme) => (
-            <button
+            <Button
               key={theme}
               type="button"
               aria-pressed={a.theme === theme}
@@ -1136,11 +661,11 @@ export default function AppearanceEditor({
                 <i />
               </span>
               {theme === "dark" ? "Midnight" : "Daylight"}
-            </button>
+            </Button>
           ))}
         </div>
       </Section>
-      <Section
+      <Section level="h3" className="settings-section"
         title="Colours"
         description="Accent is used for buttons, selections and focus."
       >
@@ -1153,7 +678,7 @@ export default function AppearanceEditor({
           aria-labelledby={accentHeadingId}
         >
           {accentPresets[a.theme].map(({ name, colour }) => (
-            <button
+            <Button variant="surface"
               key={name}
               type="button"
               aria-label={name}
@@ -1166,11 +691,10 @@ export default function AppearanceEditor({
               <span aria-hidden="true">
                 {p.accent.toLowerCase() === colour.toLowerCase() ? "✓" : ""}
               </span>
-            </button>
+            </Button>
           ))}
         </div>
-        <details className="settings-disclosure">
-          <summary>Custom palette</summary>
+        <Disclosure title="Custom palette">
           <div className="colour-grid">
             {(
               [
@@ -1180,64 +704,64 @@ export default function AppearanceEditor({
                 ["accent", "Accent"],
               ] as const
             ).map(([key, label]) => (
-              <label key={key}>
+              <Label key={key}>
                 {label}
-                <input
+                <Input
                   type="color"
                   value={p[key]}
                   onChange={(e) =>
                     appearance({ palette: { ...p, [key]: e.target.value } })
                   }
                 />
-              </label>
+              </Label>
             ))}
           </div>
           <p className="hint">
             Text contrast is checked before saving. Check glass over images.
           </p>
-        </details>
+        </Disclosure>
         {badContrast && (
           <p className="error" role="alert">
             Increase text contrast before applying.
           </p>
         )}
-        <button
+        <Button variant="surface"
           type="button"
           className="text-button"
           disabled={!a.palette}
           onClick={() => appearance({ palette: undefined })}
         >
           Reset colours
-        </button>
+        </Button>
       </Section>
-      <Section
+      <Section level="h3" className="settings-section"
         title="Typography"
         description="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
       >
-        <label className="settings-row">
+        <Label className="settings-row">
           <span>Font</span>
-          <select
+          <Select
             aria-label="Font"
             value={a.fontFamily ?? defaultUiFont}
             style={{ fontFamily: uiFontFamily(a.fontFamily) }}
-            onChange={(e) =>
-              appearance({ fontFamily: e.target.value as UiFont })
+            onValueChange={(value) =>
+              appearance({ fontFamily: value as UiFont })
             }
           >
             {uiFonts.map((font) => (
-              <option
+              <SelectOption
                 key={font.id}
                 value={font.id}
                 style={{ fontFamily: font.family }}
               >
                 {font.label}
-              </option>
+              </SelectOption>
             ))}
-          </select>
-        </label>
-        <label className="settings-row">
+          </Select>
+        </Label>
+        <Label className="settings-row">
           <span>Pane title size (px)</span>
-          <input
+          <Input
             type="number"
             min={14}
             max={22}
@@ -1246,7 +770,7 @@ export default function AppearanceEditor({
               appearance({ paneTitleSize: Number(e.target.value) })
             }
           />
-        </label>
+        </Label>
       </Section>
     </>
   );
