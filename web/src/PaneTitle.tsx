@@ -1,3 +1,4 @@
+import { Input, Button } from "./design/components";
 import { useState } from "react";
 
 export default function PaneTitle({
@@ -14,7 +15,7 @@ export default function PaneTitle({
   if (!editable) return title ? <h2 className="pane-title">{title}</h2> : null;
   if (active)
     return (
-      <input
+      <Input
         className="pane-title-input pane-controls"
         autoFocus
         aria-label="Pane title"
@@ -38,7 +39,7 @@ export default function PaneTitle({
       />
     );
   return (
-    <button
+    <Button variant="surface"
       className="pane-title pane-controls"
       title="Edit pane title"
       aria-label={`Edit title: ${title || "Untitled pane"}`}
@@ -48,6 +49,7 @@ export default function PaneTitle({
       }}
     >
       {title || "Add title"}
-    </button>
+    </Button>
   );
 }
+

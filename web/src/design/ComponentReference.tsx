@@ -1,7 +1,9 @@
+import { ThemeSurface } from "./components";
+import { SelectOption } from "./components";
 import { CSSProperties, useState } from "react";
 import { Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
-import Modal from "../Modal";
+import { Modal } from "./components";
 import { Button, IconButton, Notice, Section, SelectField, Text, TextField } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -16,7 +18,7 @@ export default function ComponentReference() {
   const [paneSize, setPaneSize] = useState(18);
   const style = { ...appearanceStyle({ theme, fontFamily: font }),
     "--pane-title-size": `${paneSize}px`, "--icon-size": "80px" } as CSSProperties;
-  return <div className="design-reference" data-theme={theme} style={style}>
+  return <ThemeSurface className="design-reference" theme={theme} style={style}>
     <main className={`reference-content${compact ? " reference-compact" : ""}`}>
       <header className="reference-header">
         <Text as="h1" variant="title">Pane component reference</Text>
@@ -25,11 +27,11 @@ export default function ComponentReference() {
       </header>
       <Section title="Preview controls" description="Check every font and theme. Narrow preview constrains this page to 360 px; also test a real narrow browser viewport and zoom.">
         <div className="reference-grid">
-          <SelectField label="Theme" value={theme} onChange={e => setTheme(e.target.value as "dark" | "light")}>
-            <option value="dark">Midnight</option><option value="light">Daylight</option>
+          <SelectField label="Theme" value={theme} onValueChange={value => setTheme(value as "dark" | "light")}>
+            <SelectOption value="dark">Midnight</SelectOption><SelectOption value="light">Daylight</SelectOption>
           </SelectField>
-          <SelectField label="Font" value={font} onChange={e => setFont(e.target.value as UiFont)}>
-            {uiFonts.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          <SelectField label="Font" value={font} onValueChange={value => setFont(value as UiFont)}>
+            {uiFonts.map(f => <SelectOption key={f.id} value={f.id}>{f.label}</SelectOption>)}
           </SelectField>
         </div>
         <div className="reference-actions"><Button aria-pressed={compact} onClick={() => setCompact(!compact)}>Narrow preview</Button></div>
@@ -58,7 +60,7 @@ export default function ComponentReference() {
       <Section title="Fields and validation">
         <div className="reference-grid">
           <TextField label="Dashboard name" hint="Use a short, recognisable name." value={name} onChange={e => setName(e.target.value)} />
-          <SelectField label="Open links" defaultValue="new"><option value="new">In a new tab</option><option value="same">In this tab</option></SelectField>
+          <SelectField label="Open links" defaultValue="new"><SelectOption value="new">In a new tab</SelectOption><SelectOption value="same">In this tab</SelectOption></SelectField>
           <TextField label="Invalid address example" defaultValue="service" error="Enter a full HTTP(S) address, such as https://example.com." />
           <TextField label="Disabled field" value="Read-only presentation" disabled />
         </div>
@@ -71,8 +73,8 @@ export default function ComponentReference() {
         )}</div>
       </Section>
       <Section title="Pane geometry" description="Pane titles remain bold with a global 14–22 px size. App labels stay 13 px and icons stay 80 px.">
-        <SelectField label="Pane title size" value={paneSize} onChange={e => setPaneSize(Number(e.target.value))}>
-          {[14, 18, 22].map(size => <option key={size} value={size}>{size} px</option>)}
+        <SelectField label="Pane title size" value={paneSize} onValueChange={value => setPaneSize(Number(value))}>
+          {[14, 18, 22].map(size => <SelectOption key={size} value={size}>{size} px</SelectOption>)}
         </SelectField>
         <div className="reference-pane">
           <div className="pane-header"><h3 className="pane-title" title="Home services with a deliberately long pane title">Home services with a deliberately long pane title</h3></div>
@@ -91,5 +93,5 @@ export default function ComponentReference() {
         </Section>
       </Modal>}
     </main>
-  </div>;
+  </ThemeSurface>;
 }

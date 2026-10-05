@@ -1,8 +1,10 @@
+import { useConfirmation } from "./design/components";
+import { Label, Checkbox, Input, Select, SelectOption } from "./design/components";
 import { useState } from "react";
 import { stringify } from "yaml";
 import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
 import { catalogue, iconURL } from "./icons";
-import Modal from "./Modal";
+import { Modal } from "./design/components";
 import { Button, TextField } from "./design/components";
 export function download(name: string, value: unknown) {
   const url = URL.createObjectURL(
@@ -31,7 +33,8 @@ export function AppEditor({
   apply: (c: Config) => void;
   close: () => void;
 }) {
-  const [draft, setDraft] = useState<App>(
+  const { confirm, confirmation } = useConfirmation();
+const [draft, setDraft] = useState<App>(
       app
         ? clone(app)
         : {
@@ -67,6 +70,7 @@ export function AppEditor({
   };
   return (
     <Modal title={app ? "Edit app" : "Add app"} close={close}>
+      {confirmation}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -86,38 +90,37 @@ export function AppEditor({
             value={draft.url}
             onChange={(e) => setDraft({ ...draft, url: e.target.value })}
           />
-        <label className="check">
-          <input
-            type="checkbox"
+        <Label className="check">
+          <Checkbox
             checked={draft.openInNewTab}
-            onChange={(e) =>
-              setDraft({ ...draft, openInNewTab: e.target.checked })
+            onCheckedChange={(checked) =>
+              setDraft({ ...draft, openInNewTab: checked })
             }
           />
           Open in a new tab
-        </label>
-        <label>
+        </Label>
+        <Label>
           Icon reference or custom URL
-          <input
+          <Input
             value={draft.icon}
             onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
             placeholder="dashboard-icons:plex"
           />
-        </label>
-        <label>
+        </Label>
+        <Label>
           Search icons
-          <input
+          <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search the local catalogue"
           />
-        </label>
+        </Label>
         <div className="icon-picker">
           {catalogue
             .filter((s) => s.includes(search.toLowerCase()))
             .slice(0, 24)
             .map((s) => (
-              <button
+              <Button variant="surface"
                 type="button"
                 key={s}
                 title={s}
@@ -134,26 +137,26 @@ export function AppEditor({
                   alt=""
                 />
                 <span>{s}</span>
-              </button>
+              </Button>
             ))}
         </div>
         <div className="fields">
-          <label>
+          <Label>
             Pane
-            <select
+            <Select
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              onValueChange={(value) => setDestination(value)}
             >
               {config.items.map((p) => (
-                <option key={p.id} value={p.id}>
+                <SelectOption key={p.id} value={p.id}>
                   {p.title || "Untitled pane"}
-                </option>
+                </SelectOption>
               ))}
-            </select>
-          </label>
-          <label>
+            </Select>
+          </Label>
+          <Label>
             Column (1-based)
-            <input
+            <Input
               type="number"
               min={1}
               required
@@ -162,10 +165,10 @@ export function AppEditor({
                 setDraft({ ...draft, col: Number(e.target.value) - 1 })
               }
             />
-          </label>
-          <label>
+          </Label>
+          <Label>
             Row (1-based)
-            <input
+            <Input
               type="number"
               min={1}
               required
@@ -174,7 +177,7 @@ export function AppEditor({
                 setDraft({ ...draft, row: Number(e.target.value) - 1 })
               }
             />
-          </label>
+          </Label>
         </div>
         {error && (
           <p role="alert" className="error">
@@ -186,8 +189,8 @@ export function AppEditor({
             <Button
               type="button"
               variant="danger"
-              onClick={() => {
-                if (window.confirm(`Delete ${app.name}?`)) {
+              onClick={async () => {
+                if (await confirm(`Delete ${app.name}?`)) {
                   const n = clone(config);
                   n.items.find((p) => p.id === paneId)!.apps = n.items
                     .find((p) => p.id === paneId)!
@@ -222,10 +225,12 @@ export function PaneEditor({
   apply: (c: Config) => void;
   close: () => void;
 }) {
-  const [draft, setDraft] = useState(clone(pane)),
+  const { confirm, confirmation } = useConfirmation();
+const [draft, setDraft] = useState(clone(pane)),
     [error, setError] = useState("");
   return (
     <Modal title="Edit pane" close={close}>
+      {confirmation}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -240,24 +245,24 @@ export function PaneEditor({
           }
         }}
       >
-        <label>
+        <Label>
           Title (optional)
-          <input
+          <Input
             autoFocus
             maxLength={100}
             value={draft.title}
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           />
-        </label>
+        </Label>
         <p className="hint">
           Resize in whole app slots. Occupied slots and neighbouring panes are
           protected.
         </p>
         <div className="fields">
           {(["w", "h"] as const).map((k) => (
-            <label key={k}>
+            <Label key={k}>
               {{ w: "Columns", h: "Rows" }[k]}
-              <input
+              <Input
                 type="number"
                 required
                 min={1}
@@ -270,7 +275,7 @@ export function PaneEditor({
                   })
                 }
               />
-            </label>
+            </Label>
           ))}
         </div>
         {error && (
@@ -300,9 +305,9 @@ export function PaneEditor({
           <Button
             type="button"
             variant="danger"
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
+                await confirm(
                   `Delete this pane and its ${pane.apps.length} apps?`,
                 )
               ) {
@@ -324,4 +329,3 @@ export function PaneEditor({
     </Modal>
   );
 }
-

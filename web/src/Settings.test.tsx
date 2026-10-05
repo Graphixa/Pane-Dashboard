@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Settings from "./Settings";
 import { Config } from "./model";
 const config = (): Config => ({
@@ -43,7 +43,7 @@ const setup = () => {
       readOnly={false}
     />,
   );
-  return { ...result, apply, close, imported, preview };
+  return { ...result, container: document.body, apply, close, imported, preview };
 };
 const page = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
@@ -57,9 +57,8 @@ describe("settings navigation and draft safety", () => {
     fireEvent.change(screen.getByLabelText("Pane title size (px)"), {
       target: { value: "20" },
     });
-    fireEvent.change(screen.getByLabelText("Font"), {
-      target: { value: "oxanium" },
-    });
+    fireEvent.keyDown(screen.getByRole("combobox", {name: "Font"}), {key: "ArrowDown"});
+    fireEvent.click(screen.getByRole("option", {name: "Oxanium"}));
     page("Import & backup");
     expect(screen.queryByText("Confirm import")).toBeNull();
     expect(screen.getByText(/Apply your settings first/)).toBeTruthy();
@@ -80,29 +79,23 @@ describe("settings navigation and draft safety", () => {
     expect(apply.mock.calls[0][0].appearance.paneTitleSize).toBe(20);
     expect(apply.mock.calls[0][0].appearance.fontFamily).toBe("oxanium");
   });
-  it("protects changed drafts from Escape, Cancel and Close", () => {
+  it("protects changed drafts from Escape, Cancel and Close", async () => {
     const { close } = setup();
-    fireEvent.change(screen.getByLabelText("Dashboard name"), {
-      target: { value: "Changed" },
-    });
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    page("Cancel");
-    page("Close");
-    fireEvent(
-      screen.getByRole("dialog"),
-      new Event("cancel", { bubbles: true, cancelable: true }),
-    );
-    expect(confirm).toHaveBeenCalledTimes(3);
-    expect(close).not.toHaveBeenCalled();
-    confirm.mockReturnValue(true);
-    page("Cancel");
-    expect(close).toHaveBeenCalledOnce();
+    fireEvent.change(screen.getByLabelText("Dashboard name"), {target: {value: "Changed"}});
+    for (const action of ["Cancel", "Close", "Escape"]) {
+      if(action === "Escape") fireEvent.keyDown(document, {key: "Escape"}); else page(action);
+      expect(screen.getByRole("alertdialog")).toBeTruthy();
+      page("Keep changes");
+      expect(close).not.toHaveBeenCalled();
+    }
+    page("Cancel"); page("Continue");
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
   it("validates hidden sections before applying", () => {
     const { apply } = setup();
     page("Appearance");
     fireEvent.click(
-      screen.getByText("Custom palette", { selector: "summary" }),
+      screen.getByRole("button", {name: "Custom palette"}),
     );
     fireEvent.change(screen.getByLabelText("Text", { exact: true }), {
       target: { value: "#111720" },
@@ -158,24 +151,22 @@ describe("settings navigation and draft safety", () => {
         .getByRole("region", { name: "Fine tuning" })
         .contains(screen.getByRole("slider", { name: "Opacity" })),
     ).toBe(true);
-    fireEvent.change(screen.getByRole("slider", { name: "Opacity" }), {
-      target: { value: "55" },
-    });
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Opacity" }), {key: "Home"});
+    for (let i = 0; i < 55; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "ArrowRight"});
     page("Solid");
     page("General");
     page("Panes");
     page("Glass");
     expect(
-      (screen.getByRole("slider", { name: "Opacity" }) as HTMLInputElement)
-        .value,
+      screen.getByRole("slider", { name: "Opacity" }).getAttribute("aria-valuenow"),
     ).toBe("55");
     expect(
       (
         screen.getByRole("switch", {
           name: "Show app labels",
         }) as HTMLInputElement
-      ).checked,
-    ).toBe(false);
+      ).getAttribute("aria-checked"),
+    ).toBe("false");
     page("Apply settings");
     expect(apply.mock.calls[0][0].appearance).toMatchObject({
       showAppLabels: false,
@@ -187,8 +178,8 @@ describe("settings navigation and draft safety", () => {
     page("Appearance");
     page("Blue");
     expect(
-      container.querySelector(".settings-disclosure")?.hasAttribute("open"),
-    ).toBe(false);
+      screen.getByRole("button", {name: "Custom palette"}).getAttribute("aria-expanded"),
+    ).toBe("false");
     expect(
       screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
     ).toBe("true");
@@ -236,21 +227,21 @@ describe("settings navigation and draft safety", () => {
     expect(apply).toHaveBeenCalledOnce();
     expect(apply.mock.calls[0][0].appearance.theme).toBe("light");
   });
-  it("discards the preview when Cancel confirms without applying", () => {
+  it("discards the preview when Cancel confirms without applying", async () => {
     const { apply, close, preview } = setup();
     page("Appearance");
     page("Daylight");
     expect(
       (preview.mock.calls.at(-1)?.[0] as Config).appearance.theme,
     ).toBe("light");
-    vi.spyOn(window, "confirm").mockReturnValue(true);
-    page("Cancel");
+    page("Cancel"); page("Continue");
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
   });
   it("drags from the Settings title bar without starting from Close", () => {
     const { container } = setup();
-    const dialog = container.querySelector("dialog") as HTMLDialogElement;
+    const dialog = screen.getByRole("dialog") as HTMLDivElement;
     const title = container.querySelector(".modal-title") as HTMLElement;
     expect(title.classList.contains("modal-title-draggable")).toBe(true);
     title.setPointerCapture = vi.fn();
@@ -274,7 +265,7 @@ describe("settings navigation and draft safety", () => {
       clientY: 100,
     });
     fireEvent.pointerMove(title, { pointerId: 1, clientX: 260, clientY: 140 });
-    expect(dialog.style.transform).toContain("translate(60px, 40px)");
+    expect(dialog.style.transform).toContain("translate(calc(-50% + 60px), calc(-50% + 40px))");
     fireEvent.pointerDown(screen.getByRole("button", { name: "Close" }), {
       button: 0,
       pointerId: 2,
@@ -282,6 +273,7 @@ describe("settings navigation and draft safety", () => {
       clientY: 100,
     });
     fireEvent.pointerMove(title, { pointerId: 2, clientX: 400, clientY: 200 });
-    expect(dialog.style.transform).toContain("translate(60px, 40px)");
+    expect(dialog.style.transform).toContain("translate(calc(-50% + 60px), calc(-50% + 40px))");
   });
 });
+

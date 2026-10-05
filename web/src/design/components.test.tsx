@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Button, IconButton, SelectField, TextField } from "./components";
+import { Button, IconButton, SelectField, SelectOption, TextField } from "./components";
 
 afterEach(cleanup);
 
@@ -9,14 +9,14 @@ it("connects labels, hints and errors with unique IDs and preserves external des
   render(<><p id="external">External context</p>
     <TextField label="Name" hint="Short name" error="Name is required" aria-describedby="external" />
     <TextField label="Other name" />
-    <SelectField label="Theme"><option>Midnight</option></SelectField>
+    <SelectField label="Theme"><SelectOption value="dark">Midnight</SelectOption></SelectField>
   </>);
   const input = screen.getByLabelText("Name");
   expect(input.getAttribute("aria-invalid")).toBe("true");
   const ids = input.getAttribute("aria-describedby")!.split(" ");
   expect(ids.map(id => document.getElementById(id)?.textContent)).toEqual(["External context", "Short name", "Name is required"]);
   expect(input.id).not.toBe(screen.getByLabelText("Other name").id);
-  expect(screen.getByLabelText("Theme").tagName).toBe("SELECT");
+  expect(screen.getByRole("combobox", { name: "Theme" })).toBeTruthy();
 });
 
 it("keeps ordinary buttons from submitting forms and blocks busy actions", () => {

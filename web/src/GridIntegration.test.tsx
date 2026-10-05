@@ -77,8 +77,8 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   fireEvent.mouseMove(document, { clientX: 250, clientY: 100, buttons: 1 });
   fireEvent.mouseUp(document, { clientX: 250, clientY: 100 });
   expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(7);
-  fireEvent.click(screen.getByRole("button", { name: "Add" }));
-  fireEvent.click(screen.getByRole("button", { name: "Add pane" }));
+  fireEvent.keyDown(screen.getByRole("button", { name: "Add" }), { key: "ArrowDown" });
+  fireEvent.click(screen.getByRole("menuitem", { name: "Add pane" }));
   expect(screen.getAllByRole("button", { name: /Add app at/ })).toHaveLength(
     11,
   );
@@ -122,3 +122,4 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   expect(mobile.container.querySelector(".react-grid-layout")).toBeNull();
   expect(mobile.container.querySelector(".mobile-panes")).not.toBeNull();
 });
+
