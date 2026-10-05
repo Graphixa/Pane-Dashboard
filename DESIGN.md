@@ -120,12 +120,13 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | Component | Required usage |
 | --- | --- |
 | `Text` | Named `variant`; explicit `as` for headings/inline text |
-| `Button` | `primary`, `secondary`, `quiet` or `danger`; defaults to `type="button"` |
+| `Button` | `primary`, `secondary`, `quiet`, `danger` or `surface` (artwork/nav tiles); defaults to `type="button"` |
 | `IconButton` | Required `label`, decorative icon child; retain label if visible text is hidden |
 | `Field` | Render-prop wrapper for one custom control; spread generated ID/ARIA props onto it |
 | `TextField` | Native input props plus `label`, optional `hint` and `error` |
 | `SelectField` | Radix select props plus the same label/help/error contract |
-| `Notice` | `info`, `success` or `error`; explain status in words |
+| `SwitchRow` | Settings-style row: label (and optional hint) left, Radix switch right |
+| `Notice` | `info`, `success` or `error`; optional `banner` for message plus inline actions |
 | `Section` | Heading and optional description with consistent spacing; choose `h2` or `h3` |
 | `Modal` | Radix Dialog with required title and close handler; caller owns discard policy |
 | `Popover`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling |

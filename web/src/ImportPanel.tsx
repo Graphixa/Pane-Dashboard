@@ -1,5 +1,5 @@
 import { useConfirmation } from "./design/components";
-import { Button, Label, Input, Checkbox, Select, SelectOption } from "./design/components";
+import { Button, Label, Input, Checkbox, Select, SelectOption, Notice, Text, TextField, SelectField } from "./design/components";
 import { useState } from "react";
 import { parse } from "yaml";
 import {
@@ -176,13 +176,13 @@ const [source, setSource] = useState("file"),
             />
           </Label>
           {preview && (
-            <div className="notice">
-              <h4>{replacement ? "Replace dashboard" : "Add shared pane"}</h4>
-              <p>
+            <Notice>
+              <Text as="h4" variant="label">{replacement ? "Replace dashboard" : "Add shared pane"}</Text>
+              <Text variant="support">
                 {preview.items.length} panes ·{" "}
                 {preview.items.reduce((n, p) => n + p.apps.length, 0)} apps
                 after import
-              </p>
+              </Text>
               <ul>
                 {preview.items.map((p) => (
                   <li key={p.id}>
@@ -190,78 +190,75 @@ const [source, setSource] = useState("file"),
                   </li>
                 ))}
               </ul>
-              <p>
+              <Text variant="support">
                 Imported icon addresses will be contacted by your browser. Only
                 import files you trust.
-              </p>
-              <Button
-                variant="primary"
-                onClick={async () => {
-                  try {
-                    if (
-                      replacement &&
-                      !await confirm({
-                        title: "Replace dashboard?",
-                        description: "Replace your entire dashboard with this file? Download a backup first if needed.",
-                        cancelLabel: "Cancel",
-                        actionLabel: "Replace dashboard",
-                      })
-                    )
-                      return;
-                    imported(
-                      preview,
-                      replacement ? undefined : preview.items.at(-1)?.id,
-                    );
-                  } catch (e) {
-                    setError((e as Error).message);
-                  }
-                }}
-              >
-                Confirm import
-              </Button>
-            </div>
+              </Text>
+              <div className="ui-actions">
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    try {
+                      if (
+                        replacement &&
+                        !await confirm({
+                          title: "Replace dashboard?",
+                          description: "Replace your entire dashboard with this file? Download a backup first if needed.",
+                          cancelLabel: "Cancel",
+                          actionLabel: "Replace dashboard",
+                        })
+                      )
+                        return;
+                      imported(
+                        preview,
+                        replacement ? undefined : preview.items.at(-1)?.id,
+                      );
+                    } catch (e) {
+                      setError((e as Error).message);
+                    }
+                  }}
+                >
+                  Confirm import
+                </Button>
+              </div>
+            </Notice>
           )}
         </>
       ) : (
         <>
-          <p>
+          <Text variant="support">
             Discover containers, review their addresses, then select the apps
             you want to add.
-          </p>
-          <p className="notice">
+          </Text>
+          <Notice>
             Docker discovery is optional. Direct socket access is privileged,
             even with a read-only mount. Use a restricted socket proxy where
             possible.
-          </p>
-          <Label>
-            Docker host address
-            <Input
-              value={host}
-              placeholder="192.168.1.10"
-              onChange={(e) => {
-                const next = e.target.value;
-                setHost(next);
-                setApps(
-                  apps.map((a) => ({
-                    ...a,
-                    url: a.ports[0] ? address(next, a.ports[0].port) : a.url,
-                  })),
-                );
-              }}
-            />
-          </Label>
-          <p className="hint">
-            Use a hostname or IP only. Review HTTPS, reverse-proxy and port
-            choices below; detection does not prove a port serves a web app.
-          </p>
+          </Notice>
+          <TextField
+            label="Docker host address"
+            value={host}
+            placeholder="192.168.1.10"
+            hint="Use a hostname or IP only. Review HTTPS, reverse-proxy and port choices below; detection does not prove a port serves a web app."
+            onChange={(e) => {
+              const next = e.target.value;
+              setHost(next);
+              setApps(
+                apps.map((a) => ({
+                  ...a,
+                  url: a.ports[0] ? address(next, a.ports[0].port) : a.url,
+                })),
+              );
+            }}
+          />
           <Button disabled={busy} onClick={scan}>
             {busy ? "Scanning…" : "Scan Docker"}
           </Button>
           {enabled === false && (
-            <p className="notice">
+            <Notice>
               Discovery is disabled. Configure PANE_DOCKER_ENDPOINT on the
               server; see README.md.
-            </p>
+            </Notice>
           )}
           {enabled && !apps.length && <p>No running containers found.</p>}
           <div className="discovery-list">
@@ -346,29 +343,25 @@ const [source, setSource] = useState("file"),
           </div>
           {apps.some((a) => a.selected) && (
             <>
-              <Label>
-                Destination
-                <Select
-                  value={destination}
-                  onValueChange={(value) => setDestination(value)}
-                >
-                  <SelectOption value="new">Create new pane</SelectOption>
-                  {config.items.map((p) => (
-                    <SelectOption value={p.id} key={p.id}>
-                      {p.title || "Untitled pane"}
-                    </SelectOption>
-                  ))}
-                </Select>
-              </Label>
+              <SelectField
+                label="Destination"
+                value={destination}
+                onValueChange={(value) => setDestination(value)}
+              >
+                <SelectOption value="new">Create new pane</SelectOption>
+                {config.items.map((p) => (
+                  <SelectOption value={p.id} key={p.id}>
+                    {p.title || "Untitled pane"}
+                  </SelectOption>
+                ))}
+              </SelectField>
               {destination === "new" && (
-                <Label>
-                  Pane title (optional)
-                  <Input
-                    maxLength={100}
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                  />
-                </Label>
+                <TextField
+                  label="Pane title (optional)"
+                  maxLength={100}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               )}
               <Button
                 variant="primary"
@@ -409,9 +402,7 @@ const [source, setSource] = useState("file"),
         </>
       )}
       {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <Notice tone="error">{error}</Notice>
       )}
     </div> </>
   );

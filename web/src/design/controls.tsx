@@ -69,3 +69,23 @@ export function Disclosure({title, children, defaultOpen = false}: {title: strin
     <CollapsiblePrimitive.Content className="ui-disclosure-content">{children}</CollapsiblePrimitive.Content>
   </CollapsiblePrimitive.Root>;
 }
+/** Label left, switch right; id association without nesting the control in the label. */
+export function SwitchRow({label, hint, checked, onCheckedChange, disabled, id}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+  id?: string;
+}) {
+  const generated = useId();
+  const controlId = id ?? generated;
+  const hintId = hint ? `${controlId}-hint` : undefined;
+  return <div className="ui-switch-row">
+    <div className="ui-switch-row-copy">
+      <label className="ui-switch-row-label" htmlFor={controlId}>{label}</label>
+      {hint && <p className="ui-switch-row-hint" id={hintId}>{hint}</p>}
+    </div>
+    <Switch id={controlId} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} aria-describedby={hintId} />
+  </div>;
+}

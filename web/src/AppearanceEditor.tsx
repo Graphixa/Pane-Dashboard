@@ -1,4 +1,4 @@
-import { Button, Label, Input, Select, SelectOption, Switch, Popover, IconButton, Text, Section, Range, Disclosure } from "./design/components";
+import { Button, Label, Input, Select, SelectOption, Popover, IconButton, Text, Section, Range, Disclosure, Notice, TextField, SelectField, SwitchRow } from "./design/components";
 import {
   useEffect,
   useId,
@@ -12,7 +12,6 @@ import {
   defaultBackground,
   defaultGlass,
   defaultOverlayColour,
-  defaultUiFont,
   gradients,
   migrateBackground,
   motionStyleLabels,
@@ -20,8 +19,10 @@ import {
   normaliseGlass,
   overlayForTheme,
   accentPresets,
+  parseIntegerInput,
   paletteForThemeChange,
   palettes,
+  resolveUiFont,
   uiFontFamily,
   uiFonts,
   withMotionStyle,
@@ -31,6 +32,51 @@ import {
   type UiFont,
 } from "./appearance";
 import ImageField from "./ImageField";
+
+/** Keep invalid keystrokes out of the draft; only commit in-range integers. */
+function IntegerField({
+  label,
+  value,
+  min,
+  max,
+  onCommit,
+  hint,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (value: number) => void;
+  hint?: string;
+}) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => setText(String(value)), [value]);
+  const parsed = parseIntegerInput(text, min, max);
+  const error =
+    parsed === undefined
+      ? `Enter a whole number from ${min} to ${max}.`
+      : undefined;
+  return (
+    <TextField
+      label={label}
+      type="number"
+      min={min}
+      max={max}
+      value={text}
+      hint={hint}
+      error={error}
+      onChange={(e) => {
+        const next = e.target.value;
+        setText(next);
+        const n = parseIntegerInput(next, min, max);
+        if (n !== undefined) onCommit(n);
+      }}
+      onBlur={() => {
+        if (parseIntegerInput(text, min, max) === undefined) setText(String(value));
+      }}
+    />
+  );
+}
 
 function OverlayModeSwatch({
   id,
@@ -107,7 +153,8 @@ function BackgroundCustomSwatch({settings, onBusy, background}: {settings: Backg
   return <Popover label="Custom background image" size="image" open={open} onOpenChange={next => {
     if(!next) {cancel(); return;}
     revert.current = {kind: settings.kind, image: settings.image, position: settings.position, motion: settings.motion, motionStyle: settings.motionStyle};
-    if(settings.kind !== 'image') background({kind: 'image', ...withMotionStyle('none')}); setOpen(true);
+    // Keep the current motion style when returning to a saved custom image.
+    if(settings.kind !== 'image') background({kind: 'image'}); setOpen(true);
   }} trigger={<Button variant="surface" className="background-swatch" aria-pressed={settings.kind === 'image'}><span className={`swatch-custom ${settings.image ? 'swatch-custom-set' : 'swatch-custom-empty'}`}><ImagePlus size={18} aria-hidden="true" /></span>Custom</Button>}>
     <div className="colour-popover-head"><Text as="span" variant="label">Custom image</Text><IconButton variant="quiet" label="Close custom image picker" disabled={busy} onClick={cancel}><X size={16} aria-hidden="true" /></IconButton></div>
     <ImageField label="Background image" kind="background" value={settings.image} change={image => background({image, kind: 'image'})} onBusy={v => {setBusy(v); onBusy(v);}} hint="PNG, JPEG or WebP, up to 8 MiB." />
@@ -124,7 +171,7 @@ export default function AppearanceEditor({
 }: {
   section: "general" | "appearance" | "background" | "panes";
   draft: Config;
-  change: (c: Config) => void;
+  change: (c: Config | ((prev: Config) => Config)) => void;
   onBusy: (b: boolean) => void;
 }) {
   const accentHeadingId = useId();
@@ -133,21 +180,57 @@ export default function AppearanceEditor({
     g = normaliseGlass(a.glass ?? defaultGlass),
     p = a.palette ?? palettes[a.theme];
   const header = (update: Partial<Config["dashboard"]>) =>
-    change({ ...draft, dashboard: { ...draft.dashboard, ...update } });
+    change((prev) => ({
+      ...prev,
+      dashboard: { ...prev.dashboard, ...update },
+    }));
   const appearance = (update: Partial<Config["appearance"]>) =>
-    change({ ...draft, appearance: { ...a, ...update } });
+    change((prev) => ({
+      ...prev,
+      appearance: { ...prev.appearance, ...update },
+    }));
   const setGlass = (update: Partial<typeof g>) =>
-    appearance({ glass: { ...g, ...update } });
+    change((prev) => {
+      const glass = normaliseGlass(prev.appearance.glass ?? defaultGlass);
+      return {
+        ...prev,
+        appearance: { ...prev.appearance, glass: { ...glass, ...update } },
+      };
+    });
   const background = (update: Partial<BackgroundSettings>) =>
-    appearance({ background: { ...b, ...update } });
-  const setTheme = (theme: "dark" | "light") =>
-    appearance({
-      theme,
-      palette: paletteForThemeChange(a.theme, theme, a.palette),
-      background: {
-        ...b,
-        overlay: overlayForTheme(theme, b.overlay),
+    change((prev) => ({
+      ...prev,
+      appearance: {
+        ...prev.appearance,
+        background: {
+          ...(prev.appearance.background ?? defaultBackground),
+          ...update,
+        },
       },
+    }));
+  const setTheme = (theme: "dark" | "light") =>
+    change((prev) => {
+      const appearance = prev.appearance;
+      const migrated = migrateBackground(
+        appearance.background ?? defaultBackground,
+        appearance.theme,
+      );
+      return {
+        ...prev,
+        appearance: {
+          ...appearance,
+          theme,
+          palette: paletteForThemeChange(
+            appearance.theme,
+            theme,
+            appearance.palette,
+          ),
+          background: {
+            ...migrated,
+            overlay: overlayForTheme(theme, migrated.overlay),
+          },
+        },
+      };
     });
   const badContrast =
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
@@ -160,14 +243,12 @@ export default function AppearanceEditor({
           title="Dashboard"
           description="Also used for the browser tab and accessible name."
         >
-          <Label>
-            Dashboard name
-            <Input
-              maxLength={100}
-              value={draft.dashboard.title}
-              onChange={(e) => header({ title: e.target.value })}
-            />
-          </Label>
+          <TextField
+            label="Dashboard name"
+            maxLength={100}
+            value={draft.dashboard.title}
+            onChange={(e) => header({ title: e.target.value })}
+          />
         </Section>
         <Section level="h3" className="settings-section"
           title="Logo"
@@ -202,7 +283,7 @@ export default function AppearanceEditor({
           </div>
           {!fullLogo && (
             <div className="settings-subsection">
-              <h4>Built-in icons</h4>
+              <Text as="h4" variant="label">Built-in icons</Text>
               <div
                 className="choice-row"
                 role="group"
@@ -263,57 +344,52 @@ export default function AppearanceEditor({
           description="Tiles keep their size. Narrow screens use a read-only layout."
         >
           <div className="fields">
-            <Label>
-              Dashboard width
-              <Select
-                value={
-                  draft.dashboard.widthMode === "full"
-                    ? "full"
-                    : [960, 1200].includes(draft.dashboard.width)
-                      ? String(draft.dashboard.width)
-                      : "custom"
-                }
-                onValueChange={(value) =>
-                  header({
-                    widthMode: value === "full" ? "full" : "fixed",
-                    width: ["960", "1200"].includes(value)
-                      ? Number(value)
-                      : value === "custom"
-                        ? 1000
-                        : draft.dashboard.width,
-                  })
-                }
-              >
-                <SelectOption value="full">Full width</SelectOption>
-                <SelectOption value="960">960 px</SelectOption>
-                <SelectOption value="1200">1200 px</SelectOption>
-                <SelectOption value="custom">Custom</SelectOption>
-              </Select>
-            </Label>
-            <Label>
-              {draft.dashboard.widthMode === "full"
-                ? "Saved workspace width (px)"
-                : "Width (px)"}
-              <Input
-                type="number"
-                min={768}
-                max={3840}
-                value={draft.dashboard.width}
-                onChange={(e) => header({ width: Number(e.target.value) })}
-              />
-            </Label>
+            <SelectField
+              label="Dashboard width"
+              value={
+                draft.dashboard.widthMode === "full"
+                  ? "full"
+                  : [960, 1200].includes(draft.dashboard.width)
+                    ? String(draft.dashboard.width)
+                    : "custom"
+              }
+              onValueChange={(value) =>
+                header({
+                  widthMode: value === "full" ? "full" : "fixed",
+                  width: ["960", "1200"].includes(value)
+                    ? Number(value)
+                    : value === "custom"
+                      ? 1000
+                      : draft.dashboard.width,
+                })
+              }
+            >
+              <SelectOption value="full">Full width</SelectOption>
+              <SelectOption value="960">960 px</SelectOption>
+              <SelectOption value="1200">1200 px</SelectOption>
+              <SelectOption value="custom">Custom</SelectOption>
+            </SelectField>
+            <IntegerField
+              label={
+                draft.dashboard.widthMode === "full"
+                  ? "Saved workspace width (px)"
+                  : "Width (px)"
+              }
+              min={768}
+              max={3840}
+              value={draft.dashboard.width}
+              onCommit={(width) => header({ width })}
+            />
           </div>
         </Section>
         <Section level="h3" className="settings-section" title="Navigation">
-          <Label className="setting-switch">
-            <span>Show button labels</span>
-            <Switch
-              checked={a.showButtonLabels}
-              onCheckedChange={(checked) =>
-                appearance({ showButtonLabels: checked })
-              }
-            />
-          </Label>
+          <SwitchRow
+            label="Show button labels"
+            checked={a.showButtonLabels}
+            onCheckedChange={(checked) =>
+              appearance({ showButtonLabels: checked })
+            }
+          />
         </Section>
       </>
     );
@@ -402,13 +478,11 @@ export default function AppearanceEditor({
           </Section>
         )}
         <Section level="h3" className="settings-section" title="Labels" description="Show names beneath app icons.">
-          <Label className="setting-switch">
-            <span>Show app labels</span>
-            <Switch
-              checked={a.showAppLabels}
-              onCheckedChange={(checked) => appearance({ showAppLabels: checked })}
-            />
-          </Label>
+          <SwitchRow
+            label="Show app labels"
+            checked={a.showAppLabels}
+            onCheckedChange={(checked) => appearance({ showAppLabels: checked })}
+          />
         </Section>
       </>
     );
@@ -521,11 +595,11 @@ export default function AppearanceEditor({
               <span>Motion style</span>
               <Select
                 value={b.motionStyle}
-                onValueChange={(value) =>
-                  background(
-                    withMotionStyle(value as MotionStyle),
-                  )
-                }
+                onValueChange={(value) => {
+                  const style = value as MotionStyle;
+                  if (style === b.motionStyle) return;
+                  background(withMotionStyle(style));
+                }}
               >
                 {motionStyles.map((id) => (
                   <SelectOption key={id} value={id}>
@@ -721,9 +795,9 @@ export default function AppearanceEditor({
           </p>
         </Disclosure>
         {badContrast && (
-          <p className="error" role="alert">
+          <Notice tone="error">
             Increase text contrast before applying.
-          </p>
+          </Notice>
         )}
         <Button variant="surface"
           type="button"
@@ -738,39 +812,32 @@ export default function AppearanceEditor({
         title="Typography"
         description="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
       >
-        <Label className="settings-row">
-          <span>Font</span>
-          <Select
-            aria-label="Font"
-            value={a.fontFamily ?? defaultUiFont}
-            style={{ fontFamily: uiFontFamily(a.fontFamily) }}
-            onValueChange={(value) =>
-              appearance({ fontFamily: value as UiFont })
-            }
-          >
-            {uiFonts.map((font) => (
-              <SelectOption
-                key={font.id}
-                value={font.id}
-                style={{ fontFamily: font.family }}
-              >
-                {font.label}
-              </SelectOption>
-            ))}
-          </Select>
-        </Label>
-        <Label className="settings-row">
-          <span>Pane title size (px)</span>
-          <Input
-            type="number"
-            min={14}
-            max={22}
-            value={a.paneTitleSize ?? 18}
-            onChange={(e) =>
-              appearance({ paneTitleSize: Number(e.target.value) })
-            }
-          />
-        </Label>
+        <SelectField
+          label="Font"
+          value={resolveUiFont(a.fontFamily)}
+          style={{ fontFamily: uiFontFamily(resolveUiFont(a.fontFamily)) }}
+          onValueChange={(value) => {
+            if (!uiFonts.some((font) => font.id === value)) return;
+            appearance({ fontFamily: value as UiFont });
+          }}
+        >
+          {uiFonts.map((font) => (
+            <SelectOption
+              key={font.id}
+              value={font.id}
+              style={{ fontFamily: font.family }}
+            >
+              {font.label}
+            </SelectOption>
+          ))}
+        </SelectField>
+        <IntegerField
+          label="Pane title size (px)"
+          min={14}
+          max={22}
+          value={a.paneTitleSize ?? 18}
+          onCommit={(paneTitleSize) => appearance({ paneTitleSize })}
+        />
       </Section>
     </>
   );

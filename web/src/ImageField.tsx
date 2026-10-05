@@ -1,4 +1,4 @@
-import { Button, Input, Label } from "./design/components";
+import { Button, Input, Label, Notice } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { imageReference } from "./appearance";
@@ -178,9 +178,7 @@ export default function ImageField({
         </p>
       </div>
       {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <Notice tone="error">{error}</Notice>
       )}
     </div>
   );

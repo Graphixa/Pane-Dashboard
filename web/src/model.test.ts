@@ -167,13 +167,25 @@ describe("validation and imports", () => {
     for (const paneTitleSize of [0, 13, 23, 18.5]) {
       expect(() =>
         validate({ ...c, appearance: { ...c.appearance, paneTitleSize } }),
-      ).toThrow();
+      ).toThrow(/Pane title size must be a whole number/);
     }
     c.appearance.fontFamily = "rubik";
     validate(c);
+    const unknownFont = {
+      ...c,
+      appearance: { ...c.appearance, fontFamily: "inter" as "rubik" },
+    };
+    validate(unknownFont);
+    expect(unknownFont.appearance.fontFamily).toBeUndefined();
+    const emptyFont = {
+      ...c,
+      appearance: { ...c.appearance, fontFamily: "" as unknown as undefined },
+    };
+    validate(emptyFont);
+    expect(emptyFont.appearance.fontFamily).toBeUndefined();
     expect(() =>
-      validate({ ...c, appearance: { ...c.appearance, fontFamily: "inter" } }),
-    ).toThrow();
+      validate({ ...c, dashboard: { ...c.dashboard, width: 0 } }),
+    ).toThrow(/Dashboard width must be a whole number/);
   });
   it("rejects unknown fields, obsolete size presets and fractional dimensions", () => {
     const c = base();

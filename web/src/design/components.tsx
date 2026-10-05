@@ -64,10 +64,16 @@ export function SelectField({ label, hint, error, id, className, "aria-described
   }</Field>;
 }
 
-export function Notice({ tone = "info", className, ...props }:
-  HTMLAttributes<HTMLDivElement> & { tone?: "info" | "error" | "success" }) {
+export function Notice({ tone = "info", banner = false, className, children, ...props }:
+  HTMLAttributes<HTMLDivElement> & {
+    tone?: "info" | "error" | "success";
+    /** Horizontal layout for message plus inline actions (dashboard banners). */
+    banner?: boolean;
+  }) {
   return <div role={tone === "error" ? "alert" : "status"} {...props}
-    className={classes("ui-notice", `ui-notice-${tone}`, className)} />;
+    className={classes("ui-notice", `ui-notice-${tone}`, banner ? "ui-notice-banner" : undefined, className)}>
+    {children}
+  </div>;
 }
 
 export function Section({ title, description, children, className = "", level = "h2" }:
@@ -80,7 +86,7 @@ export function Section({ title, description, children, className = "", level = 
   </section>;
 }
 
-export { Input, Label, Select, SelectOption, Switch, Checkbox, Range, Disclosure, FieldGroup } from "./controls";
+export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup } from "./controls";
 export { Modal, Popover, DropdownMenu, Tooltip, useConfirmation } from "./overlays";
 export type { ConfirmRequest } from "./overlays";
 export { ThemeSurface } from "./surface";

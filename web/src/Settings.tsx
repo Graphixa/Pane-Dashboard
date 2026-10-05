@@ -13,7 +13,7 @@ import { Config, clone, sanitiseExport, validate } from "./model";
 import { appearanceStyle } from "./appearance";
 import AppearanceEditor from "./AppearanceEditor";
 import { Modal } from "./design/components";
-import { Button, Text } from "./design/components";
+import { Button, Notice, Text, Section } from "./design/components";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
@@ -59,10 +59,13 @@ const [page, setPage] = useState<Page>("general");
       dashboard: d.dashboard,
       appearance: d.appearance,
     });
-  const updateDraft = (c: Config) => {
-    setDraft(c);
-    setError("");
-    previewFrom(c);
+  const updateDraft = (c: Config | ((prev: Config) => Config)) => {
+    setDraft((prev) => {
+      const next = typeof c === "function" ? c(prev) : c;
+      setError("");
+      previewFrom(next);
+      return next;
+    });
   };
   const requestClose = async () => {
     if (
@@ -127,6 +130,7 @@ const [page, setPage] = useState<Page>("general");
             <Button
               type="button"
               key={id}
+              className="ui-settings-nav"
               disabled={busy}
               aria-current={page === id ? "page" : undefined}
               onClick={() => setPage(id)}
@@ -141,10 +145,10 @@ const [page, setPage] = useState<Page>("general");
             {pages.find(([id]) => id === page)?.[1]}
           </Text>
           {readOnly && (
-            <p className="notice">
+            <Notice>
               Use a wider desktop screen to change settings. Backups are still
               available.
-            </p>
+            </Notice>
           )}
           <form
             id="settings-form"
@@ -169,20 +173,23 @@ const [page, setPage] = useState<Page>("general");
           </form>
           {page === "backup" && (
             <>
-              <section className="settings-section">
-                <h3>Export</h3>
-                <p className="section-description">
-                  {dirty
+              <Section
+                level="h3"
+                className="settings-section"
+                title="Export"
+                description={
+                  dirty
                     ? "Apply or discard pending changes before downloading."
-                    : "Downloads use your saved dashboard."}
-                </p>
+                    : "Downloads use your saved dashboard."
+                }
+              >
                 <div className="backup-option">
                   <div className="backup-option-copy">
-                    <h4>Private backup</h4>
-                    <p>
+                    <Text as="h4" variant="label">Private backup</Text>
+                    <Text variant="support">
                       Includes app addresses, Docker identities and uploaded
                       images.
-                    </p>
+                    </Text>
                   </div>
                   <Button
                     type="button"
@@ -194,11 +201,11 @@ const [page, setPage] = useState<Page>("general");
                 </div>
                 <div className="backup-option">
                   <div className="backup-option-copy">
-                    <h4>Share a layout</h4>
-                    <p>
+                    <Text as="h4" variant="label">Share a layout</Text>
+                    <Text variant="support">
                       Omits app addresses and Docker identities. Review images
                       before sharing.
-                    </p>
+                    </Text>
                   </div>
                   <Button
                     type="button"
@@ -210,33 +217,37 @@ const [page, setPage] = useState<Page>("general");
                     Export shareable layout
                   </Button>
                 </div>
-              </section>
-              <section className="settings-section">
-                <h3>Import</h3>
-                {dirty ? (
-                  <p className="section-description">
-                    Apply your settings first, or cancel and reopen Settings
-                    before importing.
-                  </p>
-                ) : (
-                  !readOnly && (
-                    <ImportPanel
-                      config={config}
-                      imported={(c, id) => {
-                        imported(c, id);
-                        close();
-                      }}
-                    />
-                  )
+              </Section>
+              <Section
+                level="h3"
+                className="settings-section"
+                title="Import"
+                description={
+                  dirty
+                    ? "Apply your settings first, or cancel and reopen Settings before importing."
+                    : undefined
+                }
+              >
+                {!dirty && !readOnly && (
+                  <ImportPanel
+                    config={config}
+                    imported={(c, id) => {
+                      imported(c, id);
+                      close();
+                    }}
+                  />
                 )}
-              </section>
+              </Section>
             </>
           )}
           {page === "about" && (
-            <section className="settings-section">
-              <h3>Pane</h3>
-              <p className="section-description">Version {version}</p>
-              <p>A self-hosted dashboard for your apps.</p>
+            <Section
+              level="h3"
+              className="settings-section"
+              title="Pane"
+              description={`Version ${version}`}
+            >
+              <Text>A self-hosted dashboard for your apps.</Text>
               <div className="about-links">
                 <a
                   href="https://github.com/Graphixa/Pane-Dashboard"
@@ -253,16 +264,14 @@ const [page, setPage] = useState<Page>("general");
                   Report an issue
                 </a>
               </div>
-            </section>
+            </Section>
           )}
         </div>
       </div>
       <div className="settings-footer">
         <div className="settings-status" aria-live="polite">
           {error ? (
-            <p className="error" role="alert">
-              {error}
-            </p>
+            <Notice tone="error">{error}</Notice>
           ) : busy ? (
             "Preparing image…"
           ) : dirty ? (
@@ -271,7 +280,7 @@ const [page, setPage] = useState<Page>("general");
             "Settings are up to date"
           )}
         </div>
-        <div className="settings-footer-actions">
+        <div className="ui-actions settings-footer-actions">
           <Button onClick={requestClose}>Cancel</Button>
           <Button
             type="submit"

@@ -1,11 +1,11 @@
 import { useConfirmation } from "./design/components";
-import { Label, Checkbox, Input, Select, SelectOption } from "./design/components";
+import { SelectOption, SwitchRow } from "./design/components";
 import { useState } from "react";
 import { stringify } from "yaml";
 import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
 import { catalogue, iconURL } from "./icons";
 import { Modal } from "./design/components";
-import { Button, TextField } from "./design/components";
+import { Button, TextField, SelectField, Notice } from "./design/components";
 export function download(name: string, value: unknown) {
   const url = URL.createObjectURL(
     new Blob([stringify(value)], { type: "application/yaml" }),
@@ -34,7 +34,7 @@ export function AppEditor({
   close: () => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-const [draft, setDraft] = useState<App>(
+  const [draft, setDraft] = useState<App>(
       app
         ? clone(app)
         : {
@@ -90,32 +90,26 @@ const [draft, setDraft] = useState<App>(
             value={draft.url}
             onChange={(e) => setDraft({ ...draft, url: e.target.value })}
           />
-        <Label className="check">
-          <Checkbox
-            checked={draft.openInNewTab}
-            onCheckedChange={(checked) =>
-              setDraft({ ...draft, openInNewTab: checked })
-            }
-          />
-          Open in a new tab
-        </Label>
-        <Label>
-          Icon reference or custom URL
-          <Input
-            value={draft.icon}
-            onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
-            placeholder="dashboard-icons:plex"
-          />
-        </Label>
-        <Label>
-          Search icons
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the local catalogue"
-          />
-        </Label>
-        <div className="icon-picker">
+        <SwitchRow
+          label="Open in a new tab"
+          checked={draft.openInNewTab}
+          onCheckedChange={(checked) =>
+            setDraft({ ...draft, openInNewTab: checked })
+          }
+        />
+        <TextField
+          label="Icon reference or custom URL"
+          value={draft.icon}
+          onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
+          placeholder="dashboard-icons:plex"
+        />
+        <TextField
+          label="Search icons"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search the local catalogue"
+        />
+        <div className="ui-icon-picker">
           {catalogue
             .filter((s) => s.includes(search.toLowerCase()))
             .slice(0, 24)
@@ -141,50 +135,42 @@ const [draft, setDraft] = useState<App>(
             ))}
         </div>
         <div className="fields">
-          <Label>
-            Pane
-            <Select
-              value={destination}
-              onValueChange={(value) => setDestination(value)}
-            >
-              {config.items.map((p) => (
-                <SelectOption key={p.id} value={p.id}>
-                  {p.title || "Untitled pane"}
-                </SelectOption>
-              ))}
-            </Select>
-          </Label>
-          <Label>
-            Column (1-based)
-            <Input
-              type="number"
-              min={1}
-              required
-              value={draft.col + 1}
-              onChange={(e) =>
-                setDraft({ ...draft, col: Number(e.target.value) - 1 })
-              }
-            />
-          </Label>
-          <Label>
-            Row (1-based)
-            <Input
-              type="number"
-              min={1}
-              required
-              value={draft.row + 1}
-              onChange={(e) =>
-                setDraft({ ...draft, row: Number(e.target.value) - 1 })
-              }
-            />
-          </Label>
+          <SelectField
+            label="Pane"
+            value={destination}
+            onValueChange={(value) => setDestination(value)}
+          >
+            {config.items.map((p) => (
+              <SelectOption key={p.id} value={p.id}>
+                {p.title || "Untitled pane"}
+              </SelectOption>
+            ))}
+          </SelectField>
+          <TextField
+            label="Column (1-based)"
+            type="number"
+            min={1}
+            required
+            value={draft.col + 1}
+            onChange={(e) =>
+              setDraft({ ...draft, col: Number(e.target.value) - 1 })
+            }
+          />
+          <TextField
+            label="Row (1-based)"
+            type="number"
+            min={1}
+            required
+            value={draft.row + 1}
+            onChange={(e) =>
+              setDraft({ ...draft, row: Number(e.target.value) - 1 })
+            }
+          />
         </div>
         {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <Notice tone="error">{error}</Notice>
         )}
-        <div className="actions">
+        <div className="ui-actions">
           {app && (
             <Button
               type="button"
@@ -231,7 +217,7 @@ export function PaneEditor({
   close: () => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-const [draft, setDraft] = useState(clone(pane)),
+  const [draft, setDraft] = useState(clone(pane)),
     [error, setError] = useState("");
   return (
     <Modal title="Edit pane" close={close}>
@@ -250,45 +236,37 @@ const [draft, setDraft] = useState(clone(pane)),
           }
         }}
       >
-        <Label>
-          Title (optional)
-          <Input
-            autoFocus
-            maxLength={100}
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-          />
-        </Label>
-        <p className="hint">
-          Resize in whole app slots. Occupied slots and neighbouring panes are
-          protected.
-        </p>
+        <TextField
+          label="Title (optional)"
+          autoFocus
+          maxLength={100}
+          value={draft.title}
+          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          hint="Resize in whole app slots. Occupied slots and neighbouring panes are protected."
+        />
         <div className="fields">
           {(["w", "h"] as const).map((k) => (
-            <Label key={k}>
-              {{ w: "Columns", h: "Rows" }[k]}
-              <Input
-                type="number"
-                required
-                min={1}
-                max={32}
-                value={draft.layout[k]}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    layout: { ...draft.layout, [k]: Number(e.target.value) },
-                  })
-                }
-              />
-            </Label>
+            <TextField
+              key={k}
+              label={{ w: "Columns", h: "Rows" }[k]}
+              type="number"
+              required
+              min={1}
+              max={32}
+              value={draft.layout[k]}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  layout: { ...draft.layout, [k]: Number(e.target.value) },
+                })
+              }
+            />
           ))}
         </div>
         {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+          <Notice tone="error">{error}</Notice>
         )}
-        <div className="actions">
+        <div className="ui-actions">
           <Button
             type="button"
             onClick={() => {

@@ -1,4 +1,4 @@
-import { ThemeSurface, DropdownMenu } from "./design/components";
+import { ThemeSurface, DropdownMenu, Notice } from "./design/components";
 import { useConfirmation } from "./design/components";
 import { Button } from "./design/components";
 import { CSSProperties, useCallback, useEffect, useState } from "react";
@@ -78,10 +78,12 @@ export default function Dashboard() {
     return (
       <main className="loading" aria-busy={!state.error || undefined}>
         {state.error ? (
-          <>
-            <p role="alert">{state.error}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
-          </>
+          <Notice tone="error" banner>
+            <span>{state.error}</span>
+            <div className="ui-actions">
+              <Button onClick={() => window.location.reload()}>Retry</Button>
+            </div>
+          </Notice>
         ) : null}
       </main>
     );
@@ -508,26 +510,28 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
       </header>
       <main>
         {(error || message) && (
-          <div className="error banner" role="alert">
-            {message || error}
-            {error && (
-              <Button
-                onClick={async () =>
-                  status === "Conflict"
-                    ? await confirm({
-                        title: "Reload dashboard?",
-                        description: "Reload and discard unsaved changes from this session?",
-                        cancelLabel: "Cancel",
-                        actionLabel: "Reload",
-                      }) && window.location.reload()
-                    : retry()
-                }
-              >
-                {status === "Conflict" ? "Reload" : "Retry save"}
-              </Button>
-            )}
-            {message && <Button onClick={() => setMessage("")}>Dismiss</Button>}
-          </div>
+          <Notice tone="error" banner>
+            <span>{message || error}</span>
+            <div className="ui-actions">
+              {error && (
+                <Button
+                  onClick={async () =>
+                    status === "Conflict"
+                      ? await confirm({
+                          title: "Reload dashboard?",
+                          description: "Reload and discard unsaved changes from this session?",
+                          cancelLabel: "Cancel",
+                          actionLabel: "Reload",
+                        }) && window.location.reload()
+                      : retry()
+                  }
+                >
+                  {status === "Conflict" ? "Reload" : "Retry save"}
+                </Button>
+              )}
+              {message && <Button onClick={() => setMessage("")}>Dismiss</Button>}
+            </div>
+          </Notice>
         )}
         <div
           ref={containerRef}

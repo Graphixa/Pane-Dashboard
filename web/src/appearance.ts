@@ -62,7 +62,27 @@ export const uiFonts: { id: UiFont; label: string; family: string }[] = [
 ];
 export const defaultUiFont: UiFont = "geist";
 export function uiFontFamily(id?: UiFont) {
-  return uiFonts.find((f) => f.id === (id ?? defaultUiFont))?.family ?? "Geist";
+  return uiFonts.find((f) => f.id === resolveUiFont(id))?.family ?? "Geist";
+}
+/** Bundled font id for display and controls; invalid or empty values fall back to Geist. */
+export function resolveUiFont(value: unknown): UiFont {
+  if (
+    typeof value === "string" &&
+    value !== "" &&
+    uiFonts.some((f) => f.id === value)
+  )
+    return value as UiFont;
+  return defaultUiFont;
+}
+/** Drop empty or unknown fontFamily so optional appearance stays valid. */
+export function normaliseAppearanceFont<T extends { fontFamily?: UiFont }>(
+  appearance: T,
+): T {
+  const { fontFamily, ...rest } = appearance;
+  if (fontFamily === undefined) return appearance;
+  // Runtime configs may carry "" or other strings; strip anything not in uiFonts.
+  if (uiFonts.some((f) => f.id === (fontFamily as string))) return appearance;
+  return rest as T;
 }
 export const overlayModes: OverlayMode[] = [
   "dark-solid",
@@ -92,6 +112,18 @@ export function resolveMotionStyle(
     return raw.motionStyle;
   if (!motion) return "none";
   return kind === "image" ? "ken-burns" : "drift";
+}
+/** Map speed (0–100) to CSS animation duration without rewriting it on every tick. */
+export function motionDurationSeconds(intensity: number) {
+  const n = Number.isFinite(intensity) ? Math.min(100, Math.max(0, intensity)) : 40;
+  return Math.round((80 - n * 0.74) * 10) / 10;
+}
+/** Parse a typed integer for settings fields; empty or out-of-range returns undefined. */
+export function parseIntegerInput(raw: string, min: number, max: number) {
+  if (raw.trim() === "") return undefined;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min || n > max) return undefined;
+  return n;
 }
 export function withMotionStyle(style: MotionStyle): Pick<
   Background,

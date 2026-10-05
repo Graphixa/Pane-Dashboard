@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Button, IconButton, SelectField, SelectOption, TextField, useConfirmation } from "./components";
+import { Button, IconButton, Notice, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -64,4 +64,20 @@ it("shows delete confirmation with cancel and delete actions, not discard copy",
   fireEvent.click(screen.getByRole("button", { name: "Delete" }));
   fireEvent.click(await screen.findByRole("button", { name: "Delete app" }));
   await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
+});
+
+it("associates SwitchRow labels and optional hints with the switch control", () => {
+  const change = vi.fn();
+  render(<SwitchRow label="Show app labels" hint="Names beneath icons." checked={false} onCheckedChange={change} />);
+  const control = screen.getByRole("switch", { name: "Show app labels" });
+  expect(control.getAttribute("aria-describedby")).toBeTruthy();
+  expect(document.getElementById(control.getAttribute("aria-describedby")!)?.textContent).toBe("Names beneath icons.");
+  fireEvent.click(control);
+  expect(change).toHaveBeenCalledWith(true);
+});
+
+it("renders Notice banners with alert semantics for errors", () => {
+  render(<Notice tone="error" banner><span>Save failed</span><div className="ui-actions"><Button>Retry</Button></div></Notice>);
+  expect(screen.getByRole("alert").textContent).toContain("Save failed");
+  expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
 });
