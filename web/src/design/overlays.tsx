@@ -4,7 +4,7 @@ import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import * as Menu from '@radix-ui/react-dropdown-menu';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import { Button, IconButton, Text } from './components';
 import { SurfaceProvider, useSurface } from './surface';
 
@@ -19,6 +19,8 @@ export function Modal(props: {
   nested?: boolean;
   placement?: 'center' | 'bottom';
   backdrop?: 'dim' | 'none';
+  /** Title-bar dismiss control: Close (X) or Back (chevron). Both call `close`. */
+  headerClose?: 'close' | 'back';
 }) {
   return <SurfaceProvider style={props.style} theme={props.theme}><ModalContent {...props} /></SurfaceProvider>;
 }
@@ -31,6 +33,7 @@ function ModalContent({
   nested = false,
   placement = 'center',
   backdrop = 'dim',
+  headerClose = 'close',
 }: Parameters<typeof Modal>[0]) {
   const surface = useSurface();
   const opener = useRef<HTMLElement | null>(null), content = useRef<HTMLDivElement>(null);
@@ -61,7 +64,9 @@ function ModalContent({
         e.preventDefault(); drag.current = {id: e.pointerId, x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y}; e.currentTarget.setPointerCapture(e.pointerId);
       }} onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
         <Dialog.Title asChild><Text as="h2" variant="title">{title}</Text></Dialog.Title>
-        <IconButton variant="quiet" label="Close" onClick={close}><X size={20} aria-hidden="true" /></IconButton>
+        {headerClose === 'back'
+          ? <IconButton variant="quiet" label="Back" onClick={close}><ChevronLeft size={20} aria-hidden="true" /></IconButton>
+          : <IconButton variant="quiet" label="Close" onClick={close}><X size={20} aria-hidden="true" /></IconButton>}
       </div>{children}
     </Dialog.Content>
   </Dialog.Portal></Dialog.Root>;

@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
   Button, Checkbox, Disclosure, DropdownMenu, IconButton, Modal, Notice, Popover,
-  Range, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
+  Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
 } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -100,7 +100,7 @@ export default function ComponentReference() {
           <Text variant="support">Disclosure content uses the same spacing as sections.</Text>
         </Disclosure>
       </Section>
-      <Section title="Overlays" description="Popover, dropdown and confirmation share portal surface styling.">
+      <Section title="Overlays" description="Popover, dropdown and confirmation share portal surface styling. ScrollArea themes overflow instead of a raw scrollbar.">
         <div className="reference-actions">
           <Popover label="Example popover" open={popoverOpen} onOpenChange={setPopoverOpen}
             trigger={<Button>Open popover <ChevronDown size={16} aria-hidden="true" /></Button>}>
@@ -129,6 +129,13 @@ export default function ComponentReference() {
             });
           }}>Discard confirmation</Button>
         </div>
+        <ScrollArea orientation="horizontal" className="reference-scroll-strip" aria-label="Example horizontal scroll">
+          <div className="reference-scroll-track">
+            {["Dusk", "Ocean", "Forest", "Mist", "None", "Waves", "Aurora"].map((label) => (
+              <Button key={label} variant="surface">{label}</Button>
+            ))}
+          </div>
+        </ScrollArea>
       </Section>
       <Section title="Palette roles" description="These swatches use the same appearanceStyle palette resolver as the dashboard.">
         <div className="reference-colours">{["bg", "panel", "panel-high", "text", "muted", "accent", "accent-text", "line"].map(role =>

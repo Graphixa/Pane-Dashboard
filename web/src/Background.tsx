@@ -45,7 +45,11 @@ export default function Background({
   const activeImage =
     b.kind === "image" && imageReference(b.image) && b.image && !failed;
   const paint =
-    b.kind === "none" ? "var(--bg)" : (gradients[b.preset] ?? gradients.dusk);
+    b.kind === "none"
+      ? "var(--bg)"
+      : b.kind === "solid"
+        ? b.colour
+        : (gradients[b.preset] ?? gradients.dusk);
   return (
     <div
       aria-hidden="true"

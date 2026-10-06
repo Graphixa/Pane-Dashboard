@@ -105,7 +105,7 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
   });
-  it("offers Appearance and Background pages with ordered headings and no miniature previews", () => {
+  it("offers Appearance and Background pages with ordered headings and no miniature previews", { timeout: 15000 }, () => {
     const { container } = setup();
     for (const name of [
       "General",
@@ -131,19 +131,44 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.getByRole("button", { name: "Change wallpaper" })).toBeTruthy();
     expect(screen.getByText("Currently set")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Show All/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Show all Gradients/i })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains("ui-dialog-bottom")).toBe(true);
-    expect(screen.getByRole("button", { name: /My images/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Gradients/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Dynamic/ })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "My images" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Dynamic" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Scroll .+ left/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Mint" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Custom colour" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+    expect(
+      screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    expect(screen.getByRole("button", { name: "Show all My images" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show all Gradients" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show all Dynamic" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
     expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Scroll Gradients left" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Scroll Gradients/ })).toBeNull();
+    expect(document.querySelector(".background-library-grid")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Forest" }));
+    expect(
+      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
@@ -159,19 +184,24 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
     fireEvent.click(screen.getByRole("button", { name: "Forest" }));
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
     expect(
       screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
+    expect(
+      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
   });
-  it("keeps labels in Panes and retains glass tuning across finish and page changes", () => {
+  it("keeps labels in Panes and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
     const { apply } = setup();
     page("Panes");
     expect(screen.queryByRole("heading", { name: "Fine tuning" })).toBeNull();

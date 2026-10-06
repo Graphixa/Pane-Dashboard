@@ -387,88 +387,210 @@
   width: min(720px, calc(100vw - 32px));
 }
 .background-library-dialog {
+  --library-pad: var(--space-5);
   width: min(720px, calc(100vw - 32px));
 }
-.background-folders {
+.ui-dialog.ui-dialog-bottom.background-library-dialog {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  /* Fixed sheet height so shelves fill (not mid-tile clip) and Show all matches. */
+  height: min(68dvh, 560px);
+  max-height: min(68dvh, 560px);
+  overflow: hidden; /* no native OS scrollbars on the sheet */
+}
+.background-library-body-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  /* Room for themed vertical thumb so it sits in the sheet gutter. */
+  padding-right: 2px;
+}
+/* Flex child fills the sheet; do not cap viewport shorter than the dialog body. */
+.background-library-body-scroll .ui-scroll-area-viewport {
+  height: 100%;
+}
+.background-library-shelves {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  padding-bottom: var(--space-2);
+}
+.background-library-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
-}
-@media (max-width: 520px) {
-  .background-folders {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
-  }
-}
-.background-folder {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-  padding: 0;
   min-width: 0;
-  background: transparent;
-  border: 0;
-  color: var(--text);
-  text-align: left;
+  padding-bottom: var(--space-2);
+}
+.background-library-grid .background-swatch {
+  width: 100%;
+  min-width: 0;
+}
+.background-library-actions {
+  margin-top: var(--space-3);
+  flex: 0 0 auto;
+}
+.background-shelf {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.background-shelf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.background-shelf-heading {
+  margin: 0;
+}
+.background-shelf-show-all {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: var(--space-1) var(--space-2);
   font-size: var(--type-caption);
   font-weight: var(--weight-semibold);
-}
-.ui-aspect-ratio.background-folder-frame {
-  border-radius: var(--radius-surface);
-  border: var(--border-width) solid var(--line);
-  background: var(--bg);
-  overflow: hidden;
-}
-.background-folder-caption {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-width: 0;
-}
-.background-folder-title {
-  font-size: var(--type-body);
-  font-weight: var(--weight-semibold);
-  line-height: 1.3;
-  color: var(--text);
-}
-.background-folder-count {
-  font-size: var(--type-support);
-  font-weight: var(--weight-regular);
   color: var(--muted);
 }
-.background-collection-back {
-  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+/* Edge-bleed: next tile clips against the modal frame, not mid-padding. */
+.background-shelf-bleed {
+  --shelf-gap: var(--space-3);
+  container-type: inline-size;
+  margin-inline: calc(-1 * var(--library-pad));
+  padding-inline-start: var(--library-pad);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
-.background-strip {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
+.background-shelf-bleed::-webkit-scrollbar {
+  display: none;
 }
-.background-strip-chevron {
-  flex: 0 0 auto;
-  color: var(--muted);
-}
-.background-strip-scroller {
+.background-shelf-track {
   display: flex;
   flex-wrap: nowrap;
-  gap: var(--space-3);
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
-  scroll-behavior: smooth;
+  align-items: flex-start;
+  gap: var(--shelf-gap);
+  width: max-content;
+  min-width: 100%;
+  box-sizing: border-box;
 }
-.background-strip-scroller .background-swatch {
-  flex: 0 0 148px;
-  width: 148px;
+.background-shelf-compact .background-shelf-track {
+  gap: var(--space-2);
+  align-items: center;
+  padding-block: 6px;
+}
+/* 3 full tiles + ~0.4 of a fourth peek. Applies to add/+ tiles and wraps alike. */
+.background-shelf-track > .background-swatch,
+.background-shelf-track > .background-swatch-wrap {
+  flex: 0 0 calc((100cqw - 2 * var(--shelf-gap)) / 3.4);
+  width: calc((100cqw - 2 * var(--shelf-gap)) / 3.4);
+  min-width: 0;
+}
+.background-shelf-track > .background-swatch-wrap {
+  position: relative;
+  overflow: visible;
+}
+.background-shelf-track .background-swatch-wrap .background-swatch {
+  display: flex;
+  width: 100%;
+  overflow: visible;
+}
+.background-library-grid .background-swatch-wrap {
+  position: relative;
+  overflow: visible;
+  min-width: 0;
+}
+.background-swatch-wrap .background-swatch-remove {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  padding: 0;
+  line-height: 0;
+  border-radius: 999px;
+  border: var(--border-width) solid var(--line);
+  background: color-mix(in srgb, var(--panel-high) 92%, black 8%);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 45%);
+  opacity: 0;
+  pointer-events: none;
+}
+.background-swatch-wrap .background-swatch-remove svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+}
+.background-swatch-wrap:hover .background-swatch-remove,
+.background-swatch-wrap:focus-within .background-swatch-remove,
+.background-swatch-wrap:has(.background-swatch[aria-pressed="true"]) .background-swatch-remove,
+.background-swatch-wrap .background-swatch-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.background-swatch-add .background-swatch-add-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+}
+.background-swatch-add .background-swatch-add-placeholder svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.wallpaper-colour-chip {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--text);
+  overflow: visible;
+}
+.wallpaper-colour-chip-paint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+/* Same selected ring language as Appearance accent chips. */
+.wallpaper-colour-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 4px var(--accent);
+}
+.wallpaper-colour-chip-add .wallpaper-colour-chip-paint {
+  background: var(--panel-high);
+  color: var(--muted);
+  border: var(--border-width) solid var(--line);
 }
 .background-swatch {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 0;
   padding: 0;
   min-width: 0;
   background: transparent;
@@ -544,7 +666,7 @@
   .swatch-mini-scene .scene-motion i {
     animation: none;
   }
-  .background-strip-scroller {
+  .background-strip-scroller .ui-scroll-area-viewport {
     scroll-behavior: auto;
   }
 }

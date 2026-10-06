@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ImagePlus, Play, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Play, Plus, Trash2, X } from "lucide-react";
 import {
   AspectRatio,
   Button,
@@ -9,19 +9,23 @@ import {
   Modal,
   Popover,
   Range,
+  ScrollArea,
   Select,
   SelectOption,
   SettingsGroup,
   SettingsRow,
   SwitchRow,
   Text,
+  useConfirmation,
 } from "./design/components";
 import ImageField from "./ImageField";
 import {
+  accentPresets,
   defaultOverlayColour,
   gradients,
   motionStyleLabels,
   motionStyles,
+  prependBackgroundImage,
   withMotionStyle,
   type Background as BackgroundSettings,
   type MotionStyle,
@@ -197,27 +201,27 @@ function BackgroundCustomAdd({
   background,
   open,
   onOpenChange,
-  onConfirmed,
 }: {
   settings: BackgroundSettings;
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirmed?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [draft, setDraft] = useState("");
   const revert = useRef<Partial<BackgroundSettings> | null>(null);
   const beginEdit = () => {
     if (revert.current) return;
     revert.current = {
       kind: settings.kind,
       image: settings.image,
+      images: [...(settings.images ?? [])],
       position: settings.position,
       motion: settings.motion,
       motionStyle: settings.motionStyle,
     };
-    if (settings.kind !== "image") background({ kind: "image" });
+    setDraft("");
   };
   useEffect(() => {
     if (open) beginEdit();
@@ -226,17 +230,19 @@ function BackgroundCustomAdd({
     if (busy) return;
     if (revert.current) background(revert.current);
     revert.current = null;
+    setDraft("");
     onOpenChange(false);
   };
   const confirm = () => {
     if (busy) return;
-    if (!settings.image) background({ kind: "none", image: "" });
+    if (!draft) {
+      cancel();
+      return;
+    }
     revert.current = null;
+    setDraft("");
     onOpenChange(false);
-    if (settings.image) onConfirmed?.();
   };
-  const hasImage = !!settings.image;
-  const selected = settings.kind === "image" && hasImage;
   return (
     <Popover
       label="Custom background image"
@@ -254,29 +260,21 @@ function BackgroundCustomAdd({
         <Button
           variant="surface"
           type="button"
-          className="background-swatch"
-          aria-pressed={selected}
-          aria-label={hasImage ? "Custom image" : "Add photo"}
+          className="background-swatch background-swatch-add"
+          aria-label="Add photo"
+          title="Add photo"
         >
           <AspectRatio className="background-swatch-frame">
-            {hasImage ? (
-              <span
-                className="background-swatch-paint background-current-image"
-                style={{ backgroundImage: `url(${settings.image})` }}
-              />
-            ) : (
-              <span className="background-swatch-add-placeholder" aria-hidden="true">
-                <ImagePlus size={22} />
-              </span>
-            )}
+            <span className="background-swatch-add-placeholder" aria-hidden="true">
+              <Plus size={22} />
+            </span>
           </AspectRatio>
-          {hasImage ? "Custom" : "Add photo…"}
         </Button>
       }
     >
       <div className="colour-popover-head">
         <Text as="span" variant="label">
-          Custom image
+          Add image
         </Text>
         <IconButton
           variant="quiet"
@@ -290,13 +288,21 @@ function BackgroundCustomAdd({
       <ImageField
         label="Background image"
         kind="background"
-        value={settings.image}
-        change={(image) => background({ image, kind: "image" })}
+        value={draft}
+        change={(image) => {
+          setDraft(image);
+          const library = revert.current?.images ?? settings.images ?? [];
+          background({
+            kind: "image",
+            image,
+            images: prependBackgroundImage(library, image),
+          });
+        }}
         onBusy={(v) => {
           setBusy(v);
           onBusy(v);
         }}
-        hint="PNG, JPEG or WebP, up to 8 MiB."
+        hint="PNG, JPEG or WebP, up to 8 MiB. Newest uploads appear first."
       />
       <Label className="settings-row">
         <span>Image position</span>
@@ -318,8 +324,108 @@ function BackgroundCustomAdd({
   );
 }
 
-function currentName(b: BackgroundSettings) {
+function BackgroundImageTile({
+  image,
+  index,
+  pressed,
+  onSelect,
+  onRemove,
+}: {
+  image: string;
+  index: number;
+  pressed: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
+  const label = `My image ${index + 1}`;
+  return (
+    <div className="background-swatch-wrap">
+      <Button
+        variant="surface"
+        type="button"
+        className="background-swatch"
+        aria-label={label}
+        title={label}
+        aria-pressed={pressed}
+        onClick={onSelect}
+      >
+        <AspectRatio className="background-swatch-frame">
+          <span
+            className="background-swatch-paint background-current-image"
+            style={{ backgroundImage: `url(${image})` }}
+          />
+        </AspectRatio>
+      </Button>
+      <IconButton
+        variant="quiet"
+        type="button"
+        className="background-swatch-remove"
+        label={`Remove ${label}`}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onRemove();
+        }}
+      >
+        <Trash2 size={16} aria-hidden="true" />
+      </IconButton>
+    </div>
+  );
+}
+
+function MyImagesTiles({
+  b,
+  onBusy,
+  background,
+  customOpen,
+  onCustomOpenChange,
+  onRemoveImage,
+}: {
+  b: BackgroundSettings;
+  onBusy: (busy: boolean) => void;
+  background: BackgroundUpdate;
+  customOpen: boolean;
+  onCustomOpenChange: (open: boolean) => void;
+  onRemoveImage: (image: string) => void;
+}) {
+  const library = b.images?.length ? b.images : b.image ? [b.image] : [];
+  return (
+    <>
+      <BackgroundCustomAdd
+        settings={b}
+        onBusy={onBusy}
+        background={background}
+        open={customOpen}
+        onOpenChange={onCustomOpenChange}
+      />
+      {library.map((image, index) => (
+        <BackgroundImageTile
+          key={`${index}-${image.slice(0, 48)}`}
+          image={image}
+          index={index}
+          pressed={b.kind === "image" && b.image === image}
+          onSelect={() => background({ kind: "image", image })}
+          onRemove={() => onRemoveImage(image)}
+        />
+      ))}
+    </>
+  );
+}
+
+function solidColourName(
+  colour: string,
+  theme: "dark" | "light",
+): string {
+  const hex = colour.toLowerCase();
+  return (
+    accentPresets[theme].find((p) => p.colour.toLowerCase() === hex)?.name ??
+    "Custom"
+  );
+}
+
+function currentName(b: BackgroundSettings, theme: "dark" | "light") {
   if (b.kind === "none") return "None";
+  if (b.kind === "solid") return solidColourName(b.colour, theme);
   if (b.kind === "gradient") return titleCase(b.preset);
   if (b.kind === "image") return "Custom";
   if (b.kind === "waves") return "Waves";
@@ -330,6 +436,13 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
   let paint: ReactNode;
   if (b.kind === "none") {
     paint = <span className="background-swatch-paint" style={{ background: "var(--bg)" }} />;
+  } else if (b.kind === "solid") {
+    paint = (
+      <span
+        className="background-swatch-paint"
+        style={{ background: b.colour }}
+      />
+    );
   } else if (b.kind === "image" && b.image) {
     paint = (
       <span
@@ -384,13 +497,14 @@ function StillTile({
       variant="surface"
       type="button"
       className="background-swatch"
+      aria-label={label}
+      title={label}
       aria-pressed={pressed}
       onClick={onSelect}
     >
       <AspectRatio className="background-swatch-frame">
         <span className="background-swatch-paint" style={{ background: paint }} />
       </AspectRatio>
-      {label}
     </Button>
   );
 }
@@ -413,6 +527,8 @@ function AnimatedTile({
       variant="surface"
       type="button"
       className="background-swatch background-swatch-animated"
+      aria-label={label}
+      title={label}
       aria-pressed={pressed}
       onClick={onSelect}
     >
@@ -431,7 +547,6 @@ function AnimatedTile({
           </span>
         </span>
       </AspectRatio>
-      {label}
     </Button>
   );
 }
@@ -439,11 +554,9 @@ function AnimatedTile({
 function StillTiles({
   b,
   background,
-  onPicked,
 }: {
   b: BackgroundSettings;
   background: BackgroundUpdate;
-  onPicked?: () => void;
 }) {
   return (
     <>
@@ -453,7 +566,6 @@ function StillTiles({
         paint="var(--bg)"
         onSelect={() => {
           background({ kind: "none" });
-          onPicked?.();
         }}
       />
       {Object.entries(gradients).map(([id, gradient]) => (
@@ -467,7 +579,6 @@ function StillTiles({
               kind: "gradient",
               preset: id as BackgroundSettings["preset"],
             });
-            onPicked?.();
           }}
         />
       ))}
@@ -478,11 +589,9 @@ function StillTiles({
 function AnimatedTiles({
   b,
   background,
-  onPicked,
 }: {
   b: BackgroundSettings;
   background: BackgroundUpdate;
-  onPicked?: () => void;
 }) {
   return (
     <>
@@ -498,7 +607,6 @@ function AnimatedTiles({
               kind,
               ...(b.motionStyle === "none" ? withMotionStyle("drift") : {}),
             });
-            onPicked?.();
           }}
         />
       ))}
@@ -518,85 +626,202 @@ const COLLECTIONS: {
   { id: "dynamic", title: "Dynamic", count: 2 },
 ];
 
-function FolderCard({
-  title,
-  count,
-  paint,
-  dynamic = false,
-  onOpen,
+/** Horizontal shelf: edge-bleed scroll, no chevrons or strip scrollbars. */
+function WallpaperShelf({
+  heading,
+  label,
+  compact = false,
+  showAll,
+  onShowAll,
+  children,
 }: {
-  title: string;
-  count: number;
-  paint: ReactNode;
-  dynamic?: boolean;
-  onOpen: () => void;
+  heading: string;
+  label: string;
+  compact?: boolean;
+  showAll?: boolean;
+  onShowAll?: () => void;
+  children: ReactNode;
 }) {
-  const countLabel =
-    count === 0 ? "Empty" : count === 1 ? "1 image" : `${count} images`;
+  return (
+    <section className={`background-shelf${compact ? " background-shelf-compact" : ""}`}>
+      <div className="background-shelf-head">
+        <Text as="h3" variant="label" className="background-shelf-heading">
+          {heading}
+        </Text>
+        {showAll && onShowAll && (
+          <Button
+            type="button"
+            variant="quiet"
+            className="background-shelf-show-all"
+            aria-label={`Show all ${heading}`}
+            onClick={onShowAll}
+          >
+            Show all
+          </Button>
+        )}
+      </div>
+      <div
+        className="background-shelf-bleed"
+        tabIndex={0}
+        role="group"
+        aria-label={label}
+      >
+        <div className="background-shelf-track">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function WallpaperColourChip({
+  name,
+  colour,
+  pressed,
+  onSelect,
+}: {
+  name: string;
+  colour: string;
+  pressed: boolean;
+  onSelect: () => void;
+}) {
   return (
     <Button
       variant="surface"
       type="button"
-      className="background-folder"
-      aria-label={`${title}, ${countLabel}`}
-      onClick={onOpen}
+      className="wallpaper-colour-chip"
+      aria-label={name}
+      title={name}
+      aria-pressed={pressed}
+      onClick={onSelect}
     >
-      <AspectRatio className="background-folder-frame" ratio={16 / 9}>
-        {paint}
-        {dynamic && (
-          <span className="swatch-play" aria-hidden="true">
-            <Play size={12} fill="currentColor" />
-          </span>
-        )}
-      </AspectRatio>
-      <span className="background-folder-caption">
-        <span className="background-folder-title">{title}</span>
-        <span className="background-folder-count">{countLabel}</span>
-      </span>
+      <span
+        className="wallpaper-colour-chip-paint"
+        style={{ background: colour }}
+        aria-hidden="true"
+      />
     </Button>
   );
 }
 
-function HorizontalStrip({
-  label,
-  children,
+function WallpaperCustomColour({
+  colour,
+  pressed,
+  onColour,
 }: {
-  label: string;
-  children: ReactNode;
+  colour: string;
+  pressed: boolean;
+  onColour: (colour: string) => void;
 }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const scrollByPage = (dir: -1 | 1) => {
-    const el = scroller.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.8), behavior: "smooth" });
+  const [open, setOpen] = useState(false);
+  const [hex, setHex] = useState(colour);
+  useEffect(() => setHex(colour), [colour]);
+  const applyHex = (value: string) => {
+    const next = value.startsWith("#") ? value : `#${value}`;
+    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
+      setHex(colour);
+      return;
+    }
+    const normalised = next.toLowerCase();
+    setHex(normalised);
+    onColour(normalised);
   };
   return (
-    <div className="background-strip">
-      <IconButton
-        variant="quiet"
-        label={`Scroll ${label} left`}
-        className="background-strip-chevron"
-        onClick={() => scrollByPage(-1)}
-      >
-        <ChevronLeft size={20} aria-hidden="true" />
-      </IconButton>
-      <div
-        ref={scroller}
-        className="background-strip-scroller"
-        role="group"
-        aria-label={label}
-      >
-        {children}
+    <Popover
+      label="Custom colour"
+      open={open}
+      onOpenChange={setOpen}
+      trigger={
+        <Button
+          variant="surface"
+          type="button"
+          className="wallpaper-colour-chip wallpaper-colour-chip-add"
+          aria-label="Custom colour"
+          title="Custom colour"
+          aria-pressed={pressed}
+        >
+          <span className="wallpaper-colour-chip-paint" aria-hidden="true">
+            <Plus size={18} />
+          </span>
+        </Button>
+      }
+    >
+      <div className="colour-popover-head">
+        <Text as="span" variant="label">
+          Custom colour
+        </Text>
+        <IconButton
+          variant="quiet"
+          label="Close Custom colour picker"
+          onClick={() => setOpen(false)}
+        >
+          <X size={16} aria-hidden="true" />
+        </IconButton>
       </div>
-      <IconButton
-        variant="quiet"
-        label={`Scroll ${label} right`}
-        className="background-strip-chevron"
-        onClick={() => scrollByPage(1)}
-      >
-        <ChevronRight size={20} aria-hidden="true" />
-      </IconButton>
-    </div>
+      <div className="colour-popover-body">
+        <Label className="colour-popover-swatch">
+          <Input
+            type="color"
+            aria-label="Pick Custom colour"
+            value={/^#[a-fA-F0-9]{6}$/.test(colour) ? colour : "#a2cbbb"}
+            onChange={(e) => {
+              onColour(e.target.value.toLowerCase());
+              setHex(e.target.value);
+            }}
+          />
+        </Label>
+        <Label className="colour-popover-hex">
+          <span>Hex</span>
+          <Input
+            spellCheck={false}
+            maxLength={7}
+            value={hex}
+            onChange={(e) => setHex(e.target.value)}
+            onBlur={(e) => applyHex(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyHex(e.currentTarget.value);
+              }
+            }}
+          />
+        </Label>
+      </div>
+    </Popover>
+  );
+}
+
+function WallpaperColoursShelf({
+  b,
+  theme,
+  background,
+}: {
+  b: BackgroundSettings;
+  theme: "dark" | "light";
+  background: BackgroundUpdate;
+}) {
+  const selected =
+    b.kind === "solid" ? b.colour.toLowerCase() : "";
+  const presetMatch = accentPresets[theme].some(
+    (p) => p.colour.toLowerCase() === selected,
+  );
+  return (
+    <WallpaperShelf heading="Colours" label="Colours" compact>
+      <WallpaperCustomColour
+        colour={b.colour}
+        pressed={b.kind === "solid" && !presetMatch}
+        onColour={(colour) => background({ kind: "solid", colour })}
+      />
+      {accentPresets[theme].map(({ name, colour }) => (
+        <WallpaperColourChip
+          key={colour}
+          name={name}
+          colour={colour}
+          pressed={selected === colour.toLowerCase()}
+          onSelect={() =>
+            background({ kind: "solid", colour: colour.toLowerCase() })
+          }
+        />
+      ))}
+    </WallpaperShelf>
   );
 }
 
@@ -710,6 +935,7 @@ export default function BackgroundSettings({
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
 }) {
+  const { confirm, confirmation } = useConfirmation();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [collection, setCollection] = useState<CollectionId | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
@@ -742,9 +968,26 @@ export default function BackgroundSettings({
     setCustomOpen(false);
     setLibraryOpen(false);
   };
-  const pickBackground = () => {
+  const backToFolders = () => {
+    setCustomOpen(false);
     setCollection(null);
-    setLibraryOpen(false);
+  };
+  const removeLibraryImage = async (image: string) => {
+    const ok = await confirm({
+      title: "Remove image?",
+      description: "Remove this image from My images? This cannot be undone from here.",
+      cancelLabel: "Keep",
+      actionLabel: "Remove",
+      actionVariant: "danger",
+    });
+    if (!ok) return;
+    const next = (b.images ?? []).filter((entry) => entry !== image);
+    if (b.image === image) {
+      if (next[0]) background({ images: next, image: next[0], kind: "image" });
+      else background({ images: next, image: "", kind: "none" });
+      return;
+    }
+    background({ images: next });
   };
   const setMotionEnabled = (checked: boolean) => {
     if (checked) {
@@ -770,20 +1013,10 @@ export default function BackgroundSettings({
   };
   const collectionTitle =
     COLLECTIONS.find((item) => item.id === collection)?.title ?? "Choose wallpaper";
-  const myImagesPaint =
-    b.image ? (
-      <span
-        className="background-swatch-paint background-current-image"
-        style={{ backgroundImage: `url(${b.image})` }}
-      />
-    ) : (
-      <span className="background-swatch-add-placeholder" aria-hidden="true">
-        <ImagePlus size={28} />
-      </span>
-    );
 
   return (
     <>
+      {confirmation}
       <SettingsGroup className="background-current-group">
         <SettingsRow>
           <div className="background-current">
@@ -793,7 +1026,7 @@ export default function BackgroundSettings({
                 Currently set
               </Text>
               <Text as="span" variant="label" className="background-current-name">
-                {currentName(b)}
+                {currentName(b, theme)}
               </Text>
               <Button
                 type="button"
@@ -890,87 +1123,86 @@ export default function BackgroundSettings({
         >
           {collection ? (
             <>
-              <div className="background-collection-back">
-                <Button
-                  type="button"
-                  variant="quiet"
-                  onClick={() => {
-                    setCustomOpen(false);
-                    setCollection(null);
-                  }}
-                >
+              <ScrollArea
+                orientation="vertical"
+                type="scroll"
+                className="background-library-body-scroll"
+                aria-label={collectionTitle}
+              >
+                <div className="background-library-grid">
+                  {collection === "my-images" && (
+                    <MyImagesTiles
+                      b={b}
+                      onBusy={onBusy}
+                      background={background}
+                      customOpen={customOpen}
+                      onCustomOpenChange={setCustomOpen}
+                      onRemoveImage={removeLibraryImage}
+                    />
+                  )}
+                  {collection === "gradients" && (
+                    <StillTiles b={b} background={background} />
+                  )}
+                  {collection === "dynamic" && (
+                    <AnimatedTiles b={b} background={background} />
+                  )}
+                </div>
+              </ScrollArea>
+              <div className="ui-actions background-library-actions">
+                <Button type="button" variant="secondary" onClick={backToFolders}>
                   Back
                 </Button>
+                <Button type="button" variant="primary" onClick={closeLibrary}>
+                  Select
+                </Button>
               </div>
-              {collection === "my-images" && (
-                <HorizontalStrip label="My images">
-                  <BackgroundCustomAdd
-                    settings={b}
-                    onBusy={onBusy}
-                    background={background}
-                    open={customOpen}
-                    onOpenChange={setCustomOpen}
-                    onConfirmed={pickBackground}
-                  />
-                </HorizontalStrip>
-              )}
-              {collection === "gradients" && (
-                <HorizontalStrip label="Gradients">
-                  <StillTiles
-                    b={b}
-                    background={background}
-                    onPicked={pickBackground}
-                  />
-                </HorizontalStrip>
-              )}
-              {collection === "dynamic" && (
-                <HorizontalStrip label="Dynamic">
-                  <AnimatedTiles
-                    b={b}
-                    background={background}
-                    onPicked={pickBackground}
-                  />
-                </HorizontalStrip>
-              )}
             </>
           ) : (
-            <div className="background-folders" role="group" aria-label="Wallpaper categories">
-              <FolderCard
-                title="My images"
-                count={b.image ? 1 : 0}
-                paint={myImagesPaint}
-                onOpen={() => setCollection("my-images")}
-              />
-              <FolderCard
-                title="Gradients"
-                count={COLLECTIONS[1].count}
-                paint={
-                  <span
-                    className="background-swatch-paint"
-                    style={{ background: gradients.ocean }}
+            <ScrollArea
+              orientation="vertical"
+              type="scroll"
+              className="background-library-body-scroll"
+              aria-label="Wallpaper shelves"
+            >
+              <div className="background-library-shelves">
+                <WallpaperColoursShelf
+                  b={b}
+                  theme={theme}
+                  background={background}
+                />
+                <WallpaperShelf
+                  heading="My images"
+                  label="My images"
+                  showAll
+                  onShowAll={() => setCollection("my-images")}
+                >
+                  <MyImagesTiles
+                    b={b}
+                    onBusy={onBusy}
+                    background={background}
+                    customOpen={customOpen}
+                    onCustomOpenChange={setCustomOpen}
+                    onRemoveImage={removeLibraryImage}
                   />
-                }
-                onOpen={() => setCollection("gradients")}
-              />
-              <FolderCard
-                title="Dynamic"
-                count={COLLECTIONS[2].count}
-                dynamic
-                paint={
-                  <span
-                    className={`swatch-mini-scene scene-waves`}
-                    style={{ background: gradients.dusk }}
-                  >
-                    <span className="scene-motion" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                  </span>
-                }
-                onOpen={() => setCollection("dynamic")}
-              />
-            </div>
+                </WallpaperShelf>
+                <WallpaperShelf
+                  heading="Gradients"
+                  label="Gradients"
+                  showAll
+                  onShowAll={() => setCollection("gradients")}
+                >
+                  <StillTiles b={b} background={background} />
+                </WallpaperShelf>
+                <WallpaperShelf
+                  heading="Dynamic"
+                  label="Dynamic"
+                  showAll
+                  onShowAll={() => setCollection("dynamic")}
+                >
+                  <AnimatedTiles b={b} background={background} />
+                </WallpaperShelf>
+              </div>
+            </ScrollArea>
           )}
         </Modal>
       )}

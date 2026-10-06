@@ -7,6 +7,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { Config, sanitiseExport, validate } from "./model";
 import {
@@ -321,8 +322,11 @@ describe("global appearance", () => {
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    expect(
+      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
@@ -338,6 +342,33 @@ describe("global appearance", () => {
     });
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
+  }, 15_000);
+  it("applies a solid colour wallpaper from the Colours strip", () => {
+    const apply = vi.fn(),
+      c = config();
+    render(
+      <Settings
+        config={c}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Blue" }));
+    expect(
+      screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByText("Blue")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
+      kind: "solid",
+      colour: "#7db7ff",
+    });
   });
   it("keeps motion when switching from a preset background to Custom", () => {
     const apply = vi.fn(),
@@ -360,13 +391,13 @@ describe("global appearance", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: /My images/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all My images" }));
+    fireEvent.click(screen.getByRole("button", { name: "My image 1" }));
     expect(
-      screen.getByRole("dialog", { name: "Custom background image" }),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+      screen.getByRole("button", { name: "My image 1" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    expect(screen.queryByRole("dialog", { name: "My images" })).toBeNull();
     expect(
       screen.getByRole("switch", { name: "Motion effects" }).getAttribute("aria-checked"),
     ).toBe("true");
@@ -387,7 +418,7 @@ describe("global appearance", () => {
       motionStyle: "ken-burns",
       intensity: 75,
     });
-  });
+  }, 15_000);
   it("restores the prior background when the custom image popover is cancelled", () => {
     const c = config();
     c.appearance.background = {
@@ -407,16 +438,16 @@ describe("global appearance", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: /My images/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all My images" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add photo" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Close custom image picker" }),
     );
     expect(
-      screen.getByRole("button", { name: "Custom image" }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "My image 1" }).getAttribute("aria-pressed"),
     ).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
     expect(
       screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");

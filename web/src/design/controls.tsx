@@ -1,9 +1,10 @@
-import { createContext, useContext, useId, ComponentProps, ReactNode, InputHTMLAttributes, LabelHTMLAttributes, FieldsetHTMLAttributes } from 'react';
+import { createContext, useContext, useId, ComponentProps, ReactNode, InputHTMLAttributes, LabelHTMLAttributes, FieldsetHTMLAttributes, Ref } from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import * as SwitchPrimitive from '@radix-ui/react-switch';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
+import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import { Check, ChevronDown } from 'lucide-react';
 import { useSurface } from './surface';
 
@@ -68,6 +69,38 @@ export function Disclosure({title, children, defaultOpen = false}: {title: strin
     <CollapsiblePrimitive.Trigger className="ui-disclosure-trigger">{title}<ChevronDown size={16} aria-hidden="true" /></CollapsiblePrimitive.Trigger>
     <CollapsiblePrimitive.Content className="ui-disclosure-content">{children}</CollapsiblePrimitive.Content>
   </CollapsiblePrimitive.Root>;
+}
+/** Themed Radix scrollport; prefer this over a raw overflow div when a visible scrollbar is needed. */
+export function ScrollArea({
+  children,
+  className = '',
+  orientation = 'vertical',
+  viewportRef,
+  type = 'hover',
+  'aria-label': ariaLabel,
+}: {
+  children: ReactNode;
+  className?: string;
+  orientation?: 'vertical' | 'horizontal' | 'both';
+  viewportRef?: Ref<HTMLDivElement>;
+  type?: ComponentProps<typeof ScrollAreaPrimitive.Root>['type'];
+  'aria-label'?: string;
+}) {
+  const showVertical = orientation === 'vertical' || orientation === 'both';
+  const showHorizontal = orientation === 'horizontal' || orientation === 'both';
+  /* Keep scrollbars mounted so overflow can reveal them; CSS hides data-state=hidden. */
+  return <ScrollAreaPrimitive.Root type={type} className={`ui-scroll-area ${className}`}>
+    <ScrollAreaPrimitive.Viewport ref={viewportRef} className="ui-scroll-area-viewport" aria-label={ariaLabel}>
+      {children}
+    </ScrollAreaPrimitive.Viewport>
+    {showVertical && <ScrollAreaPrimitive.Scrollbar forceMount className="ui-scroll-area-scrollbar ui-scroll-area-scrollbar-vertical" orientation="vertical">
+      <ScrollAreaPrimitive.Thumb className="ui-scroll-area-thumb" />
+    </ScrollAreaPrimitive.Scrollbar>}
+    {showHorizontal && <ScrollAreaPrimitive.Scrollbar forceMount className="ui-scroll-area-scrollbar ui-scroll-area-scrollbar-horizontal" orientation="horizontal">
+      <ScrollAreaPrimitive.Thumb className="ui-scroll-area-thumb" />
+    </ScrollAreaPrimitive.Scrollbar>}
+    <ScrollAreaPrimitive.Corner className="ui-scroll-area-corner" />
+  </ScrollAreaPrimitive.Root>;
 }
 /** Label left, switch right; id association without nesting the control in the label. */
 export function SwitchRow({label, hint, action, checked, onCheckedChange, disabled, id}: {

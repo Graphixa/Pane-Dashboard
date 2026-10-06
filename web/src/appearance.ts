@@ -21,9 +21,13 @@ export const motionStyleLabels: Record<MotionStyle, string> = {
   twist: "Twist",
 };
 export type Background = {
-  kind: "none" | "gradient" | "image" | "waves" | "aurora";
+  kind: "none" | "solid" | "gradient" | "image" | "waves" | "aurora";
   preset: "dusk" | "ocean" | "forest" | "mist";
+  colour: string;
+  /** Active wallpaper image (data URI or HTTP(S) URL). */
   image: string;
+  /** My images library, newest first. Active `image` is kept in sync when kind is image. */
+  images: string[];
   overlay: OverlayMode;
   overlayOpacity: number;
   overlayColour: string;
@@ -32,6 +36,8 @@ export type Background = {
   motionStyle: MotionStyle;
   intensity: number;
 };
+/** Cap keeps embedded backups within the 8 MiB configuration bound. */
+export const maxBackgroundImages = 4;
 export type Glass = {
   mode: "solid" | "glass";
   opacity: number;
@@ -94,7 +100,9 @@ export const overlayModes: OverlayMode[] = [
 export const defaultBackground: Background = {
   kind: "none",
   preset: "dusk",
+  colour: "#a2cbbb",
   image: "",
+  images: [],
   overlay: "dark-solid",
   overlayOpacity: 25,
   overlayColour: "#111720",
@@ -242,6 +250,41 @@ export function overlayForTheme(
       ? "light-gradient"
       : "light-solid";
 }
+/** Deduplicate and order My images (newest first); keep active image in the library. */
+export function normaliseBackgroundImages(
+  image: string,
+  images: unknown,
+): string[] {
+  const fromList = Array.isArray(images)
+    ? images.filter((v): v is string => imageReference(v) && !!v)
+    : [];
+  const merged = [
+    ...(imageReference(image) && image ? [image] : []),
+    ...fromList,
+  ];
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const entry of merged) {
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    unique.push(entry);
+    if (unique.length >= maxBackgroundImages) break;
+  }
+  return unique;
+}
+
+/** Prepend a new upload; drop the oldest when the library is full. */
+export function prependBackgroundImage(
+  library: string[],
+  next: string,
+): string[] {
+  if (!imageReference(next) || !next) return library;
+  return [next, ...library.filter((v) => v !== next)].slice(
+    0,
+    maxBackgroundImages,
+  );
+}
+
 export function migrateBackground(
   raw: Partial<Background> & { dimming?: number },
   theme: "dark" | "light",
@@ -249,6 +292,12 @@ export function migrateBackground(
   const base = { ...defaultBackground, ...raw };
   const motionStyle = resolveMotionStyle(raw, base.kind, !!base.motion);
   const motion = motionStyle !== "none";
+  const image = typeof base.image === "string" ? base.image : "";
+  const images = normaliseBackgroundImages(image, raw.images ?? base.images);
+  const colour =
+    typeof raw.colour === "string" && /^#[a-fA-F0-9]{6}$/.test(raw.colour)
+      ? raw.colour.toLowerCase()
+      : defaultBackground.colour;
   if (
     raw.overlay &&
     overlayModes.includes(raw.overlay) &&
@@ -258,7 +307,9 @@ export function migrateBackground(
     return {
       kind: base.kind,
       preset: base.preset,
-      image: base.image ?? "",
+      colour,
+      image,
+      images,
       overlay: raw.overlay,
       overlayOpacity: raw.overlayOpacity,
       overlayColour: raw.overlayColour,
@@ -275,7 +326,9 @@ export function migrateBackground(
   return {
     kind: base.kind,
     preset: base.preset,
-    image: base.image ?? "",
+    colour,
+    image,
+    images,
     overlay: theme === "light" ? "light-solid" : "dark-solid",
     overlayOpacity: dimming,
     overlayColour: defaultOverlayColour(theme),
@@ -367,7 +420,9 @@ export function validateVisuals(a: AppearanceOptions) {
     fields(a.background, [
       "kind",
       "preset",
+      "colour",
       "image",
+      "images",
       "overlay",
       "overlayOpacity",
       "overlayColour",
@@ -378,10 +433,15 @@ export function validateVisuals(a: AppearanceOptions) {
     ]);
     const b = a.background;
     if (
-      !["none", "gradient", "image", "waves", "aurora"].includes(b.kind) ||
+      !["none", "solid", "gradient", "image", "waves", "aurora"].includes(b.kind) ||
       !Object.hasOwn(gradients, b.preset) ||
       !imageReference(b.image) ||
+      !Array.isArray(b.images) ||
+      b.images.length > maxBackgroundImages ||
+      b.images.some((entry) => !imageReference(entry) || !entry) ||
       (b.kind === "image" && !b.image) ||
+      (b.kind === "image" && b.image && !b.images.includes(b.image)) ||
+      !/^#[a-fA-F0-9]{6}$/.test(b.colour) ||
       !overlayModes.includes(b.overlay) ||
       !within(b.overlayOpacity, 0, 80) ||
       !/^#[a-fA-F0-9]{6}$/.test(b.overlayColour) ||

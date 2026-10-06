@@ -233,6 +233,64 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
 .ui-select-option[data-highlighted], .ui-menu-item[data-highlighted] { color: var(--accent-text); background: var(--accent); }
 .ui-select-option[data-disabled], .ui-menu-item[data-disabled] { opacity: 0.5; pointer-events: none; }
 .ui-select-scroll { text-align: center; padding: var(--space-1); }
+.ui-scroll-area {
+  --scrollbar-size: 10px;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+.ui-scroll-area-viewport {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.ui-scroll-area-viewport::-webkit-scrollbar {
+  display: none;
+}
+.ui-scroll-area-scrollbar {
+  position: absolute;
+  display: flex;
+  user-select: none;
+  touch-action: none;
+  padding: 2px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+  border-radius: 999px;
+  transition: background 120ms ease;
+  z-index: 1;
+}
+.ui-scroll-area-scrollbar[data-state="hidden"] {
+  display: none;
+}
+.ui-scroll-area-scrollbar:hover {
+  background: color-mix(in srgb, var(--muted) 32%, transparent);
+}
+.ui-scroll-area-scrollbar-vertical {
+  top: var(--space-1);
+  right: var(--space-1);
+  bottom: var(--space-1);
+  width: var(--scrollbar-size);
+}
+.ui-scroll-area-scrollbar-horizontal {
+  left: var(--space-1);
+  right: var(--space-1);
+  bottom: var(--space-1);
+  flex-direction: column;
+  height: var(--scrollbar-size);
+}
+.ui-scroll-area-thumb {
+  flex: 1;
+  position: relative;
+  background: color-mix(in srgb, var(--muted) 75%, var(--panel));
+  border-radius: inherit;
+}
+.ui-scroll-area-thumb::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+}
+.ui-scroll-area-corner { background: transparent; }
 .ui-switch { display: inline-flex; align-items: center; flex: 0 0 40px; width: 40px; height: 24px; min-height: 24px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--muted); cursor: pointer; }
 .ui-switch[data-state="checked"] { background: var(--accent); }
 .ui-switch-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--bg); transition: transform var(--duration-fast); }
@@ -267,6 +325,9 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
   width: min(720px, calc(100vw - 32px));
   max-height: min(42dvh, 380px);
   overscroll-behavior: contain;
+}
+.ui-dialog.background-library-dialog {
+  overflow: hidden;
 }
 .ui-dialog.settings-dialog { display: flex; flex-direction: column; padding: 0; width: min(1060px, calc(100vw - 32px)); overflow: hidden; }
 /* Hide Settings chrome while Choose wallpaper / Motion / Overlay preview-adjust is open (non-lightbox). */

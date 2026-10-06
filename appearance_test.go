@@ -51,7 +51,7 @@ func TestPrepareImageIsPortableAndDoesNotPersist(t *testing.T) {
 	c := s.config
 	c.Dashboard.Branding = "logo"
 	c.Dashboard.Logo = result["image"]
-	c.Appearance.Background = &Background{Kind: "image", Preset: "ocean", Image: result["image"], Overlay: "dark-solid", OverlayOpacity: 35, OverlayColour: "#111720", Position: "center", Motion: false, Intensity: 40}
+	c.Appearance.Background = &Background{Kind: "image", Preset: "ocean", Image: result["image"], Images: []string{result["image"]}, Overlay: "dark-solid", OverlayOpacity: 35, OverlayColour: "#111720", Position: "center", Motion: false, Intensity: 40}
 	c.Appearance.Glass = &Glass{Mode: "glass", Opacity: 65, Blur: 16}
 	c.Appearance.Palette = &Palette{Background: "#111720", Surface: "#1a222e", Text: "#e9eef7", Accent: "#a2cbbb"}
 	payload, _ := json.Marshal(c)

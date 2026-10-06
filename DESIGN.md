@@ -132,7 +132,8 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | `SettingsGroup` | Inset grouped surface under a Section; holds SettingsRow, SwitchRow, Range or Disclosure rows |
 | `SettingsRow` | Label (optional hint) left, control right inside a SettingsGroup; omit label for a full-width control |
 | `AspectRatio` | CSS `aspect-ratio` box; default `16 / 9` for background and overlay thumbnails |
-| `Modal` | Radix Dialog with required title and close handler; optional `placement` (`center` / `bottom`) and `backdrop` (`dim` / `none`); caller owns discard policy |
+| `Modal` | Radix Dialog with required title and close handler; optional `placement` (`center` / `bottom`), `backdrop` (`dim` / `none`), and `headerClose` (`close` / `back`); caller owns discard policy |
+| `ScrollArea` | Radix scrollport with themed scrollbar; use for horizontal strips and overflow panes instead of a raw overflow div |
 | `Popover`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling |
 | `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure`, `Tooltip` | Radix controls with Pane keyboard, focus and theme treatment |
 | `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
