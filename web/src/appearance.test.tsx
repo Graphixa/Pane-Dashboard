@@ -355,17 +355,22 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
     expect(
       screen.getByRole("dialog", { name: "Custom background image" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(
+      screen.getByRole("switch", { name: "Enable motion" }).getAttribute("aria-checked"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Motion" }));
     const style = screen.getByLabelText("Motion style");
     expect(style.textContent).toContain("Drift");
     fireEvent.keyDown(style, {key: "ArrowDown"});
     fireEvent.click(screen.getByRole("option", {name: "Ken Burns"}));
     fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "Home"});
     for(let i=0; i<75; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "ArrowRight"});
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "image",
@@ -392,12 +397,12 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Close custom image picker" }),
     );
     expect(
-      screen.getByRole("button", { name: "Custom" }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "Custom image" }).getAttribute("aria-pressed"),
     ).toBe("false");
     expect(
       screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),

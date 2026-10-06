@@ -28,11 +28,12 @@ preview or a new product navigation section.
 ## Design intent
 
 Pane is a calm, compact app launcher. Prioritise recognisable apps, readable names,
-clear navigation and predictable editing. Use spacing and typography to group
-settings, rather than enclosing every group in a card. Keep descriptions short,
-use Australian English and avoid promotional headings, counts or footer copy.
-Geist is the default typeface; Rubik and Oxanium are supported alternatives across
-the whole UI. Changing a typeface must not change the hierarchy or grid geometry.
+clear navigation and predictable editing. Settings pages use typographic section
+headings with inset `SettingsGroup` surfaces (label left, control right) rather than
+decorative card chrome around the whole page. Keep descriptions short, use Australian
+English and avoid promotional headings, counts or footer copy. Geist is the default
+typeface; Rubik and Oxanium are supported alternatives across the whole UI. Changing
+a typeface must not change the hierarchy or grid geometry.
 
 ## Typography
 
@@ -128,25 +129,34 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | `SwitchRow` | Settings-style row: label (and optional hint) left, Radix switch right |
 | `Notice` | `info`, `success` or `error`; optional `banner` for message plus inline actions |
 | `Section` | Heading and optional description with consistent spacing; choose `h2` or `h3` |
+| `SettingsGroup` | Inset grouped surface under a Section; holds SettingsRow, SwitchRow, Range or Disclosure rows |
+| `SettingsRow` | Label (optional hint) left, control right inside a SettingsGroup; omit label for a full-width control |
+| `AspectRatio` | CSS `aspect-ratio` box; default `16 / 9` for background and overlay thumbnails |
 | `Modal` | Radix Dialog with required title and close handler; caller owns discard policy |
 | `Popover`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling |
 | `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure`, `Tooltip` | Radix controls with Pane keyboard, focus and theme treatment |
 | `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
 
 ```tsx
-import { Button, Section, TextField } from "./design/components";
+import { Button, Section, SettingsGroup, SettingsRow, TextField } from "./design/components";
 
 <Section title="General" level="h3">
-  <TextField
-    label="Dashboard name"
-    value={name}
-    onChange={event => setName(event.target.value)}
-    hint="Use a short, recognisable name."
-    error={nameError}
-  />
-  <Button type="submit" variant="primary" busy={saving}>
-    {saving ? "Saving…" : "Apply settings"}
-  </Button>
+  <SettingsGroup>
+    <SettingsRow>
+      <TextField
+        label="Dashboard name"
+        value={name}
+        onChange={event => setName(event.target.value)}
+        hint="Use a short, recognisable name."
+        error={nameError}
+      />
+    </SettingsRow>
+    <SettingsRow label="Actions">
+      <Button type="submit" variant="primary" busy={saving}>
+        {saving ? "Saving…" : "Apply settings"}
+      </Button>
+    </SettingsRow>
+  </SettingsGroup>
 </Section>
 ```
 

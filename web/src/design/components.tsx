@@ -86,6 +86,29 @@ export function Section({ title, description, children, className = "", level = 
   </section>;
 }
 
+/** Inset settings surface under a Section heading (Apple-style grouped rows). */
+export function SettingsGroup({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={classes("ui-settings-group", className)}>{children}</div>;
+}
+
+/** Label left, control right inside a SettingsGroup. Omit label for a full-width control row. */
+export function SettingsRow({ label, hint, children, className }: {
+  label?: string;
+  hint?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  const hasCopy = Boolean(label || hint);
+  return <div className={classes("ui-settings-row", hasCopy ? undefined : "ui-settings-row-fill", className)}>
+    {hasCopy && <div className="ui-settings-row-copy">
+      {label && <span className="ui-settings-row-label">{label}</span>}
+      {hint && <p className="ui-settings-row-hint">{hint}</p>}
+    </div>}
+    <div className="ui-settings-row-control">{children}</div>
+  </div>;
+}
+
+export { AspectRatio } from "./aspect";
 export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup } from "./controls";
 export { Modal, Popover, DropdownMenu, Tooltip, useConfirmation } from "./overlays";
 export type { ConfirmRequest } from "./overlays";

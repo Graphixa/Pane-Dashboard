@@ -260,21 +260,22 @@
 }
 .overlay-swatches {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 120px));
+  grid-template-columns: repeat(2, minmax(0, 160px));
   gap: 12px;
   margin: 0;
   padding: 0;
   border: 0;
   background: none;
+  width: 100%;
 }
 .overlay-group-custom .overlay-swatches {
-  grid-template-columns: minmax(0, 120px);
+  grid-template-columns: minmax(0, 160px);
 }
 .colour-tile,
 .overlay-swatch {
   position: relative;
   width: 100%;
-  height: 42px;
+  height: auto;
   margin: 0;
   padding: 3px;
   border-radius: 8px;
@@ -284,10 +285,14 @@
   cursor: pointer;
   flex-shrink: 0;
 }
+.overlay-swatch-frame {
+  border-radius: 5px;
+  overflow: hidden;
+}
 .colour-tile-paint {
   position: absolute;
-  inset: 3px;
-  border-radius: 5px;
+  inset: 0;
+  border-radius: inherit;
   pointer-events: none;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 20%, transparent);
 }

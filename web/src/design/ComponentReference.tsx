@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
   Button, Checkbox, Disclosure, DropdownMenu, IconButton, Modal, Notice, Popover,
-  Range, Section, SelectField, SwitchRow, Text, TextField, useConfirmation,
+  Range, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
 } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -80,6 +80,15 @@ export default function ComponentReference() {
         </div>
         <Notice tone="success">Example settings are ready.</Notice>
         <Notice tone="error">Example save failed. Your changes are still available.</Notice>
+      </Section>
+      <Section title="Settings groups" description="Inset SettingsGroup surfaces under section headings. Label left, control right; omit the label for full-width controls.">
+        <SettingsGroup>
+          <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
+          <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+          <SettingsRow>
+            <TextField label="Dashboard name" value={name} onChange={e => setName(e.target.value)} />
+          </SettingsRow>
+        </SettingsGroup>
       </Section>
       <Section title="Switches, ranges and disclosure" description="Settings-style rows keep the label left and control right.">
         <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />

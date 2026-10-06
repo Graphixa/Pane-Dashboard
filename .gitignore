@@ -7,3 +7,4 @@ config/
 coverage/
 planning/*
 design-planning/
+design-plans/*

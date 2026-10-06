@@ -312,12 +312,10 @@
   gap: 8px;
   margin: 12px 0;
 }
-.choice-row button,
-.background-swatch {
+.choice-row button {
   font-size: var(--type-body);
 }
-.choice-row [aria-pressed="true"],
-.background-swatch[aria-pressed="true"] {
+.choice-row [aria-pressed="true"] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -327,23 +325,156 @@
   gap: 8px;
   margin: 12px 0;
 }
+.background-gallery-shelf {
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  margin: 8px 0 0;
+}
+.background-gallery-grid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  margin: 0;
+}
+.background-shelf {
+  width: 100%;
+  margin-top: var(--space-6);
+}
+.background-shelf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.background-show-all {
+  flex-shrink: 0;
+  min-height: auto;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--type-support);
+  color: var(--muted);
+}
+.background-current-group {
+  margin-bottom: 0;
+}
+.background-current {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+}
+.background-current-thumb {
+  width: 140px;
+  flex: 0 0 140px;
+  min-width: 0;
+}
+.ui-aspect-ratio.background-current-frame {
+  border-radius: var(--radius-surface);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+  overflow: hidden;
+}
+.background-current-image {
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.background-current-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.background-adjust-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.background-adjust-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
 .background-swatch {
   display: flex;
   flex-direction: column;
-  padding: 6px;
+  align-items: stretch;
+  gap: 6px;
+  padding: 0;
   min-width: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
 }
-.background-swatch > span {
+.ui-aspect-ratio.background-swatch-frame {
+  border-radius: var(--radius-surface);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+  overflow: hidden;
+}
+.background-swatch[aria-pressed="true"] .background-swatch-frame {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.background-swatch-paint {
   display: block;
-  height: 46px;
-  width: 100%;
-  border-radius: 5px;
+  border-radius: inherit;
+  background: var(--bg);
 }
-.background-swatch .swatch-waves {
-  border-bottom: 3px solid #b2dce799;
+.background-swatch-add-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--muted) 22%, var(--panel-high));
+  color: color-mix(in srgb, var(--muted) 70%, var(--text));
 }
-.background-swatch .swatch-aurora {
-  box-shadow: inset 14px 0 24px #c394db66;
+.overlay-swatch-frame {
+  border-radius: calc(var(--radius-control) - 3px);
+  overflow: hidden;
+}
+.background-gallery-dialog {
+  width: min(640px, calc(100vw - 32px));
+}
+
+.swatch-mini-scene {
+  --motion-strength: 0.55;
+  --motion-duration: 12s;
+  display: block;
+  background: var(--bg);
+}
+.swatch-mini-scene .scene-motion {
+  position: absolute;
+  inset: 0;
+  opacity: var(--motion-strength, 0.4);
+  pointer-events: none;
+}
+.swatch-mini-scene .scene-motion i {
+  animation-play-state: paused;
+}
+.background-swatch:hover .swatch-mini-scene .scene-motion i,
+.background-swatch:focus-visible .swatch-mini-scene .scene-motion i,
+.background-current:hover .swatch-mini-scene .scene-motion i {
+  animation-play-state: running;
+}
+.swatch-play {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 45%);
+  color: #fff;
+  pointer-events: none;
+}
+.background-gallery-dialog {
+  width: min(640px, calc(100vw - 32px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .swatch-mini-scene .scene-motion i {
+    animation: none;
+  }
 }
 .background-swatch .swatch-custom {
   display: flex;

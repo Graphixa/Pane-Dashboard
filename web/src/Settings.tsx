@@ -1,5 +1,3 @@
-import { useConfirmation } from "./design/components";
-import { FieldGroup } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import {
   Settings2,
@@ -12,8 +10,17 @@ import {
 import { Config, clone, sanitiseExport, validate } from "./model";
 import { appearanceStyle } from "./appearance";
 import AppearanceEditor from "./AppearanceEditor";
-import { Modal } from "./design/components";
-import { Button, Notice, Text, Section } from "./design/components";
+import {
+  Button,
+  FieldGroup,
+  Modal,
+  Notice,
+  Section,
+  SettingsGroup,
+  SettingsRow,
+  Text,
+  useConfirmation,
+} from "./design/components";
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
@@ -183,40 +190,34 @@ const [page, setPage] = useState<Page>("general");
                     : "Downloads use your saved dashboard."
                 }
               >
-                <div className="backup-option">
-                  <div className="backup-option-copy">
-                    <Text as="h4" variant="label">Private backup</Text>
-                    <Text variant="support">
-                      Includes app addresses, Docker identities and uploaded
-                      images.
-                    </Text>
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={dirty || busy}
-                    onClick={() => download("pane-backup.yaml", config)}
+                <SettingsGroup>
+                  <SettingsRow
+                    label="Private backup"
+                    hint="Includes app addresses, Docker identities and uploaded images."
                   >
-                    Download full backup
-                  </Button>
-                </div>
-                <div className="backup-option">
-                  <div className="backup-option-copy">
-                    <Text as="h4" variant="label">Share a layout</Text>
-                    <Text variant="support">
-                      Omits app addresses and Docker identities. Review images
-                      before sharing.
-                    </Text>
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={dirty || busy}
-                    onClick={() =>
-                      download("pane-layout.yaml", sanitiseExport(config))
-                    }
+                    <Button
+                      type="button"
+                      disabled={dirty || busy}
+                      onClick={() => download("pane-backup.yaml", config)}
+                    >
+                      Download full backup
+                    </Button>
+                  </SettingsRow>
+                  <SettingsRow
+                    label="Share a layout"
+                    hint="Omits app addresses and Docker identities. Review images before sharing."
                   >
-                    Export shareable layout
-                  </Button>
-                </div>
+                    <Button
+                      type="button"
+                      disabled={dirty || busy}
+                      onClick={() =>
+                        download("pane-layout.yaml", sanitiseExport(config))
+                      }
+                    >
+                      Export shareable layout
+                    </Button>
+                  </SettingsRow>
+                </SettingsGroup>
               </Section>
               <Section
                 level="h3"
@@ -229,13 +230,17 @@ const [page, setPage] = useState<Page>("general");
                 }
               >
                 {!dirty && !readOnly && (
-                  <ImportPanel
-                    config={config}
-                    imported={(c, id) => {
-                      imported(c, id);
-                      close();
-                    }}
-                  />
+                  <SettingsGroup>
+                    <SettingsRow>
+                      <ImportPanel
+                        config={config}
+                        imported={(c, id) => {
+                          imported(c, id);
+                          close();
+                        }}
+                      />
+                    </SettingsRow>
+                  </SettingsGroup>
                 )}
               </Section>
             </>

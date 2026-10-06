@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
 import { Config } from "./model";
 const config = (): Config => ({
@@ -125,17 +125,29 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
     ).toEqual(["Theme", "Colours", "Typography"]);
-    expect(
-      screen.getByRole("heading", { level: 4, name: "Accent" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Accent" })).toBeTruthy();
+    expect(container.querySelector(".ui-settings-group")).toBeTruthy();
     page("Background");
+    expect(screen.queryByRole("tablist")).toBeNull();
     expect(
-      screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
-    ).toEqual(["Static", "Animated"]);
+      screen.getAllByRole("heading", { level: 4 }).map((el) => el.textContent),
+    ).toEqual(["Stills", "Custom", "Animated"]);
+    expect(screen.getByRole("button", { name: "Add photo" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    expect(screen.getByRole("switch", { name: "Enable motion" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Overlay" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Show All (5)" }));
+    expect(screen.getByRole("dialog", { name: "Stills" })).toBeTruthy();
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "Stills" })).getByRole(
+        "button",
+        { name: "Forest" },
+      ),
+    );
+    expect(screen.queryByRole("dialog", { name: "Stills" })).toBeNull();
     expect(
-      screen.getAllByRole("heading", { level: 3 }).map((el) => el.textContent),
-    ).toEqual(["Static", "Animated", "Motion", "Overlay"]);
+      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
+    ).toBe("true");
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();

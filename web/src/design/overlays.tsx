@@ -8,10 +8,10 @@ import { X } from 'lucide-react';
 import { Button, IconButton, Text } from './components';
 import { SurfaceProvider, useSurface } from './surface';
 
-export function Modal(props: {title: string; close: () => void; children: ReactNode; className?: string; style?: CSSProperties; theme?: 'dark' | 'light'; draggable?: boolean}) {
+export function Modal(props: {title: string; close: () => void; children: ReactNode; className?: string; style?: CSSProperties; theme?: 'dark' | 'light'; draggable?: boolean; nested?: boolean}) {
   return <SurfaceProvider style={props.style} theme={props.theme}><ModalContent {...props} /></SurfaceProvider>;
 }
-function ModalContent({title, close, children, className = '', draggable = false}: Parameters<typeof Modal>[0]) {
+function ModalContent({title, close, children, className = '', draggable = false, nested = false}: Parameters<typeof Modal>[0]) {
   const surface = useSurface();
   const opener = useRef<HTMLElement | null>(null), content = useRef<HTMLDivElement>(null);
   const drag = useRef<{id: number; x: number; y: number; ox: number; oy: number} | null>(null);
@@ -24,9 +24,10 @@ function ModalContent({title, close, children, className = '', draggable = false
     setOffset({x: Math.max(48 - rect.width - left, Math.min(innerWidth - 48 - left, state.ox + e.clientX - state.x)), y: Math.max(-top, Math.min(innerHeight - 48 - top, state.oy + e.clientY - state.y))});
   };
   const end = (e: PointerEvent<HTMLDivElement>) => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); };
+  const nest = nested ? ' ui-dialog-nested' : '';
   return <Dialog.Root open onOpenChange={open => {if (!open) close();}}><Dialog.Portal>
-    <Dialog.Overlay className="ui-dialog-backdrop" />
-    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface ${className}`} style={{...surface.style, transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`}}
+    <Dialog.Overlay className={`ui-dialog-backdrop${nest}`} />
+    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface${nest} ${className}`} style={{...surface.style, transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`}}
       onOpenAutoFocus={() => {opener.current = document.activeElement as HTMLElement;}}
       onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}
       onInteractOutside={e => e.preventDefault()}>
