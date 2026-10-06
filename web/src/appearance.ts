@@ -250,7 +250,22 @@ export function overlayForTheme(
       ? "light-gradient"
       : "light-solid";
 }
-/** Deduplicate and order My images (newest first); keep active image in the library. */
+/** Fixed wash of Colours hex over theme `--bg` (not a full-bleed solid fill). */
+export const SOLID_TINT_PERCENT = 28;
+
+/** Paint for wallpaper kind solid: tint theme page background with the chip colour. */
+export function solidBackgroundPaint(colour: string): string {
+  const hex =
+    typeof colour === "string" && /^#[a-fA-F0-9]{6}$/.test(colour)
+      ? colour.toLowerCase()
+      : defaultBackground.colour;
+  return `color-mix(in srgb, ${hex} ${SOLID_TINT_PERCENT}%, var(--bg))`;
+}
+
+/**
+ * Deduplicate My images preserving date-added order (newest first).
+ * Only prepend active `image` when it is missing (legacy orphan); never reshuffle on select.
+ */
 export function normaliseBackgroundImages(
   image: string,
   images: unknown,
@@ -258,17 +273,18 @@ export function normaliseBackgroundImages(
   const fromList = Array.isArray(images)
     ? images.filter((v): v is string => imageReference(v) && !!v)
     : [];
-  const merged = [
-    ...(imageReference(image) && image ? [image] : []),
-    ...fromList,
-  ];
   const seen = new Set<string>();
   const unique: string[] = [];
-  for (const entry of merged) {
+  for (const entry of fromList) {
     if (seen.has(entry)) continue;
     seen.add(entry);
     unique.push(entry);
     if (unique.length >= maxBackgroundImages) break;
+  }
+  const active = imageReference(image) && image ? image : "";
+  if (active && !seen.has(active)) {
+    unique.unshift(active);
+    if (unique.length > maxBackgroundImages) unique.length = maxBackgroundImages;
   }
   return unique;
 }

@@ -18,9 +18,13 @@ import {
   imageReference,
   migrateBackground,
   motionDurationSeconds,
+  normaliseBackgroundImages,
   parseIntegerInput,
   paletteForThemeChange,
   palettes,
+  prependBackgroundImage,
+  SOLID_TINT_PERCENT,
+  solidBackgroundPaint,
   validateVisuals,
 } from "./appearance";
 import Settings from "./Settings";
@@ -369,6 +373,53 @@ describe("global appearance", () => {
       kind: "solid",
       colour: "#7db7ff",
     });
+  });
+  it("tints solid wallpaper over theme --bg instead of opaque fill", () => {
+    const paint = solidBackgroundPaint("#7db7ff");
+    expect(paint).toContain("color-mix");
+    expect(paint).toContain("var(--bg)");
+    expect(paint).toContain("#7db7ff");
+    expect(paint).toContain(`${SOLID_TINT_PERCENT}%`);
+    const { container } = render(
+      <Background
+        settings={{ ...defaultBackground, kind: "solid", colour: "#7db7ff" }}
+      />,
+    );
+    expect(container.querySelector(".scene")?.getAttribute("style")).toContain(
+      "color-mix",
+    );
+  });
+  it("keeps My images newest-first and does not reshuffle on select", () => {
+    const a = png,
+      b =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9Qz0AEYBxVSF+FAP/1B/8AAAAASUVORK5CYII=",
+      c =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAYAAABWKLW/AAAAGElEQVR42mNkYGD4z8DAwMgABXAGNgGwSgwAW0gD/QAAAABJRU5ErkJggg==";
+    expect(imageReference(a) && imageReference(b) && imageReference(c)).toBe(true);
+    expect(normaliseBackgroundImages(b, [a, b, c])).toEqual([a, b, c]);
+    expect(
+      migrateBackground(
+        {
+          ...defaultBackground,
+          kind: "image",
+          image: b,
+          images: [a, b, c],
+        },
+        "dark",
+      ).images,
+    ).toEqual([a, b, c]);
+    expect(prependBackgroundImage([a, b], c)).toEqual([c, a, b]);
+    expect(normaliseBackgroundImages(png, [])).toEqual([png]);
+    expect(normaliseBackgroundImages(png, [a, b, c])).toEqual([a, b, c]);
+    const orphan =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAG0lEQVR42mNkYGD4z8DAwMgABXAGNgGwSgwAW0gD/QAAAABJRU5ErkJggg==";
+    expect(imageReference(orphan)).toBe(true);
+    expect(normaliseBackgroundImages(orphan, [a, b, c])).toEqual([
+      orphan,
+      a,
+      b,
+      c,
+    ]);
   });
   it("keeps motion when switching from a preset background to Custom", () => {
     const apply = vi.fn(),

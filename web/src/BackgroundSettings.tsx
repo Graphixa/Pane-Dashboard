@@ -26,6 +26,7 @@ import {
   motionStyleLabels,
   motionStyles,
   prependBackgroundImage,
+  solidBackgroundPaint,
   withMotionStyle,
   type Background as BackgroundSettings,
   type MotionStyle,
@@ -440,7 +441,7 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
     paint = (
       <span
         className="background-swatch-paint"
-        style={{ background: b.colour }}
+        style={{ background: solidBackgroundPaint(b.colour) }}
       />
     );
   } else if (b.kind === "image" && b.image) {

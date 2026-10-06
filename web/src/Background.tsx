@@ -6,6 +6,7 @@ import {
   migrateBackground,
   motionDurationSeconds,
   overlayBackground,
+  solidBackgroundPaint,
   type Background as BackgroundSettings,
 } from "./appearance";
 
@@ -48,7 +49,7 @@ export default function Background({
     b.kind === "none"
       ? "var(--bg)"
       : b.kind === "solid"
-        ? b.colour
+        ? solidBackgroundPaint(b.colour)
         : (gradients[b.preset] ?? gradients.dusk);
   return (
     <div
