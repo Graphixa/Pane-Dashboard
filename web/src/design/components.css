@@ -259,7 +259,22 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
 .ui-dialog-backdrop.ui-dialog-nested { z-index: var(--layer-confirm); }
 .ui-dialog { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: var(--layer-dialog); width: min(700px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: var(--space-5); border: var(--border-width) solid var(--line); border-radius: var(--radius-dialog); background: var(--panel); box-shadow: var(--shadow-dialog); }
 .ui-dialog.ui-dialog-nested { z-index: var(--layer-confirm); }
+.ui-dialog.ui-dialog-bottom {
+  left: 50%;
+  top: auto;
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(42dvh, 380px);
+  overscroll-behavior: contain;
+}
 .ui-dialog.settings-dialog { display: flex; flex-direction: column; padding: 0; width: min(1060px, calc(100vw - 32px)); overflow: hidden; }
+/* Hide Settings chrome while Motion/Overlay preview-adjust is open (non-lightbox). */
+.ui-dialog-backdrop:has(+ .settings-dialog--preview-adjust),
+.ui-dialog.settings-dialog--preview-adjust {
+  visibility: hidden;
+  pointer-events: none;
+}
 .ui-confirm { z-index: var(--layer-confirm); max-width: 480px; }
 .ui-confirm-description { margin: var(--space-4) 0 var(--space-5); }
 .ui-popover { width: min(240px, calc(100vw - 24px)); padding: var(--space-3); max-height: var(--radix-popover-content-available-height); overflow-y: auto; }

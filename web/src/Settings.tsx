@@ -57,6 +57,7 @@ const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [previewAdjust, setPreviewAdjust] = useState(false);
   const initial = useRef(settingsValue(config));
   const content = useRef<HTMLDivElement>(null);
   const dirty = settingsValue(draft) !== initial.current;
@@ -125,7 +126,7 @@ const [page, setPage] = useState<Page>("general");
     <Modal
       title="Settings"
       close={requestClose}
-      className="settings-dialog"
+      className={`settings-dialog${previewAdjust ? " settings-dialog--preview-adjust" : ""}`}
       style={appearanceStyle(draft.appearance)}
       theme={draft.appearance.theme}
       draggable
@@ -173,6 +174,7 @@ const [page, setPage] = useState<Page>("general");
                     change={updateDraft}
                     onBusy={setBusy}
                     section={page}
+                    onPreviewAdjust={setPreviewAdjust}
                   />
                 </div>
               </FieldGroup>

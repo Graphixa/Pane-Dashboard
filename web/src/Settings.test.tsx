@@ -131,20 +131,30 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("tablist")).toBeNull();
     expect(
       screen.getAllByRole("heading", { level: 4 }).map((el) => el.textContent),
-    ).toEqual(["Stills", "Custom", "Animated"]);
+    ).toEqual(["User", "Wallpapers", "Dynamic"]);
     expect(screen.getByRole("button", { name: "Add photo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add wallpaper" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(screen.getByRole("switch", { name: "Enable motion" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Overlay" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Motion effects" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Wallpaper overlay" })).toBeTruthy();
+    const motionCustomize = screen.getAllByRole("button", { name: "Customize" })[1];
+    expect(motionCustomize.hasAttribute("disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("switch", { name: "Motion effects" }));
+    expect(motionCustomize.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(motionCustomize);
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Motion settings" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Show All (5)" }));
-    expect(screen.getByRole("dialog", { name: "Stills" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Wallpapers" })).toBeTruthy();
     fireEvent.click(
-      within(screen.getByRole("dialog", { name: "Stills" })).getByRole(
+      within(screen.getByRole("dialog", { name: "Wallpapers" })).getByRole(
         "button",
         { name: "Forest" },
       ),
     );
-    expect(screen.queryByRole("dialog", { name: "Stills" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Wallpapers" })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
     ).toBe("true");

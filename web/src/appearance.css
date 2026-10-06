@@ -344,6 +344,25 @@
   gap: var(--space-3);
   margin-bottom: var(--space-3);
 }
+.background-shelf-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+.background-shelf-add {
+  min-height: auto;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+.background-shelf-group {
+  margin-bottom: 0;
+}
+.background-shelf-group .background-gallery-shelf {
+  margin: 0;
+  width: 100%;
+}
 .background-show-all {
   flex-shrink: 0;
   min-height: auto;
@@ -357,6 +376,7 @@
 .background-current {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-4);
   width: 100%;
 }
@@ -365,6 +385,32 @@
   flex: 0 0 140px;
   min-width: 0;
 }
+.background-current-position {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  margin: 0;
+  min-width: min(200px, 100%);
+  max-width: 240px;
+}
+.background-current-position > span {
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+}
+.background-effect-customize {
+  justify-self: start;
+  min-height: auto;
+  padding: 0;
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+}
+.background-effect-customize:disabled {
+  color: var(--muted);
+  opacity: 0.7;
+}
 .ui-aspect-ratio.background-current-frame {
   border-radius: var(--radius-surface);
   border: var(--border-width) solid var(--line);
@@ -372,23 +418,13 @@
   overflow: hidden;
 }
 .background-current-image {
+  background-color: var(--bg);
   background-size: cover;
+  background-position: center;
   background-repeat: no-repeat;
 }
-.background-current-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  min-width: 0;
-}
-.background-adjust-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
 .background-adjust-dialog {
-  width: min(520px, calc(100vw - 32px));
+  width: min(720px, calc(100vw - 32px));
 }
 .background-swatch {
   display: flex;
@@ -416,7 +452,10 @@
 .background-swatch-paint {
   display: block;
   border-radius: inherit;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 .background-swatch-add-placeholder {
   display: flex;
@@ -425,10 +464,6 @@
   border-radius: inherit;
   background: color-mix(in srgb, var(--muted) 22%, var(--panel-high));
   color: color-mix(in srgb, var(--muted) 70%, var(--text));
-}
-.overlay-swatch-frame {
-  border-radius: calc(var(--radius-control) - 3px);
-  overflow: hidden;
 }
 .background-gallery-dialog {
   width: min(640px, calc(100vw - 32px));

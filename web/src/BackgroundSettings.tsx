@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ImagePlus, Play, Settings2, X } from "lucide-react";
+import { ImagePlus, Play, Plus, X } from "lucide-react";
 import {
   AspectRatio,
   Button,
@@ -32,14 +32,6 @@ type BackgroundUpdate = (update: Partial<BackgroundSettings>) => void;
 
 function titleCase(id: string) {
   return id[0].toUpperCase() + id.slice(1);
-}
-
-function currentLabel(b: BackgroundSettings) {
-  if (b.kind === "none") return "None";
-  if (b.kind === "gradient") return titleCase(b.preset);
-  if (b.kind === "image") return "Custom image";
-  if (b.kind === "waves") return "Waves";
-  return "Aurora";
 }
 
 function defaultMotionFor(kind: BackgroundSettings["kind"]): MotionStyle {
@@ -90,7 +82,7 @@ function ColourSwatch({
           aria-pressed={pressed}
           className="colour-tile overlay-swatch overlay-custom"
         >
-          <AspectRatio className="overlay-swatch-frame">
+          <span className="overlay-swatch-frame">
             <span
               className={`colour-tile-paint${hueDefault ? " overlay-custom-hue" : ""}`}
               style={hueDefault ? undefined : { background: colour }}
@@ -99,7 +91,7 @@ function ColourSwatch({
             <span className="colour-tile-tick" aria-hidden="true">
               {pressed ? "✓" : ""}
             </span>
-          </AspectRatio>
+          </span>
         </Button>
       }
     >
@@ -172,12 +164,12 @@ function OverlayModeSwatch({
       className={`colour-tile overlay-swatch ${className}`}
       onClick={() => onSelect(id)}
     >
-      <AspectRatio className="overlay-swatch-frame">
+      <span className="overlay-swatch-frame">
         <span className="colour-tile-paint" aria-hidden="true" />
         <span className="colour-tile-tick" aria-hidden="true">
           {pressed ? "✓" : ""}
         </span>
-      </AspectRatio>
+      </span>
     </Button>
   );
 }
@@ -203,25 +195,42 @@ function BackgroundCustomAdd({
   settings,
   onBusy,
   background,
+  open,
+  onOpenChange,
 }: {
   settings: BackgroundSettings;
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false),
-    [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false);
   const revert = useRef<Partial<BackgroundSettings> | null>(null);
+  const beginEdit = () => {
+    if (revert.current) return;
+    revert.current = {
+      kind: settings.kind,
+      image: settings.image,
+      position: settings.position,
+      motion: settings.motion,
+      motionStyle: settings.motionStyle,
+    };
+    if (settings.kind !== "image") background({ kind: "image" });
+  };
+  useEffect(() => {
+    if (open) beginEdit();
+  }, [open]);
   const cancel = () => {
     if (busy) return;
     if (revert.current) background(revert.current);
     revert.current = null;
-    setOpen(false);
+    onOpenChange(false);
   };
   const confirm = () => {
     if (busy) return;
     if (!settings.image) background({ kind: "none", image: "" });
     revert.current = null;
-    setOpen(false);
+    onOpenChange(false);
   };
   const hasImage = !!settings.image;
   const selected = settings.kind === "image" && hasImage;
@@ -235,15 +244,8 @@ function BackgroundCustomAdd({
           cancel();
           return;
         }
-        revert.current = {
-          kind: settings.kind,
-          image: settings.image,
-          position: settings.position,
-          motion: settings.motion,
-          motionStyle: settings.motionStyle,
-        };
-        if (settings.kind !== "image") background({ kind: "image" });
-        setOpen(true);
+        beginEdit();
+        onOpenChange(true);
       }}
       trigger={
         <Button
@@ -257,10 +259,7 @@ function BackgroundCustomAdd({
             {hasImage ? (
               <span
                 className="background-swatch-paint background-current-image"
-                style={{
-                  backgroundImage: `url(${settings.image})`,
-                  backgroundPosition: settings.position,
-                }}
+                style={{ backgroundImage: `url(${settings.image})` }}
               />
             ) : (
               <span className="background-swatch-add-placeholder" aria-hidden="true">
@@ -324,10 +323,7 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
     paint = (
       <span
         className="background-swatch-paint background-current-image"
-        style={{
-          backgroundImage: `url(${b.image})`,
-          backgroundPosition: b.position,
-        }}
+        style={{ backgroundImage: `url(${b.image})` }}
       />
     );
   } else if (b.kind === "waves" || b.kind === "aurora") {
@@ -433,24 +429,38 @@ function ShelfHeader({
   title,
   count,
   onShowAll,
+  onAdd,
 }: {
   title: string;
   count: number;
   onShowAll: () => void;
+  onAdd?: () => void;
 }) {
   return (
     <div className="background-shelf-head">
       <Text as="h4" variant="label">
         {title}
       </Text>
-      <Button
-        type="button"
-        variant="quiet"
-        className="background-show-all"
-        onClick={onShowAll}
-      >
-        {`Show All (${count})`}
-      </Button>
+      <div className="background-shelf-actions">
+        {onAdd && (
+          <IconButton
+            variant="quiet"
+            label="Add wallpaper"
+            className="background-shelf-add"
+            onClick={onAdd}
+          >
+            <Plus size={16} aria-hidden="true" />
+          </IconButton>
+        )}
+        <Button
+          type="button"
+          variant="quiet"
+          className="background-show-all"
+          onClick={onShowAll}
+        >
+          {`Show All (${count})`}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -622,32 +632,70 @@ function OverlaySettingsBody({
   );
 }
 
-const STILL_COUNT = 1 + Object.keys(gradients).length;
-const ANIMATED_COUNT = 2;
+const WALLPAPER_COUNT = 1 + Object.keys(gradients).length;
+const DYNAMIC_COUNT = 2;
 
 export default function BackgroundSettings({
   settings: b,
   theme,
   onBusy,
   background,
+  onPreviewAdjust,
 }: {
   settings: BackgroundSettings;
   theme: "dark" | "light";
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
+  onPreviewAdjust?: (active: boolean) => void;
 }) {
-  const [gallery, setGallery] = useState<"stills" | "animated" | null>(null);
+  const [gallery, setGallery] = useState<"wallpapers" | "dynamic" | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
   const lastMotion = useRef<MotionStyle>(
     b.motionStyle !== "none" ? b.motionStyle : defaultMotionFor(b.kind),
+  );
+  const lastOverlayOpacity = useRef(
+    b.overlayOpacity > 0 ? b.overlayOpacity : 25,
   );
   useEffect(() => {
     if (b.motionStyle !== "none") lastMotion.current = b.motionStyle;
   }, [b.motionStyle]);
+  useEffect(() => {
+    if (b.overlayOpacity > 0) lastOverlayOpacity.current = b.overlayOpacity;
+  }, [b.overlayOpacity]);
+  useEffect(() => {
+    onPreviewAdjust?.(motionOpen || overlayOpen);
+    return () => onPreviewAdjust?.(false);
+  }, [motionOpen, overlayOpen, onPreviewAdjust]);
 
   const motionOn = b.motionStyle !== "none";
+  const overlayOn = b.overlayOpacity > 0;
   const canAdjust = b.kind !== "none";
+  const closeMotion = () => setMotionOpen(false);
+  const closeOverlay = () => setOverlayOpen(false);
+  const setMotionEnabled = (checked: boolean) => {
+    if (checked) {
+      const style =
+        lastMotion.current === "none"
+          ? defaultMotionFor(b.kind)
+          : lastMotion.current;
+      background(withMotionStyle(style));
+    } else {
+      setMotionOpen(false);
+      background(withMotionStyle("none"));
+    }
+  };
+  const setOverlayEnabled = (checked: boolean) => {
+    if (checked) {
+      background({
+        overlayOpacity: lastOverlayOpacity.current || 25,
+      });
+    } else {
+      setOverlayOpen(false);
+      background({ overlayOpacity: 0 });
+    }
+  };
 
   return (
     <>
@@ -655,55 +703,26 @@ export default function BackgroundSettings({
         <SettingsRow>
           <div className="background-current">
             <StillPreview b={b} />
-            <div className="background-current-meta">
-              <Text as="span" variant="label">
-                {currentLabel(b)}
-              </Text>
-              <Text as="span" variant="support">
-                {b.kind === "none"
-                  ? "Solid page colour"
-                  : b.kind === "gradient"
-                    ? "Gradient"
-                    : b.kind === "image"
-                      ? "Custom image"
-                      : "Animated"}
-              </Text>
-              {canAdjust && (
-                <div className="background-adjust-actions">
-                  <Button
-                    type="button"
-                    disabled={!motionOn}
-                    onClick={() => setMotionOpen(true)}
-                  >
-                    <Settings2 size={16} aria-hidden="true" />
-                    Motion
-                  </Button>
-                  <Button type="button" onClick={() => setOverlayOpen(true)}>
-                    <Settings2 size={16} aria-hidden="true" />
-                    Overlay
-                  </Button>
-                </div>
-              )}
-            </div>
+            {b.kind === "image" && (
+              <Label className="background-current-position">
+                <span>Image position</span>
+                <Select
+                  aria-label="Image position"
+                  value={b.position}
+                  onValueChange={(value) =>
+                    background({
+                      position: value as BackgroundSettings["position"],
+                    })
+                  }
+                >
+                  <SelectOption value="center">Centre</SelectOption>
+                  <SelectOption value="top">Top</SelectOption>
+                  <SelectOption value="bottom">Bottom</SelectOption>
+                </Select>
+              </Label>
+            )}
           </div>
         </SettingsRow>
-        {b.kind === "image" && (
-          <SettingsRow label="Image position">
-            <Select
-              aria-label="Image position"
-              value={b.position}
-              onValueChange={(value) =>
-                background({
-                  position: value as BackgroundSettings["position"],
-                })
-              }
-            >
-              <SelectOption value="center">Centre</SelectOption>
-              <SelectOption value="top">Top</SelectOption>
-              <SelectOption value="bottom">Bottom</SelectOption>
-            </Select>
-          </SettingsRow>
-        )}
         {(b.kind === "waves" || b.kind === "aurora") && (
           <SettingsRow label="Animation palette">
             <Select
@@ -724,82 +743,111 @@ export default function BackgroundSettings({
           </SettingsRow>
         )}
         {canAdjust && (
-          <SwitchRow
-            label="Enable motion"
-            hint={
-              motionOn
-                ? motionStyleLabels[b.motionStyle]
-                : "Optional movement for the whole background."
-            }
-            checked={motionOn}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                const style =
-                  lastMotion.current === "none"
-                    ? defaultMotionFor(b.kind)
-                    : lastMotion.current;
-                background(withMotionStyle(style));
-              } else {
-                background(withMotionStyle("none"));
+          <>
+            <SwitchRow
+              label="Wallpaper overlay"
+              checked={overlayOn}
+              onCheckedChange={setOverlayEnabled}
+              action={
+                <Button
+                  type="button"
+                  variant="quiet"
+                  className="background-effect-customize"
+                  disabled={!overlayOn}
+                  onClick={() => setOverlayOpen(true)}
+                >
+                  Customize
+                </Button>
               }
-            }}
-          />
+            />
+            <SwitchRow
+              label="Motion effects"
+              checked={motionOn}
+              onCheckedChange={setMotionEnabled}
+              action={
+                <Button
+                  type="button"
+                  variant="quiet"
+                  className="background-effect-customize"
+                  disabled={!motionOn}
+                  onClick={() => setMotionOpen(true)}
+                >
+                  Customize
+                </Button>
+              }
+            />
+          </>
         )}
       </SettingsGroup>
 
       <div className="background-shelf">
-        <ShelfHeader
-          title="Stills"
-          count={STILL_COUNT}
-          onShowAll={() => setGallery("stills")}
-        />
-        <div
-          className="background-gallery background-gallery-shelf"
-          role="group"
-          aria-label="Still backgrounds"
-        >
-          <StillTiles b={b} background={background} />
-        </div>
-      </div>
-
-      <div className="background-shelf">
         <div className="background-shelf-head">
           <Text as="h4" variant="label">
-            Custom
+            User
           </Text>
         </div>
-        <div
-          className="background-gallery background-gallery-shelf"
-          role="group"
-          aria-label="Custom backgrounds"
-        >
-          <BackgroundCustomAdd
-            settings={b}
-            onBusy={onBusy}
-            background={background}
-          />
-        </div>
+        <SettingsGroup className="background-shelf-group">
+          <SettingsRow>
+            <div
+              className="background-gallery background-gallery-shelf"
+              role="group"
+              aria-label="User backgrounds"
+            >
+              <BackgroundCustomAdd
+                settings={b}
+                onBusy={onBusy}
+                background={background}
+                open={customOpen}
+                onOpenChange={setCustomOpen}
+              />
+            </div>
+          </SettingsRow>
+        </SettingsGroup>
       </div>
 
       <div className="background-shelf">
         <ShelfHeader
-          title="Animated"
-          count={ANIMATED_COUNT}
-          onShowAll={() => setGallery("animated")}
+          title="Wallpapers"
+          count={WALLPAPER_COUNT}
+          onShowAll={() => setGallery("wallpapers")}
+          onAdd={() => setCustomOpen(true)}
         />
-        <div
-          className="background-gallery background-gallery-shelf"
-          role="group"
-          aria-label="Animated backgrounds"
-        >
-          <AnimatedTiles b={b} background={background} />
-        </div>
+        <SettingsGroup className="background-shelf-group">
+          <SettingsRow>
+            <div
+              className="background-gallery background-gallery-shelf"
+              role="group"
+              aria-label="Wallpaper backgrounds"
+            >
+              <StillTiles b={b} background={background} />
+            </div>
+          </SettingsRow>
+        </SettingsGroup>
+      </div>
+
+      <div className="background-shelf">
+        <ShelfHeader
+          title="Dynamic"
+          count={DYNAMIC_COUNT}
+          onShowAll={() => setGallery("dynamic")}
+        />
+        <SettingsGroup className="background-shelf-group">
+          <SettingsRow>
+            <div
+              className="background-gallery background-gallery-shelf"
+              role="group"
+              aria-label="Dynamic backgrounds"
+            >
+              <AnimatedTiles b={b} background={background} />
+            </div>
+          </SettingsRow>
+        </SettingsGroup>
       </div>
 
       {gallery && (
         <Modal
           nested
-          title={gallery === "stills" ? "Stills" : "Animated"}
+          title={gallery === "wallpapers" ? "Wallpapers" : "Dynamic"}
           close={() => setGallery(null)}
           className="background-gallery-dialog"
         >
@@ -807,12 +855,12 @@ export default function BackgroundSettings({
             className="background-gallery background-gallery-grid"
             role="group"
             aria-label={
-              gallery === "stills"
-                ? "All still backgrounds"
-                : "All animated backgrounds"
+              gallery === "wallpapers"
+                ? "All wallpaper backgrounds"
+                : "All dynamic backgrounds"
             }
           >
-            {gallery === "stills" ? (
+            {gallery === "wallpapers" ? (
               <StillTiles
                 b={b}
                 background={background}
@@ -832,8 +880,10 @@ export default function BackgroundSettings({
       {motionOpen && (
         <Modal
           nested
+          placement="bottom"
+          backdrop="none"
           title="Motion settings"
-          close={() => setMotionOpen(false)}
+          close={closeMotion}
           className="background-adjust-dialog"
         >
           <SettingsGroup>
@@ -847,26 +897,26 @@ export default function BackgroundSettings({
                   background(withMotionStyle(style));
                 }}
               >
-                {motionStyles.map((id) => (
-                  <SelectOption key={id} value={id}>
-                    {motionStyleLabels[id]}
-                  </SelectOption>
-                ))}
+                {motionStyles
+                  .filter((id) => id !== "none")
+                  .map((id) => (
+                    <SelectOption key={id} value={id}>
+                      {motionStyleLabels[id]}
+                    </SelectOption>
+                  ))}
               </Select>
             </SettingsRow>
-            {b.motionStyle !== "none" && (
-              <Range
-                label="Speed"
-                value={b.intensity}
-                min={0}
-                max={100}
-                unit="%"
-                change={(intensity) => background({ intensity })}
-              />
-            )}
+            <Range
+              label="Speed"
+              value={b.intensity}
+              min={0}
+              max={100}
+              unit="%"
+              change={(intensity) => background({ intensity })}
+            />
           </SettingsGroup>
           <div className="ui-actions">
-            <Button variant="primary" onClick={() => setMotionOpen(false)}>
+            <Button variant="primary" onClick={closeMotion}>
               Done
             </Button>
           </div>
@@ -876,17 +926,15 @@ export default function BackgroundSettings({
       {overlayOpen && (
         <Modal
           nested
+          placement="bottom"
+          backdrop="none"
           title="Overlay settings"
-          close={() => setOverlayOpen(false)}
+          close={closeOverlay}
           className="background-adjust-dialog"
         >
-          <SettingsGroup>
-            <SettingsRow>
-              <OverlaySettingsBody b={b} theme={theme} background={background} />
-            </SettingsRow>
-          </SettingsGroup>
+          <OverlaySettingsBody b={b} theme={theme} background={background} />
           <div className="ui-actions">
-            <Button variant="primary" onClick={() => setOverlayOpen(false)}>
+            <Button variant="primary" onClick={closeOverlay}>
               Done
             </Button>
           </div>

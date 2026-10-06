@@ -14,6 +14,7 @@ export default function ComponentReference() {
   const [font, setFont] = useState<UiFont>("geist");
   const [compact, setCompact] = useState(false);
   const [modal, setModal] = useState(false);
+  const [bottomModal, setBottomModal] = useState(false);
   const [name, setName] = useState("Home services");
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(false);
@@ -57,6 +58,7 @@ export default function ComponentReference() {
         <div className="reference-actions">
           <Button variant="primary" onClick={() => setCount(count + 1)}>Apply example</Button>
           <Button onClick={() => setModal(true)}>Open dialog</Button>
+          <Button onClick={() => setBottomModal(true)}>Open bottom sheet</Button>
           <Button variant="quiet" onClick={() => setCount(0)}>Reset example</Button>
           <Button variant="danger" onClick={() => setCount(0)}>Clear example</Button>
           <Button variant="surface" className="ui-settings-nav" type="button"><Settings2 size={18} aria-hidden="true" /><span>Settings nav</span></Button>
@@ -152,6 +154,10 @@ export default function ComponentReference() {
           <TextField label="Example name" defaultValue="Pane" autoFocus />
           <div className="ui-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
         </Section>
+      </Modal>}
+      {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}>
+        <Text variant="support">Bottom placement with no dimmed backdrop for live preview adjusters.</Text>
+        <div className="ui-actions"><Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button></div>
       </Modal>}
     </main>
   </ThemeSurface>;

@@ -243,9 +243,11 @@
   margin: 18px 0;
 }
 .overlay-groups {
-  display: grid;
-  gap: 16px;
-  margin: 4px 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 20px;
+  margin: 4px 0 12px;
 }
 .overlay-group {
   display: grid;
@@ -253,32 +255,28 @@
 }
 .overlay-group-label {
   margin: 0;
-  font-size: var(--type-body);
+  font-size: var(--type-support);
   font-weight: var(--weight-semibold);
   line-height: var(--leading-body);
-  color: var(--text);
+  color: var(--muted);
 }
 .overlay-swatches {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 160px));
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 0;
   padding: 0;
   border: 0;
   background: none;
-  width: 100%;
-}
-.overlay-group-custom .overlay-swatches {
-  grid-template-columns: minmax(0, 160px);
 }
 .colour-tile,
 .overlay-swatch {
   position: relative;
-  width: 100%;
-  height: auto;
+  width: 80px;
+  height: 80px;
   margin: 0;
   padding: 3px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--accent-text);
@@ -286,7 +284,11 @@
   flex-shrink: 0;
 }
 .overlay-swatch-frame {
-  border-radius: 5px;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 7px;
   overflow: hidden;
 }
 .colour-tile-paint {
@@ -303,16 +305,16 @@
   outline: 2px solid var(--text);
   outline-offset: 3px;
 }
-.overlay-tone-dark.overlay-solid > .colour-tile-paint {
+.overlay-tone-dark.overlay-solid .colour-tile-paint {
   background: #111720;
 }
-.overlay-tone-dark.overlay-gradient > .colour-tile-paint {
+.overlay-tone-dark.overlay-gradient .colour-tile-paint {
   background: linear-gradient(#111720, var(--panel-high));
 }
-.overlay-tone-light.overlay-solid > .colour-tile-paint {
+.overlay-tone-light.overlay-solid .colour-tile-paint {
   background: #ffffff;
 }
-.overlay-tone-light.overlay-gradient > .colour-tile-paint {
+.overlay-tone-light.overlay-gradient .colour-tile-paint {
   background: linear-gradient(#ffffff, var(--panel-high));
 }
 .overlay-custom-hue {

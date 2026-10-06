@@ -361,9 +361,10 @@ describe("global appearance", () => {
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
     expect(
-      screen.getByRole("switch", { name: "Enable motion" }).getAttribute("aria-checked"),
+      screen.getByRole("switch", { name: "Motion effects" }).getAttribute("aria-checked"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Motion" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[1]);
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     const style = screen.getByLabelText("Motion style");
     expect(style.textContent).toContain("Drift");
     fireEvent.keyDown(style, {key: "ArrowDown"});
@@ -371,6 +372,7 @@ describe("global appearance", () => {
     fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "Home"});
     for(let i=0; i<75; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Speed"}), {key: "ArrowRight"});
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "image",

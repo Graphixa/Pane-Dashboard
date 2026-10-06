@@ -8,10 +8,30 @@ import { X } from 'lucide-react';
 import { Button, IconButton, Text } from './components';
 import { SurfaceProvider, useSurface } from './surface';
 
-export function Modal(props: {title: string; close: () => void; children: ReactNode; className?: string; style?: CSSProperties; theme?: 'dark' | 'light'; draggable?: boolean; nested?: boolean}) {
+export function Modal(props: {
+  title: string;
+  close: () => void;
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+  theme?: 'dark' | 'light';
+  draggable?: boolean;
+  nested?: boolean;
+  placement?: 'center' | 'bottom';
+  backdrop?: 'dim' | 'none';
+}) {
   return <SurfaceProvider style={props.style} theme={props.theme}><ModalContent {...props} /></SurfaceProvider>;
 }
-function ModalContent({title, close, children, className = '', draggable = false, nested = false}: Parameters<typeof Modal>[0]) {
+function ModalContent({
+  title,
+  close,
+  children,
+  className = '',
+  draggable = false,
+  nested = false,
+  placement = 'center',
+  backdrop = 'dim',
+}: Parameters<typeof Modal>[0]) {
   const surface = useSurface();
   const opener = useRef<HTMLElement | null>(null), content = useRef<HTMLDivElement>(null);
   const drag = useRef<{id: number; x: number; y: number; ox: number; oy: number} | null>(null);
@@ -19,20 +39,25 @@ function ModalContent({title, close, children, className = '', draggable = false
   // Radix has no Trigger for conditionally mounted application editors.
   const move = (e: PointerEvent<HTMLDivElement>) => {
     const state = drag.current, el = content.current;
-    if (!state || e.pointerId !== state.id || !el) return;
+    if (!state || e.pointerId !== state.id || !el || placement !== 'center') return;
     const rect = el.getBoundingClientRect(), left = rect.left - offset.x, top = rect.top - offset.y;
     setOffset({x: Math.max(48 - rect.width - left, Math.min(innerWidth - 48 - left, state.ox + e.clientX - state.x)), y: Math.max(-top, Math.min(innerHeight - 48 - top, state.oy + e.clientY - state.y))});
   };
   const end = (e: PointerEvent<HTMLDivElement>) => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); };
   const nest = nested ? ' ui-dialog-nested' : '';
+  const place = placement === 'bottom' ? ' ui-dialog-bottom' : '';
+  const contentStyle = placement === 'bottom'
+    ? {...surface.style}
+    : {...surface.style, transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`};
   return <Dialog.Root open onOpenChange={open => {if (!open) close();}}><Dialog.Portal>
-    <Dialog.Overlay className={`ui-dialog-backdrop${nest}`} />
-    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface${nest} ${className}`} style={{...surface.style, transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`}}
+    {backdrop === 'dim' && <Dialog.Overlay className={`ui-dialog-backdrop${nest}`} />}
+    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface${nest}${place} ${className}`} style={contentStyle}
       onOpenAutoFocus={() => {opener.current = document.activeElement as HTMLElement;}}
       onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}
-      onInteractOutside={e => e.preventDefault()}>
-      <div className={`modal-title${draggable ? ' modal-title-draggable' : ''}`} onPointerDown={e => {
-        if (!draggable || e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+      onInteractOutside={e => e.preventDefault()}
+      onWheel={e => e.stopPropagation()}>
+      <div className={`modal-title${draggable && placement === 'center' ? ' modal-title-draggable' : ''}`} onPointerDown={e => {
+        if (!draggable || placement !== 'center' || e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
         e.preventDefault(); drag.current = {id: e.pointerId, x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y}; e.currentTarget.setPointerCapture(e.pointerId);
       }} onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
         <Dialog.Title asChild><Text as="h2" variant="title">{title}</Text></Dialog.Title>

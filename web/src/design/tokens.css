@@ -34,8 +34,8 @@
   --duration-fast: 150ms;
   --shadow-dialog: 0 24px 80px rgb(0 0 0 / 30%);
   --layer-dialog: 100;
-  --layer-popover: 110;
   --layer-confirm: 120;
+  --layer-popover: 130;
   --danger-text: #ffb4b4;
 }
 [data-theme="light"] {

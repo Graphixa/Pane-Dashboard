@@ -91,11 +91,13 @@ export default function AppearanceEditor({
   change,
   onBusy,
   section,
+  onPreviewAdjust,
 }: {
   section: "general" | "appearance" | "background" | "panes";
   draft: Config;
   change: (c: Config | ((prev: Config) => Config)) => void;
   onBusy: (b: boolean) => void;
+  onPreviewAdjust?: (active: boolean) => void;
 }) {
   const a = draft.appearance,
     b = migrateBackground(a.background ?? defaultBackground, a.theme),
@@ -431,6 +433,7 @@ export default function AppearanceEditor({
         theme={a.theme}
         onBusy={onBusy}
         background={background}
+        onPreviewAdjust={onPreviewAdjust}
       />
     );
 
