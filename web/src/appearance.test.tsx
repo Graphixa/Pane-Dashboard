@@ -319,6 +319,8 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
@@ -355,15 +357,18 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: /My images/ }));
     fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
     expect(
       screen.getByRole("dialog", { name: "Custom background image" }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(
       screen.getByRole("switch", { name: "Motion effects" }).getAttribute("aria-checked"),
     ).toBe("true");
-    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[1]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[0]);
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     const style = screen.getByLabelText("Motion style");
     expect(style.textContent).toContain("Drift");
@@ -399,6 +404,8 @@ describe("global appearance", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: /My images/ }));
     fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Close custom image picker" }),
@@ -406,6 +413,8 @@ describe("global appearance", () => {
     expect(
       screen.getByRole("button", { name: "Custom image" }).getAttribute("aria-pressed"),
     ).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
     expect(
       screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");

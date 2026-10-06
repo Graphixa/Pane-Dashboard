@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ImagePlus, Play, Plus, X } from "lucide-react";
+import { ImagePlus, Play, ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   AspectRatio,
   Button,
@@ -197,12 +197,14 @@ function BackgroundCustomAdd({
   background,
   open,
   onOpenChange,
+  onConfirmed,
 }: {
   settings: BackgroundSettings;
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onConfirmed?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const revert = useRef<Partial<BackgroundSettings> | null>(null);
@@ -231,6 +233,7 @@ function BackgroundCustomAdd({
     if (!settings.image) background({ kind: "none", image: "" });
     revert.current = null;
     onOpenChange(false);
+    if (settings.image) onConfirmed?.();
   };
   const hasImage = !!settings.image;
   const selected = settings.kind === "image" && hasImage;
@@ -315,6 +318,14 @@ function BackgroundCustomAdd({
   );
 }
 
+function currentName(b: BackgroundSettings) {
+  if (b.kind === "none") return "None";
+  if (b.kind === "gradient") return titleCase(b.preset);
+  if (b.kind === "image") return "Custom";
+  if (b.kind === "waves") return "Waves";
+  return "Aurora";
+}
+
 function StillPreview({ b }: { b: BackgroundSettings }) {
   let paint: ReactNode;
   if (b.kind === "none") {
@@ -351,7 +362,7 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
     );
   }
   return (
-    <div className="background-current-thumb">
+    <div className="background-current-preview">
       <AspectRatio className="background-current-frame">{paint}</AspectRatio>
     </div>
   );
@@ -425,46 +436,6 @@ function AnimatedTile({
   );
 }
 
-function ShelfHeader({
-  title,
-  count,
-  onShowAll,
-  onAdd,
-}: {
-  title: string;
-  count: number;
-  onShowAll: () => void;
-  onAdd?: () => void;
-}) {
-  return (
-    <div className="background-shelf-head">
-      <Text as="h4" variant="label">
-        {title}
-      </Text>
-      <div className="background-shelf-actions">
-        {onAdd && (
-          <IconButton
-            variant="quiet"
-            label="Add wallpaper"
-            className="background-shelf-add"
-            onClick={onAdd}
-          >
-            <Plus size={16} aria-hidden="true" />
-          </IconButton>
-        )}
-        <Button
-          type="button"
-          variant="quiet"
-          className="background-show-all"
-          onClick={onShowAll}
-        >
-          {`Show All (${count})`}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 function StillTiles({
   b,
   background,
@@ -532,6 +503,103 @@ function AnimatedTiles({
         />
       ))}
     </>
+  );
+}
+
+type CollectionId = "my-images" | "gradients" | "dynamic";
+
+const COLLECTIONS: {
+  id: CollectionId;
+  title: string;
+  count: number;
+}[] = [
+  { id: "my-images", title: "My images", count: 1 },
+  { id: "gradients", title: "Gradients", count: 1 + Object.keys(gradients).length },
+  { id: "dynamic", title: "Dynamic", count: 2 },
+];
+
+function FolderCard({
+  title,
+  count,
+  paint,
+  dynamic = false,
+  onOpen,
+}: {
+  title: string;
+  count: number;
+  paint: ReactNode;
+  dynamic?: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <Button
+      variant="surface"
+      type="button"
+      className="background-folder"
+      onClick={onOpen}
+    >
+      <AspectRatio className="background-folder-frame" ratio={16 / 10}>
+        {paint}
+        {dynamic && (
+          <span className="swatch-play" aria-hidden="true">
+            <Play size={12} fill="currentColor" />
+          </span>
+        )}
+        <span className="background-folder-meta">
+          <span className="background-folder-title">{title}</span>
+          <span className="background-folder-count">
+            {count === 0
+              ? "Empty"
+              : count === 1
+                ? "1 image"
+                : `${count} images`}
+          </span>
+        </span>
+      </AspectRatio>
+    </Button>
+  );
+}
+
+function HorizontalStrip({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  const scroller = useRef<HTMLDivElement>(null);
+  const scrollByPage = (dir: -1 | 1) => {
+    const el = scroller.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+  return (
+    <div className="background-strip">
+      <IconButton
+        variant="quiet"
+        label={`Scroll ${label} left`}
+        className="background-strip-chevron"
+        onClick={() => scrollByPage(-1)}
+      >
+        <ChevronLeft size={20} aria-hidden="true" />
+      </IconButton>
+      <div
+        ref={scroller}
+        className="background-strip-scroller"
+        role="group"
+        aria-label={label}
+      >
+        {children}
+      </div>
+      <IconButton
+        variant="quiet"
+        label={`Scroll ${label} right`}
+        className="background-strip-chevron"
+        onClick={() => scrollByPage(1)}
+      >
+        <ChevronRight size={20} aria-hidden="true" />
+      </IconButton>
+    </div>
   );
 }
 
@@ -632,9 +700,6 @@ function OverlaySettingsBody({
   );
 }
 
-const WALLPAPER_COUNT = 1 + Object.keys(gradients).length;
-const DYNAMIC_COUNT = 2;
-
 export default function BackgroundSettings({
   settings: b,
   theme,
@@ -648,7 +713,8 @@ export default function BackgroundSettings({
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
 }) {
-  const [gallery, setGallery] = useState<"wallpapers" | "dynamic" | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [collection, setCollection] = useState<CollectionId | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -674,6 +740,15 @@ export default function BackgroundSettings({
   const canAdjust = b.kind !== "none";
   const closeMotion = () => setMotionOpen(false);
   const closeOverlay = () => setOverlayOpen(false);
+  const closeLibrary = () => {
+    setCollection(null);
+    setCustomOpen(false);
+    setLibraryOpen(false);
+  };
+  const pickBackground = () => {
+    setCollection(null);
+    setLibraryOpen(false);
+  };
   const setMotionEnabled = (checked: boolean) => {
     if (checked) {
       const style =
@@ -696,6 +771,19 @@ export default function BackgroundSettings({
       background({ overlayOpacity: 0 });
     }
   };
+  const collectionTitle =
+    COLLECTIONS.find((item) => item.id === collection)?.title ?? "Choose wallpaper";
+  const myImagesPaint =
+    b.image ? (
+      <span
+        className="background-swatch-paint background-current-image"
+        style={{ backgroundImage: `url(${b.image})` }}
+      />
+    ) : (
+      <span className="background-swatch-add-placeholder" aria-hidden="true">
+        <ImagePlus size={28} />
+      </span>
+    );
 
   return (
     <>
@@ -703,24 +791,37 @@ export default function BackgroundSettings({
         <SettingsRow>
           <div className="background-current">
             <StillPreview b={b} />
-            {b.kind === "image" && (
-              <Label className="background-current-position">
-                <span>Image position</span>
-                <Select
-                  aria-label="Image position"
-                  value={b.position}
-                  onValueChange={(value) =>
-                    background({
-                      position: value as BackgroundSettings["position"],
-                    })
-                  }
-                >
-                  <SelectOption value="center">Centre</SelectOption>
-                  <SelectOption value="top">Top</SelectOption>
-                  <SelectOption value="bottom">Bottom</SelectOption>
-                </Select>
-              </Label>
-            )}
+            <div className="background-current-meta">
+              <Text as="span" variant="support" className="background-current-eyebrow">
+                Currently set
+              </Text>
+              <Text as="span" variant="label" className="background-current-name">
+                {currentName(b)}
+              </Text>
+              <div className="background-current-actions">
+                <Button type="button" onClick={() => setLibraryOpen(true)}>
+                  Change wallpaper
+                </Button>
+                {b.kind === "image" && (
+                  <Label className="background-current-position">
+                    <span>Image position</span>
+                    <Select
+                      aria-label="Image position"
+                      value={b.position}
+                      onValueChange={(value) =>
+                        background({
+                          position: value as BackgroundSettings["position"],
+                        })
+                      }
+                    >
+                      <SelectOption value="center">Centre</SelectOption>
+                      <SelectOption value="top">Top</SelectOption>
+                      <SelectOption value="bottom">Bottom</SelectOption>
+                    </Select>
+                  </Label>
+                )}
+              </div>
+            </div>
           </div>
         </SettingsRow>
         {(b.kind === "waves" || b.kind === "aurora") && (
@@ -745,22 +846,6 @@ export default function BackgroundSettings({
         {canAdjust && (
           <>
             <SwitchRow
-              label="Wallpaper overlay"
-              checked={overlayOn}
-              onCheckedChange={setOverlayEnabled}
-              action={
-                <Button
-                  type="button"
-                  variant="quiet"
-                  className="background-effect-customize"
-                  disabled={!overlayOn}
-                  onClick={() => setOverlayOpen(true)}
-                >
-                  Customize
-                </Button>
-              }
-            />
-            <SwitchRow
               label="Motion effects"
               checked={motionOn}
               onCheckedChange={setMotionEnabled}
@@ -776,104 +861,117 @@ export default function BackgroundSettings({
                 </Button>
               }
             />
+            <SwitchRow
+              label="Wallpaper overlay"
+              checked={overlayOn}
+              onCheckedChange={setOverlayEnabled}
+              action={
+                <Button
+                  type="button"
+                  variant="quiet"
+                  className="background-effect-customize"
+                  disabled={!overlayOn}
+                  onClick={() => setOverlayOpen(true)}
+                >
+                  Customize
+                </Button>
+              }
+            />
           </>
         )}
       </SettingsGroup>
 
-      <div className="background-shelf">
-        <div className="background-shelf-head">
-          <Text as="h4" variant="label">
-            User
-          </Text>
-        </div>
-        <SettingsGroup className="background-shelf-group">
-          <SettingsRow>
-            <div
-              className="background-gallery background-gallery-shelf"
-              role="group"
-              aria-label="User backgrounds"
-            >
-              <BackgroundCustomAdd
-                settings={b}
-                onBusy={onBusy}
-                background={background}
-                open={customOpen}
-                onOpenChange={setCustomOpen}
-              />
-            </div>
-          </SettingsRow>
-        </SettingsGroup>
-      </div>
-
-      <div className="background-shelf">
-        <ShelfHeader
-          title="Wallpapers"
-          count={WALLPAPER_COUNT}
-          onShowAll={() => setGallery("wallpapers")}
-          onAdd={() => setCustomOpen(true)}
-        />
-        <SettingsGroup className="background-shelf-group">
-          <SettingsRow>
-            <div
-              className="background-gallery background-gallery-shelf"
-              role="group"
-              aria-label="Wallpaper backgrounds"
-            >
-              <StillTiles b={b} background={background} />
-            </div>
-          </SettingsRow>
-        </SettingsGroup>
-      </div>
-
-      <div className="background-shelf">
-        <ShelfHeader
-          title="Dynamic"
-          count={DYNAMIC_COUNT}
-          onShowAll={() => setGallery("dynamic")}
-        />
-        <SettingsGroup className="background-shelf-group">
-          <SettingsRow>
-            <div
-              className="background-gallery background-gallery-shelf"
-              role="group"
-              aria-label="Dynamic backgrounds"
-            >
-              <AnimatedTiles b={b} background={background} />
-            </div>
-          </SettingsRow>
-        </SettingsGroup>
-      </div>
-
-      {gallery && (
+      {libraryOpen && (
         <Modal
           nested
-          title={gallery === "wallpapers" ? "Wallpapers" : "Dynamic"}
-          close={() => setGallery(null)}
-          className="background-gallery-dialog"
+          title={collection ? collectionTitle : "Choose wallpaper"}
+          close={closeLibrary}
+          className="background-library-dialog"
         >
-          <div
-            className="background-gallery background-gallery-grid"
-            role="group"
-            aria-label={
-              gallery === "wallpapers"
-                ? "All wallpaper backgrounds"
-                : "All dynamic backgrounds"
-            }
-          >
-            {gallery === "wallpapers" ? (
-              <StillTiles
-                b={b}
-                background={background}
-                onPicked={() => setGallery(null)}
+          {collection ? (
+            <>
+              <div className="background-collection-back">
+                <Button
+                  type="button"
+                  variant="quiet"
+                  onClick={() => {
+                    setCustomOpen(false);
+                    setCollection(null);
+                  }}
+                >
+                  Back
+                </Button>
+              </div>
+              {collection === "my-images" && (
+                <HorizontalStrip label="My images">
+                  <BackgroundCustomAdd
+                    settings={b}
+                    onBusy={onBusy}
+                    background={background}
+                    open={customOpen}
+                    onOpenChange={setCustomOpen}
+                    onConfirmed={pickBackground}
+                  />
+                </HorizontalStrip>
+              )}
+              {collection === "gradients" && (
+                <HorizontalStrip label="Gradients">
+                  <StillTiles
+                    b={b}
+                    background={background}
+                    onPicked={pickBackground}
+                  />
+                </HorizontalStrip>
+              )}
+              {collection === "dynamic" && (
+                <HorizontalStrip label="Dynamic">
+                  <AnimatedTiles
+                    b={b}
+                    background={background}
+                    onPicked={pickBackground}
+                  />
+                </HorizontalStrip>
+              )}
+            </>
+          ) : (
+            <div className="background-folders" role="group" aria-label="Wallpaper categories">
+              <FolderCard
+                title="My images"
+                count={b.image ? 1 : 0}
+                paint={myImagesPaint}
+                onOpen={() => setCollection("my-images")}
               />
-            ) : (
-              <AnimatedTiles
-                b={b}
-                background={background}
-                onPicked={() => setGallery(null)}
+              <FolderCard
+                title="Gradients"
+                count={COLLECTIONS[1].count}
+                paint={
+                  <span
+                    className="background-swatch-paint"
+                    style={{ background: gradients.ocean }}
+                  />
+                }
+                onOpen={() => setCollection("gradients")}
               />
-            )}
-          </div>
+              <FolderCard
+                title="Dynamic"
+                count={COLLECTIONS[2].count}
+                dynamic
+                paint={
+                  <span
+                    className={`swatch-mini-scene scene-waves`}
+                    style={{ background: gradients.dusk }}
+                  >
+                    <span className="scene-motion" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  </span>
+                }
+                onOpen={() => setCollection("dynamic")}
+              />
+            </div>
+          )}
         </Modal>
       )}
 
