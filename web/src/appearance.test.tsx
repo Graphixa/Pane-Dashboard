@@ -320,8 +320,10 @@ describe("global appearance", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Gradients/ }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
     fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "Home"});

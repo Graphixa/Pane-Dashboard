@@ -335,8 +335,8 @@
   width: 100%;
 }
 .background-current-preview {
-  width: min(260px, 42%);
-  flex: 0 0 auto;
+  width: 180px;
+  flex: 0 0 180px;
   min-width: 0;
 }
 .ui-aspect-ratio.background-current-frame {
@@ -362,27 +362,8 @@
   font-size: var(--type-section);
   line-height: 1.3;
 }
-.background-current-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-3);
-  width: 100%;
+.background-current-change {
   margin-top: var(--space-3);
-}
-.background-current-position {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--space-2);
-  margin: 0;
-  min-width: min(180px, 100%);
-}
-.background-current-position > span {
-  font-size: var(--type-support);
-  font-weight: var(--weight-semibold);
-  color: var(--muted);
 }
 .background-current-image {
   background-color: var(--bg);
@@ -410,17 +391,27 @@
 }
 .background-folders {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
 }
+@media (max-width: 520px) {
+  .background-folders {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  }
+}
 .background-folder {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   padding: 0;
   min-width: 0;
   background: transparent;
   border: 0;
-  color: #fff;
+  color: var(--text);
   text-align: left;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
 }
 .ui-aspect-ratio.background-folder-frame {
   border-radius: var(--radius-surface);
@@ -428,27 +419,23 @@
   background: var(--bg);
   overflow: hidden;
 }
-.background-folder-meta {
-  position: absolute;
-  inset: auto 0 0;
+.background-folder-caption {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
+  align-items: flex-start;
   gap: 2px;
-  padding: var(--space-4) var(--space-3) var(--space-3);
-  background: linear-gradient(transparent, rgb(0 0 0 / 62%));
-  text-align: center;
-  pointer-events: none;
+  min-width: 0;
 }
 .background-folder-title {
   font-size: var(--type-body);
   font-weight: var(--weight-semibold);
   line-height: 1.3;
+  color: var(--text);
 }
 .background-folder-count {
   font-size: var(--type-support);
-  opacity: 0.9;
+  font-weight: var(--weight-regular);
+  color: var(--muted);
 }
 .background-collection-back {
   margin: calc(var(--space-2) * -1) 0 var(--space-3);

@@ -531,31 +531,28 @@ function FolderCard({
   dynamic?: boolean;
   onOpen: () => void;
 }) {
+  const countLabel =
+    count === 0 ? "Empty" : count === 1 ? "1 image" : `${count} images`;
   return (
     <Button
       variant="surface"
       type="button"
       className="background-folder"
+      aria-label={`${title}, ${countLabel}`}
       onClick={onOpen}
     >
-      <AspectRatio className="background-folder-frame" ratio={16 / 10}>
+      <AspectRatio className="background-folder-frame" ratio={16 / 9}>
         {paint}
         {dynamic && (
           <span className="swatch-play" aria-hidden="true">
             <Play size={12} fill="currentColor" />
           </span>
         )}
-        <span className="background-folder-meta">
-          <span className="background-folder-title">{title}</span>
-          <span className="background-folder-count">
-            {count === 0
-              ? "Empty"
-              : count === 1
-                ? "1 image"
-                : `${count} images`}
-          </span>
-        </span>
       </AspectRatio>
+      <span className="background-folder-caption">
+        <span className="background-folder-title">{title}</span>
+        <span className="background-folder-count">{countLabel}</span>
+      </span>
     </Button>
   );
 }
@@ -731,9 +728,9 @@ export default function BackgroundSettings({
     if (b.overlayOpacity > 0) lastOverlayOpacity.current = b.overlayOpacity;
   }, [b.overlayOpacity]);
   useEffect(() => {
-    onPreviewAdjust?.(motionOpen || overlayOpen);
+    onPreviewAdjust?.(motionOpen || overlayOpen || libraryOpen);
     return () => onPreviewAdjust?.(false);
-  }, [motionOpen, overlayOpen, onPreviewAdjust]);
+  }, [motionOpen, overlayOpen, libraryOpen, onPreviewAdjust]);
 
   const motionOn = b.motionStyle !== "none";
   const overlayOn = b.overlayOpacity > 0;
@@ -798,32 +795,33 @@ export default function BackgroundSettings({
               <Text as="span" variant="label" className="background-current-name">
                 {currentName(b)}
               </Text>
-              <div className="background-current-actions">
-                <Button type="button" onClick={() => setLibraryOpen(true)}>
-                  Change wallpaper
-                </Button>
-                {b.kind === "image" && (
-                  <Label className="background-current-position">
-                    <span>Image position</span>
-                    <Select
-                      aria-label="Image position"
-                      value={b.position}
-                      onValueChange={(value) =>
-                        background({
-                          position: value as BackgroundSettings["position"],
-                        })
-                      }
-                    >
-                      <SelectOption value="center">Centre</SelectOption>
-                      <SelectOption value="top">Top</SelectOption>
-                      <SelectOption value="bottom">Bottom</SelectOption>
-                    </Select>
-                  </Label>
-                )}
-              </div>
+              <Button
+                type="button"
+                className="background-current-change"
+                onClick={() => setLibraryOpen(true)}
+              >
+                Change wallpaper
+              </Button>
             </div>
           </div>
         </SettingsRow>
+        {b.kind === "image" && (
+          <SettingsRow label="Image position">
+            <Select
+              aria-label="Image position"
+              value={b.position}
+              onValueChange={(value) =>
+                background({
+                  position: value as BackgroundSettings["position"],
+                })
+              }
+            >
+              <SelectOption value="center">Centre</SelectOption>
+              <SelectOption value="top">Top</SelectOption>
+              <SelectOption value="bottom">Bottom</SelectOption>
+            </Select>
+          </SettingsRow>
+        )}
         {(b.kind === "waves" || b.kind === "aurora") && (
           <SettingsRow label="Animation palette">
             <Select
@@ -884,6 +882,8 @@ export default function BackgroundSettings({
       {libraryOpen && (
         <Modal
           nested
+          placement="bottom"
+          backdrop="none"
           title={collection ? collectionTitle : "Choose wallpaper"}
           close={closeLibrary}
           className="background-library-dialog"
