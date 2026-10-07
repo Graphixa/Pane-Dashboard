@@ -11,6 +11,7 @@ import {
   Range,
   Select,
   SelectOption,
+  ScrollArea,
   SettingsGroup,
   SettingsRow,
   SwitchRow,
@@ -626,7 +627,7 @@ const COLLECTIONS: {
   { id: "dynamic", title: "Dynamic", count: 2 },
 ];
 
-/** Horizontal shelf: edge-bleed scroll, no chevrons or strip scrollbars. */
+/** Horizontal shelf: tiles sit in a settings-group inset and clip there. No chevrons or strip scrollbars. */
 function WallpaperShelf({
   heading,
   label,
@@ -660,14 +661,16 @@ function WallpaperShelf({
           </Button>
         )}
       </div>
-      <div
-        className="background-shelf-bleed"
-        tabIndex={0}
-        role="group"
-        aria-label={label}
-      >
-        <div className="background-shelf-track">{children}</div>
-      </div>
+      <SettingsGroup className="background-shelf-box">
+        <div
+          className="background-shelf-bleed"
+          tabIndex={0}
+          role="group"
+          aria-label={label}
+        >
+          <div className="background-shelf-track">{children}</div>
+        </div>
+      </SettingsGroup>
     </section>
   );
 }
@@ -1221,11 +1224,10 @@ export default function BackgroundSettings({
           close={discardLibrary}
           className="background-library-dialog"
         >
-          <div
+          <ScrollArea
             className="background-library-body-scroll"
-            role="region"
+            type="auto"
             aria-label={collection ? collectionTitle : "Wallpaper shelves"}
-            tabIndex={0}
           >
             {collection ? (
               <div className="background-library-grid">
@@ -1286,7 +1288,7 @@ export default function BackgroundSettings({
                 </WallpaperShelf>
               </div>
             )}
-          </div>
+          </ScrollArea>
           <div className="ui-actions background-library-actions">
             {collection ? (
               <Button type="button" variant="secondary" onClick={backToFolders}>

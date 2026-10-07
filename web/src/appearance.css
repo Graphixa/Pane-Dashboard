@@ -408,10 +408,16 @@
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+}
+.background-library-body-scroll .ui-scroll-area-viewport {
+  height: 100%;
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+}
+/* Radix sizes this wrapper as a table, which lets shelves widen under the bar. */
+.background-library-body-scroll .ui-scroll-area-viewport > div {
+  display: block !important;
+  width: 100%;
+  min-width: 0 !important;
 }
 .background-library-shelves {
   display: grid;
@@ -419,6 +425,8 @@
   min-width: 0;
   /* Last shelf (Dynamic) must clear the fold above Select. */
   padding-bottom: var(--space-5);
+  /* Clear the themed vertical bar (it overlays the viewport). */
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-4));
 }
 .background-library-grid {
   display: grid;
@@ -426,6 +434,7 @@
   gap: var(--space-3);
   min-width: 0;
   padding-bottom: var(--space-5);
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-4));
 }
 .background-library-grid .background-swatch {
   width: 100%;
@@ -439,6 +448,16 @@
   display: grid;
   gap: var(--space-2);
   min-width: 0;
+  max-width: 100%;
+}
+/* Heading stays outside, as on Appearance. */
+.background-shelf .background-shelf-box {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+}
+/* Image tiles run to the card's side edges and clip there, including when scrolled. */
+.background-shelf:not(.background-shelf-compact) .background-shelf-box {
+  padding-inline: 0;
 }
 .background-shelf-head {
   display: flex;
@@ -459,21 +478,26 @@
   color: var(--muted);
 }
 /*
-  Horizontal shelf scroller. No negative left margin — that was clipping
-  Colours + the first chip against the dialog overflow. Right peek stays via
-  3.4-column tile width inside the padded content box.
+  Clipping viewport inside .background-shelf-box. The partial next tile peeks
+  inside the box. No negative inline margin — that clipped Colours and the
+  first chip against the dialog overflow.
 */
 .background-shelf-bleed {
   --shelf-gap: var(--space-3);
   container-type: inline-size;
+  min-width: 0;
+  max-width: 100%;
   margin-inline: 0;
-  /* Focus/selection rings on the first and last chips. */
+  /* Focus/selection rings on the first and last colour chips. */
   padding-inline: 4px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+}
+.background-shelf:not(.background-shelf-compact) .background-shelf-bleed {
+  padding-inline: 0;
 }
 .background-shelf-bleed::-webkit-scrollbar {
   display: none;
