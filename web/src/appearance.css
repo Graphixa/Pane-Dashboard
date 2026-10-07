@@ -274,17 +274,28 @@
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .pane {
+  /* Match glass specificity so transparent panes cannot beat the solid fallback. */
+  .pane,
+  [data-pane-style="glass"] .pane {
     background: var(--panel);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-color: transparent;
+    box-shadow: inset 0 0 0 1px var(--line);
+  }
+  [data-pane-style="glass"] .pane-frame.focused .pane {
+    box-shadow: inset 0 0 0 2px var(--accent);
   }
   [data-pane-style="glass"] .pane-glass-warp,
   [data-pane-style="glass"] .pane-glass-tint,
   [data-pane-style="glass"] .pane-glass-shine,
   [data-pane-style="glass"] .pane-glass-rim {
     display: none;
+  }
+  [data-pane-style="glass"] .pane-glass-warp {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    filter: none !important;
   }
 }
 @media (prefers-reduced-motion: reduce) {
