@@ -76,6 +76,26 @@ export function Popover({trigger, open, onOpenChange, children, label, size = 'c
     <PopoverPrimitive.Portal><PopoverPrimitive.Content {...surface} aria-label={label} className={`ui-popover ui-popover-${size} ui-overlay-surface`} sideOffset={8} align="start" collisionPadding={12} updatePositionStrategy="always" onEscapeKeyDown={e => e.stopPropagation()}>{children}</PopoverPrimitive.Content></PopoverPrimitive.Portal>
   </PopoverPrimitive.Root>;
 }
+
+/** Shared title + quiet close for colour and image popovers; caller owns dismiss/commit. */
+export function PopoverHead({title, closeLabel, onClose, disabled}: {
+  title: string; closeLabel: string; onClose: () => void; disabled?: boolean;
+}) {
+  return <div className="colour-popover-head">
+    <Text as="span" variant="label">{title}</Text>
+    <IconButton variant="quiet" label={closeLabel} disabled={disabled} onClick={onClose}>
+      <X size={16} aria-hidden="true" />
+    </IconButton>
+  </div>;
+}
+
+/** Cancel/OK footer for image pickers that snapshot and restore on cancel. */
+export function ImagePopoverActions({cancel, confirm}: {cancel: () => void; confirm: () => void}) {
+  return <div className="ui-actions">
+    <Button onClick={cancel}>Cancel</Button>
+    <Button variant="primary" onClick={confirm}>OK</Button>
+  </div>;
+}
 export function DropdownMenu({trigger, items, open, onOpenChange}: {trigger: ReactElement; items: {label: string; icon?: ReactNode; disabled?: boolean; onSelect?: () => void}[]; open?: boolean; onOpenChange?: (open: boolean) => void}) {
   const surface = useSurface();
   return <Menu.Root open={open} onOpenChange={onOpenChange}><Menu.Trigger asChild>{trigger}</Menu.Trigger><Menu.Portal><Menu.Content {...surface} className="ui-menu ui-overlay-surface" align="end" sideOffset={8} collisionPadding={12}>

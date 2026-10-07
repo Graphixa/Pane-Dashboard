@@ -56,40 +56,9 @@
   margin: 14px 0 0;
   gap: 8px;
 }
-.settings-section > label:first-of-type {
-  margin-top: 0;
-}
 .settings-dialog .ui-input,
 .settings-dialog .ui-select {
   font-size: var(--type-body);
-}
-.settings-dialog .settings-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  padding: var(--space-2) 0;
-}
-.settings-dialog .settings-row + .settings-row {
-  border-top: var(--border-width) solid color-mix(in srgb, var(--line) 65%, transparent);
-}
-.settings-row input[type="number"] {
-  width: 90px;
-  flex-shrink: 0;
-}
-.settings-row .ui-select {
-  width: 180px;
-  flex-shrink: 0;
-}
-.settings-row .ui-select[aria-label="Font"] {
-  width: 200px;
-}
-.settings-dialog .fields {
-  gap: var(--space-5);
-}
-.settings-dialog .fields .ui-field {
-  margin-top: 0;
 }
 .ui-disclosure {
   margin: var(--space-5) 0 var(--space-3);
@@ -116,11 +85,7 @@
   font-size: var(--type-support);
   min-width: 0;
 }
-.settings-status p {
-  margin: 0;
-}
-.settings-dialog button:focus-visible,
-.settings-dialog a:focus-visible {
+.settings-dialog :where(.ui-button, a):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
@@ -128,17 +93,17 @@
   gap: 12px;
   margin: 12px 0 0;
 }
-.settings-dialog .choice-row button {
+.settings-dialog .choice-row .ui-button {
   font-size: var(--type-body);
 }
-.settings-dialog .choice-row button[aria-pressed="true"] {
+.settings-dialog .choice-row .ui-button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--accent-text);
   border-color: var(--accent);
   box-shadow: none;
 }
-.settings-dialog .logo-choices > button[aria-pressed="true"],
-.settings-dialog .theme-choices > button[aria-pressed="true"] {
+.settings-dialog .logo-choices > .ui-button[aria-pressed="true"],
+.settings-dialog .theme-choices > .ui-button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--text);
   border-color: var(--accent);
@@ -148,8 +113,8 @@
 .theme-choices {
   max-width: 520px;
 }
-.logo-choices > button,
-.theme-choices > button {
+.logo-choices > .ui-button,
+.theme-choices > .ui-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -159,8 +124,8 @@
   gap: 10px;
   padding: 12px;
 }
-.logo-choices > button[aria-pressed="true"]::after,
-.theme-choices > button[aria-pressed="true"]::after {
+.logo-choices > .ui-button[aria-pressed="true"]::after,
+.theme-choices > .ui-button[aria-pressed="true"]::after {
   content: "✓";
   position: absolute;
   top: 7px;
@@ -208,7 +173,7 @@
 .finish-choices {
   max-width: 320px;
 }
-.finish-choices button {
+.finish-choices .ui-button {
   flex: 1;
 }
 .accent-swatches {
@@ -325,11 +290,7 @@
   gap: 8px;
   margin-bottom: 10px;
 }
-.colour-popover-head strong {
-  font-size: var(--type-support);
-  font-weight: var(--weight-semibold);
-}
-.colour-popover-head .icon-button {
+.colour-popover-head .ui-icon-button {
   width: 28px;
   height: 28px;
   padding: 0;
@@ -381,7 +342,7 @@
   border-radius: 8px;
   padding: 6px 8px;
 }
-.accent-swatches button,
+.accent-swatches .ui-button,
 .accent-swatch {
   width: 36px;
   height: 36px;
@@ -394,12 +355,12 @@
   cursor: pointer;
   flex-shrink: 0;
 }
-.accent-swatches button span,
+.accent-swatches .ui-button span,
 .accent-swatch span {
   color: inherit;
   filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 55%));
 }
-.accent-swatches button[aria-pressed="true"],
+.accent-swatches .ui-button[aria-pressed="true"],
 .accent-swatch[aria-pressed="true"],
 .accent-swatch[aria-expanded="true"] {
   border-color: var(--accent);
@@ -415,7 +376,7 @@
   max-width: 320px;
   margin: 0 0 16px;
 }
-.logo-choices > button {
+.logo-choices > .ui-button {
   padding: 10px;
   gap: 8px;
 }
@@ -470,12 +431,6 @@
   }
   .settings-footer-actions {
     margin-left: auto;
-  }
-  .settings-dialog .fields {
-    flex-direction: column;
-  }
-  .settings-row .ui-select {
-    width: 130px;
   }
 }
 

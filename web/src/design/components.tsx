@@ -109,6 +109,6 @@ export function SettingsRow({ label, hint, children, className }: {
 }
 
 export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup, ScrollArea } from "./controls";
-export { Modal, Popover, DropdownMenu, useConfirmation } from "./overlays";
+export { Modal, Popover, PopoverHead, ImagePopoverActions, DropdownMenu, useConfirmation } from "./overlays";
 export type { ConfirmRequest } from "./overlays";
 export { ThemeSurface } from "./surface";

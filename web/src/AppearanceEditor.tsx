@@ -1,10 +1,10 @@
-import { Button, Label, Input, Select, SelectOption, Popover, IconButton, Text, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
+import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import {
   useEffect,
   useRef,
   useState,
 } from "react";
-import { Server, LayoutGrid, PanelsTopLeft, ImagePlus, X } from "lucide-react";
+import { Server, LayoutGrid, PanelsTopLeft, ImagePlus } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -71,16 +71,13 @@ function IntegerField({
   );
 }
 
-function ImagePopoverActions({cancel, confirm}: {cancel: () => void; confirm: () => void}) {
-  return <div className="ui-actions"><Button onClick={cancel}>Cancel</Button><Button variant="primary" onClick={confirm}>OK</Button></div>;
-}
 function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLive}: {
   title: string; kind: 'icon' | 'logo'; value: string; hint: string; triggerLabel: string; onBusy: (busy: boolean) => void; onLive: (value: string) => void;
 }) {
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), revert = useRef(value);
   const cancel = () => {if(busy) return; onLive(revert.current); setOpen(false);};
   return <Popover label={title} size="image" open={open} onOpenChange={next => {if(next) {revert.current = value; setOpen(true);} else cancel();}} trigger={<Button><ImagePlus size={16} aria-hidden="true" />{triggerLabel}</Button>}>
-    <div className="colour-popover-head"><Text as="span" variant="label">{title}</Text><IconButton variant="quiet" label={`Close ${title.toLowerCase()} picker`} disabled={busy} onClick={cancel}><X size={16} aria-hidden="true" /></IconButton></div>
+    <PopoverHead title={title} closeLabel={`Close ${title.toLowerCase()} picker`} disabled={busy} onClose={cancel} />
     <ImageField label="Logo image" kind={kind} value={value} change={onLive} onBusy={v => {setBusy(v); onBusy(v);}} hint={hint} />
     <ImagePopoverActions cancel={cancel} confirm={() => {if(!busy) setOpen(false);}} />
   </Popover>;

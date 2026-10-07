@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Play, Plus, Trash2, X } from "lucide-react";
+import { Check, Play, Plus, Trash2 } from "lucide-react";
 import {
   Button,
   IconButton,
@@ -7,6 +7,8 @@ import {
   Label,
   Modal,
   Popover,
+  PopoverHead,
+  ImagePopoverActions,
   Range,
   Select,
   SelectOption,
@@ -208,14 +210,7 @@ function ColourSwatch({
         </Button>
       }
     >
-      <div className="colour-popover-head">
-        <Text as="span" variant="label">
-          {label}
-        </Text>
-        <IconButton variant="quiet" label={`Close ${label} picker`} onClick={close}>
-          <X size={16} aria-hidden="true" />
-        </IconButton>
-      </div>
+      <PopoverHead title={label} closeLabel={`Close ${label} picker`} onClose={close} />
       <ColourPopoverFields
         pickerLabel={label}
         swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : colour}
@@ -258,23 +253,6 @@ function OverlayModeSwatch({
         </span>
       </span>
     </Button>
-  );
-}
-
-function ImagePopoverActions({
-  cancel,
-  confirm,
-}: {
-  cancel: () => void;
-  confirm: () => void;
-}) {
-  return (
-    <div className="ui-actions">
-      <Button onClick={cancel}>Cancel</Button>
-      <Button variant="primary" onClick={confirm}>
-        OK
-      </Button>
-    </div>
   );
 }
 
@@ -355,19 +333,12 @@ function BackgroundCustomAdd({
         </Button>
       }
     >
-      <div className="colour-popover-head">
-        <Text as="span" variant="label">
-          Add image
-        </Text>
-        <IconButton
-          variant="quiet"
-          label="Close custom image picker"
-          disabled={busy}
-          onClick={cancel}
-        >
-          <X size={16} aria-hidden="true" />
-        </IconButton>
-      </div>
+      <PopoverHead
+        title="Add image"
+        closeLabel="Close custom image picker"
+        disabled={busy}
+        onClose={cancel}
+      />
       <ImageField
         label="Background image"
         kind="background"
@@ -387,8 +358,7 @@ function BackgroundCustomAdd({
         }}
         hint="PNG, JPEG or WebP, up to 8 MiB. Newest uploads appear first."
       />
-      <Label className="settings-row">
-        <span>Image position</span>
+      <SettingsRow label="Image position">
         <Select
           value={settings.position}
           onValueChange={(value) =>
@@ -401,7 +371,7 @@ function BackgroundCustomAdd({
           <SelectOption value="top">Top</SelectOption>
           <SelectOption value="bottom">Bottom</SelectOption>
         </Select>
-      </Label>
+      </SettingsRow>
       <ImagePopoverActions cancel={cancel} confirm={confirm} />
     </Popover>
   );
@@ -918,21 +888,14 @@ function WallpaperCustomColour({
         </Button>
       }
     >
-      <div className="colour-popover-head">
-        <Text as="span" variant="label">
-          Custom colour
-        </Text>
-        <IconButton
-          variant="quiet"
-          label="Close Custom colour picker"
-          onClick={() => {
-            flush();
-            setOpen(false);
-          }}
-        >
-          <X size={16} aria-hidden="true" />
-        </IconButton>
-      </div>
+      <PopoverHead
+        title="Custom colour"
+        closeLabel="Close Custom colour picker"
+        onClose={() => {
+          flush();
+          setOpen(false);
+        }}
+      />
       <ColourPopoverFields
         pickerLabel="Custom colour"
         swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}

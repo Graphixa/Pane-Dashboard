@@ -304,7 +304,7 @@
   gap: 8px;
   margin: 12px 0;
 }
-.choice-row button {
+.choice-row .ui-button {
   font-size: var(--type-body);
 }
 .choice-row [aria-pressed="true"] {

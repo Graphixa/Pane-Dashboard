@@ -506,6 +506,7 @@ body {
   margin-top: 10px;
 }
 .empty-dashboard small {
+  font-size: var(--type-caption);
   color: var(--muted);
 }
 .loading {
@@ -543,7 +544,7 @@ body {
   display: flex;
   gap: 14px;
 }
-.fields > label {
+.fields > .ui-field {
   flex: 1;
   min-width: 0;
 }
@@ -571,7 +572,7 @@ fieldset {
   border-radius: 10px;
   margin: 8px 0;
 }
-.discovery-list label {
+.discovery-list .ui-label {
   margin: 6px 0;
 }
 .discovery-list small {
@@ -656,10 +657,7 @@ fieldset {
   .fields {
     flex-wrap: wrap;
   }
-  .fields > label {
-    min-width: 100px;
-  }
-  .icon-picker {
+  .ui-icon-picker {
     grid-template-columns: repeat(4, 1fr);
   }
   .discovery-fields {

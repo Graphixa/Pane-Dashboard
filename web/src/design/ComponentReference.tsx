@@ -4,7 +4,7 @@ import { CSSProperties, useState } from "react";
 import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
-  Button, Checkbox, Disclosure, DropdownMenu, IconButton, Modal, Notice, Popover,
+  Button, Checkbox, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
   Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
 } from "./components";
 
@@ -22,6 +22,7 @@ export default function ComponentReference() {
   const [labels, setLabels] = useState(true);
   const [blur, setBlur] = useState(16);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checked, setChecked] = useState(true);
   const { confirm, confirmation } = useConfirmation();
@@ -100,11 +101,18 @@ export default function ComponentReference() {
           <Text variant="support">Disclosure content uses the same spacing as sections.</Text>
         </Disclosure>
       </Section>
-      <Section title="Overlays" description="Popover, dropdown and confirmation share portal surface styling. ScrollArea themes overflow instead of a raw scrollbar.">
+      <Section title="Overlays" description="Popover sizes are compact (colour chips, live commit) and image (upload pickers, cancel restores). PopoverHead and ImagePopoverActions are shared chrome; commit semantics stay with the caller. ScrollArea themes overflow instead of a raw scrollbar.">
         <div className="reference-actions">
           <Popover label="Example popover" open={popoverOpen} onOpenChange={setPopoverOpen}
             trigger={<Button>Open popover <ChevronDown size={16} aria-hidden="true" /></Button>}>
+            <PopoverHead title="Compact" closeLabel="Close compact popover" onClose={() => setPopoverOpen(false)} />
             <Text variant="support">Anchored content for compact choices.</Text>
+          </Popover>
+          <Popover label="Image popover" size="image" open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}
+            trigger={<Button>Open image popover <ChevronDown size={16} aria-hidden="true" /></Button>}>
+            <PopoverHead title="Add image" closeLabel="Close image popover" onClose={() => setImagePopoverOpen(false)} />
+            <Text variant="support">Wider surface for upload fields. Cancel restores the prior value.</Text>
+            <ImagePopoverActions cancel={() => setImagePopoverOpen(false)} confirm={() => setImagePopoverOpen(false)} />
           </Popover>
           <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}
             trigger={<Button>Open menu <Plus size={16} aria-hidden="true" /></Button>}

@@ -153,7 +153,10 @@ describe("interaction boundary", () => {
     )!;
     expect(app.getAttribute("href")).toBeNull();
     expect(app.getAttribute("title")).toBe("Plex: address not configured");
-    expect(app.querySelector(".artwork")).not.toBeNull();
+    const artwork = app.querySelector(".artwork");
+    expect(artwork).not.toBeNull();
+    expect(getComputedStyle(artwork!).opacity).toBe("1");
+    expect(getComputedStyle(app).opacity).toBe("1");
   });
   it("edits the external title inline without consuming slots", async () => {
     const result = render(<Dashboard />);
