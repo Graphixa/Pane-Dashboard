@@ -112,7 +112,7 @@ describe("global appearance", () => {
     );
     expect(scene().style.getPropertyValue("--motion-duration")).toBe("20.8s");
   });
-  it("keeps font and motion when visiting Appearance then Background", () => {
+  it("keeps font and motion when visiting Appearance then Background", async () => {
     const cfg = config();
     cfg.appearance.fontFamily = "rubik";
     cfg.appearance.background = {
@@ -136,9 +136,11 @@ describe("global appearance", () => {
         }}
       />,
     );
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
     fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const last = previews.at(-1)!;
     expect(last.appearance.fontFamily).toBe("rubik");
     expect(last.appearance.background?.motion).toBe(false);
@@ -330,7 +332,7 @@ describe("global appearance", () => {
     expect(
       screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Panes" }));
     fireEvent.click(screen.getByRole("button", { name: "Glass" }));
@@ -366,12 +368,37 @@ describe("global appearance", () => {
     expect(
       screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
     expect(screen.getByText("Blue")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
       kind: "solid",
       colour: "#7db7ff",
+    });
+  });
+  it("discards wallpaper preview when Close is used", () => {
+    const apply = vi.fn(),
+      c = config();
+    render(
+      <Settings
+        config={c}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Blue" }));
+    expect(
+      screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByText("None")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
+      kind: "none",
     });
   });
   it("tints solid wallpaper over theme --bg instead of opaque fill", () => {
@@ -388,6 +415,45 @@ describe("global appearance", () => {
     expect(container.querySelector(".scene")?.getAttribute("style")).toContain(
       "color-mix",
     );
+  });
+  it("paints a custom tint during the drag and commits the draft once", async () => {
+    const previews: Config[] = [];
+    render(
+      <>
+        <Background
+          settings={{ ...defaultBackground, kind: "solid", colour: "#a2cbbb" }}
+        />
+        <Settings
+          config={config()}
+          apply={vi.fn()}
+          imported={vi.fn()}
+          close={vi.fn()}
+          readOnly={false}
+          onPreview={(draft) => {
+            if (draft) previews.push(draft);
+          }}
+        />
+      </>,
+    );
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom colour" }));
+    const input = await screen.findByLabelText("Pick Custom colour");
+    const before = previews.length;
+    fireEvent.input(input, { target: { value: "#112233" } });
+    fireEvent.change(input, { target: { value: "#445566" } });
+    const sceneStyle = document.querySelector(".scene")?.getAttribute("style") ?? "";
+    expect(sceneStyle).toContain("#445566");
+    expect(
+      previews.slice(before).some((draft) => draft.appearance.background?.colour === "#445566"),
+    ).toBe(false);
+    await waitFor(() => {
+      expect(previews.at(-1)?.appearance.background).toMatchObject({
+        kind: "solid",
+        colour: "#445566",
+      });
+    });
   });
   it("keeps My images newest-first and does not reshuffle on select", () => {
     const a = png,

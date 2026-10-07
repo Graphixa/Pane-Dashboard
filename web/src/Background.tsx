@@ -55,6 +55,7 @@ export default function Background({
     <div
       aria-hidden="true"
       className={`scene scene-${b.kind} motion-${b.motionStyle}${paused ? " motion-paused" : ""}`}
+      data-wallpaper-tint=""
       style={
         {
           "--motion-strength": b.intensity / 100,
@@ -63,7 +64,7 @@ export default function Background({
         } as CSSProperties
       }
     >
-      <div className="scene-stage" style={{ background: paint }}>
+      <div className="scene-stage" data-wallpaper-tint="" style={{ background: paint }}>
         {activeImage && (
           <img
             className="scene-image"

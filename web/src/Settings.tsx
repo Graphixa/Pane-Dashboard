@@ -53,20 +53,38 @@ export default function Settings({
   onPreview?: (draft: Config | null) => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-const [page, setPage] = useState<Page>("general");
+  const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [previewAdjust, setPreviewAdjust] = useState(false);
   const initial = useRef(settingsValue(config));
   const content = useRef<HTMLDivElement>(null);
+  const pendingPreview = useRef<Config | null>(null);
+  const previewFrame = useRef(0);
+  const onPreviewRef = useRef(onPreview);
+  const configRef = useRef(config);
+  onPreviewRef.current = onPreview;
+  configRef.current = config;
   const dirty = settingsValue(draft) !== initial.current;
-  const previewFrom = (d: Config) =>
-    onPreview?.({
-      ...config,
+  const flushPreview = () => {
+    previewFrame.current = 0;
+    const next = pendingPreview.current;
+    pendingPreview.current = null;
+    if (next) onPreviewRef.current?.(next);
+  };
+  /** Coalesce shell previews to one per frame so colour-drag ticks do not thrash glass. */
+  const previewFrom = (d: Config) => {
+    if (!onPreviewRef.current) return;
+    const base = configRef.current;
+    pendingPreview.current = {
+      ...base,
       dashboard: d.dashboard,
       appearance: d.appearance,
-    });
+    };
+    if (previewFrame.current) return;
+    previewFrame.current = requestAnimationFrame(flushPreview);
+  };
   const updateDraft = (c: Config | ((prev: Config) => Config)) => {
     setDraft((prev) => {
       const next = typeof c === "function" ? c(prev) : c;
@@ -89,6 +107,12 @@ const [page, setPage] = useState<Page>("general");
   };
   useEffect(() => {
     previewFrom(draft);
+    return () => {
+      if (previewFrame.current) cancelAnimationFrame(previewFrame.current);
+      previewFrame.current = 0;
+      // Publish the latest pending snapshot before unmount; Dashboard clears on close.
+      if (pendingPreview.current) flushPreview();
+    };
   }, []);
   useEffect(() => {
     if (!dirty && !busy) return;

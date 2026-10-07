@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Play, Plus, Trash2, X } from "lucide-react";
+import { Check, Play, Plus, Trash2, X } from "lucide-react";
 import {
   AspectRatio,
   Button,
@@ -9,7 +9,6 @@ import {
   Modal,
   Popover,
   Range,
-  ScrollArea,
   Select,
   SelectOption,
   SettingsGroup,
@@ -673,6 +672,22 @@ function WallpaperShelf({
   );
 }
 
+/** Readable plus/check on a tint swatch. */
+function chipInk(hex: string) {
+  const n = Number.parseInt(hex.slice(1), 16);
+  if (!Number.isFinite(n)) return "#ffffff";
+  const y = ((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114;
+  return y > 160000 ? "#1a222e" : "#ffffff";
+}
+
+/** Scene tint only. Skips the Settings/dashboard render until the drag settles. */
+function paintWallpaperTint(hex: string) {
+  const paint = solidBackgroundPaint(hex);
+  document.querySelectorAll<HTMLElement>("[data-wallpaper-tint]").forEach((node) => {
+    node.style.background = paint;
+  });
+}
+
 function WallpaperColourChip({
   name,
   colour,
@@ -696,9 +711,11 @@ function WallpaperColourChip({
     >
       <span
         className="wallpaper-colour-chip-paint"
-        style={{ background: colour }}
+        style={{ background: colour, color: chipInk(colour) }}
         aria-hidden="true"
-      />
+      >
+        {pressed ? <Check size={16} strokeWidth={2.75} /> : null}
+      </span>
     </Button>
   );
 }
@@ -713,34 +730,93 @@ function WallpaperCustomColour({
   onColour: (colour: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [live, setLive] = useState(colour);
   const [hex, setHex] = useState(colour);
-  useEffect(() => setHex(colour), [colour]);
+  const colourRef = useRef(colour);
+  const onColourRef = useRef(onColour);
+  const pending = useRef("");
+  const commitTimer = useRef(0);
+  colourRef.current = colour;
+  onColourRef.current = onColour;
+  const flush = () => {
+    window.clearTimeout(commitTimer.current);
+    const next = pending.current;
+    pending.current = "";
+    if (!next || next === colourRef.current.toLowerCase()) return;
+    onColourRef.current(next);
+  };
+  useEffect(() => {
+    const parent = colour.toLowerCase();
+    if (pending.current && pending.current !== parent) {
+      window.clearTimeout(commitTimer.current);
+      pending.current = "";
+    }
+    setLive(colour);
+    setHex(colour);
+  }, [colour]);
+  useEffect(
+    () => () => {
+      window.clearTimeout(commitTimer.current);
+      const next = pending.current;
+      pending.current = "";
+      if (next && next !== colourRef.current.toLowerCase()) onColourRef.current(next);
+    },
+    [],
+  );
+  const noteInput = (value: string) => {
+    const next = value.toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(next)) return;
+    pending.current = next;
+    setLive(next);
+    setHex(next);
+    paintWallpaperTint(next);
+    // ponytail: one draft commit after the drag. Per-tick commits re-render glass.
+    window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(flush, 200);
+  };
   const applyHex = (value: string) => {
     const next = value.startsWith("#") ? value : `#${value}`;
     if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
-      setHex(colour);
+      setHex(colourRef.current);
       return;
     }
     const normalised = next.toLowerCase();
+    window.clearTimeout(commitTimer.current);
+    pending.current = "";
+    setLive(normalised);
     setHex(normalised);
-    onColour(normalised);
+    paintWallpaperTint(normalised);
+    if (normalised !== colourRef.current.toLowerCase()) onColourRef.current(normalised);
   };
+  const picking = open && live.toLowerCase() !== colour.toLowerCase();
+  const filled = pressed || picking;
   return (
     <Popover
       label="Custom colour"
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(next) => {
+        if (!next) flush();
+        setOpen(next);
+      }}
       trigger={
         <Button
           variant="surface"
           type="button"
-          className="wallpaper-colour-chip wallpaper-colour-chip-add"
+          className={`wallpaper-colour-chip wallpaper-colour-chip-add${picking ? " wallpaper-colour-chip-picking" : ""}${filled ? " wallpaper-colour-chip-filled" : ""}`}
           aria-label="Custom colour"
           title="Custom colour"
           aria-pressed={pressed}
         >
-          <span className="wallpaper-colour-chip-paint" aria-hidden="true">
-            <Plus size={18} />
+          <span
+            className="wallpaper-colour-chip-paint"
+            style={filled ? { background: live, color: chipInk(live) } : undefined}
+            aria-hidden="true"
+          >
+            {pressed && !open ? (
+              <Check size={16} strokeWidth={2.75} />
+            ) : (
+              <Plus size={16} />
+            )}
           </span>
         </Button>
       }
@@ -752,7 +828,10 @@ function WallpaperCustomColour({
         <IconButton
           variant="quiet"
           label="Close Custom colour picker"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            flush();
+            setOpen(false);
+          }}
         >
           <X size={16} aria-hidden="true" />
         </IconButton>
@@ -762,11 +841,8 @@ function WallpaperCustomColour({
           <Input
             type="color"
             aria-label="Pick Custom colour"
-            value={/^#[a-fA-F0-9]{6}$/.test(colour) ? colour : "#a2cbbb"}
-            onChange={(e) => {
-              onColour(e.target.value.toLowerCase());
-              setHex(e.target.value);
-            }}
+            value={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}
+            onChange={(e) => noteInput(e.target.value)}
           />
         </Label>
         <Label className="colour-popover-hex">
@@ -942,6 +1018,7 @@ export default function BackgroundSettings({
   const [motionOpen, setMotionOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const librarySnapshot = useRef<BackgroundSettings | null>(null);
   const lastMotion = useRef<MotionStyle>(
     b.motionStyle !== "none" ? b.motionStyle : defaultMotionFor(b.kind),
   );
@@ -964,10 +1041,32 @@ export default function BackgroundSettings({
   const canAdjust = b.kind !== "none";
   const closeMotion = () => setMotionOpen(false);
   const closeOverlay = () => setOverlayOpen(false);
-  const closeLibrary = () => {
+  const snapshotBackground = (value: BackgroundSettings): BackgroundSettings => ({
+    ...value,
+    images: [...(value.images ?? [])],
+  });
+  const openLibrary = () => {
+    librarySnapshot.current = snapshotBackground(b);
+    setCollection(null);
+    setCustomOpen(false);
+    setLibraryOpen(true);
+  };
+  const finishLibrary = () => {
     setCollection(null);
     setCustomOpen(false);
     setLibraryOpen(false);
+  };
+  /** Keep the live preview and close the sheet. */
+  const commitLibrary = () => {
+    librarySnapshot.current = null;
+    finishLibrary();
+  };
+  /** X / Escape: restore the snapshot taken on open. */
+  const discardLibrary = () => {
+    const snap = librarySnapshot.current;
+    librarySnapshot.current = null;
+    if (snap) background(snap);
+    finishLibrary();
   };
   const backToFolders = () => {
     setCustomOpen(false);
@@ -1032,7 +1131,7 @@ export default function BackgroundSettings({
               <Button
                 type="button"
                 className="background-current-change"
-                onClick={() => setLibraryOpen(true)}
+                onClick={openLibrary}
               >
                 Change wallpaper
               </Button>
@@ -1119,52 +1218,35 @@ export default function BackgroundSettings({
           placement="bottom"
           backdrop="none"
           title={collection ? collectionTitle : "Choose wallpaper"}
-          close={closeLibrary}
+          close={discardLibrary}
           className="background-library-dialog"
         >
-          {collection ? (
-            <>
-              <ScrollArea
-                orientation="vertical"
-                type="scroll"
-                className="background-library-body-scroll"
-                aria-label={collectionTitle}
-              >
-                <div className="background-library-grid">
-                  {collection === "my-images" && (
-                    <MyImagesTiles
-                      b={b}
-                      onBusy={onBusy}
-                      background={background}
-                      customOpen={customOpen}
-                      onCustomOpenChange={setCustomOpen}
-                      onRemoveImage={removeLibraryImage}
-                    />
-                  )}
-                  {collection === "gradients" && (
-                    <StillTiles b={b} background={background} />
-                  )}
-                  {collection === "dynamic" && (
-                    <AnimatedTiles b={b} background={background} />
-                  )}
-                </div>
-              </ScrollArea>
-              <div className="ui-actions background-library-actions">
-                <Button type="button" variant="secondary" onClick={backToFolders}>
-                  Back
-                </Button>
-                <Button type="button" variant="primary" onClick={closeLibrary}>
-                  Select
-                </Button>
+          <div
+            className="background-library-body-scroll"
+            role="region"
+            aria-label={collection ? collectionTitle : "Wallpaper shelves"}
+            tabIndex={0}
+          >
+            {collection ? (
+              <div className="background-library-grid">
+                {collection === "my-images" && (
+                  <MyImagesTiles
+                    b={b}
+                    onBusy={onBusy}
+                    background={background}
+                    customOpen={customOpen}
+                    onCustomOpenChange={setCustomOpen}
+                    onRemoveImage={removeLibraryImage}
+                  />
+                )}
+                {collection === "gradients" && (
+                  <StillTiles b={b} background={background} />
+                )}
+                {collection === "dynamic" && (
+                  <AnimatedTiles b={b} background={background} />
+                )}
               </div>
-            </>
-          ) : (
-            <ScrollArea
-              orientation="vertical"
-              type="scroll"
-              className="background-library-body-scroll"
-              aria-label="Wallpaper shelves"
-            >
+            ) : (
               <div className="background-library-shelves">
                 <WallpaperColoursShelf
                   b={b}
@@ -1203,8 +1285,18 @@ export default function BackgroundSettings({
                   <AnimatedTiles b={b} background={background} />
                 </WallpaperShelf>
               </div>
-            </ScrollArea>
-          )}
+            )}
+          </div>
+          <div className="ui-actions background-library-actions">
+            {collection ? (
+              <Button type="button" variant="secondary" onClick={backToFolders}>
+                Back
+              </Button>
+            ) : null}
+            <Button type="button" variant="primary" onClick={commitLibrary}>
+              Select
+            </Button>
+          </div>
         </Modal>
       )}
 

@@ -47,6 +47,9 @@ const setup = () => {
 };
 const page = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
+/** Settings coalesces onPreview to animation frames. */
+const flushPreview = () =>
+  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 describe("settings navigation and draft safety", () => {
   it("keeps a draft across sections and blocks import and backup until it is applied", () => {
     const { apply } = setup();
@@ -137,6 +140,8 @@ describe("settings navigation and draft safety", () => {
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains("ui-dialog-bottom")).toBe(true);
     expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "My images" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
@@ -148,6 +153,18 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    expect(screen.getByText("None")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    expect(
+      screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
+    ).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    expect(screen.getByText("Mint")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("button", { name: "Show all My images" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Show all Gradients" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Show all Dynamic" })).toBeTruthy();
@@ -160,7 +177,6 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("button", { name: /Scroll Gradients/ })).toBeNull();
     expect(document.querySelector(".background-library-grid")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");
@@ -172,6 +188,7 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
+    expect(screen.getByText("Forest")).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Motion effects" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Wallpaper overlay" })).toBeTruthy();
     const motionCustomize = screen.getAllByRole("button", { name: "Customize" })[0];
@@ -185,18 +202,25 @@ describe("settings navigation and draft safety", () => {
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    fireEvent.click(screen.getByRole("button", { name: "Forest" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     expect(
-      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
+    expect(screen.getByText("Forest")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
     expect(
-      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
+      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
     ).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Select" }));
     expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
+    expect(screen.getByText("Ocean")).toBeTruthy();
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
@@ -273,13 +297,15 @@ describe("settings navigation and draft safety", () => {
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
   });
-  it("previews draft appearance without applying until Apply settings", () => {
+  it("previews draft appearance without applying until Apply settings", async () => {
     const { apply, preview } = setup();
+    await flushPreview();
     expect(preview).toHaveBeenCalled();
     const baseline = preview.mock.calls.at(-1)?.[0] as Config;
     expect(baseline.appearance.theme).toBe("dark");
     page("Appearance");
     page("Daylight");
+    await flushPreview();
     expect(apply).not.toHaveBeenCalled();
     const live = preview.mock.calls.at(-1)?.[0] as Config;
     expect(live.appearance.theme).toBe("light");
@@ -288,10 +314,26 @@ describe("settings navigation and draft safety", () => {
     expect(apply).toHaveBeenCalledOnce();
     expect(apply.mock.calls[0][0].appearance.theme).toBe("light");
   });
+  it("coalesces shell previews to one call per animation frame", async () => {
+    const { preview } = setup();
+    await flushPreview();
+    const before = preview.mock.calls.length;
+    page("Appearance");
+    page("Daylight");
+    page("Midnight");
+    page("Daylight");
+    expect(preview.mock.calls.length).toBe(before);
+    await flushPreview();
+    expect(preview.mock.calls.length).toBe(before + 1);
+    expect(
+      (preview.mock.calls.at(-1)?.[0] as Config).appearance.theme,
+    ).toBe("light");
+  });
   it("discards the preview when Cancel confirms without applying", async () => {
     const { apply, close, preview } = setup();
     page("Appearance");
     page("Daylight");
+    await flushPreview();
     expect(
       (preview.mock.calls.at(-1)?.[0] as Config).appearance.theme,
     ).toBe("light");

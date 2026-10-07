@@ -394,34 +394,38 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  /* Fixed sheet height so shelves fill (not mid-tile clip) and Show all matches. */
-  height: min(68dvh, 560px);
-  max-height: min(68dvh, 560px);
-  overflow: hidden; /* no native OS scrollbars on the sheet */
+  /* Tall enough for colours + shelves; body scrolls for the rest. */
+  height: min(75dvh, 640px);
+  max-height: min(75dvh, 640px);
+  overflow: hidden; /* clip sheet chrome only; body scrolls inside */
+}
+.background-library-dialog > .modal-title {
+  flex: 0 0 auto;
+  margin-bottom: var(--space-3);
 }
 .background-library-body-scroll {
-  flex: 1 1 auto;
+  /* Size from the sheet, not content height — keeps Dynamic reachable via scroll. */
+  flex: 1 1 0;
   min-height: 0;
   min-width: 0;
-  /* Room for themed vertical thumb so it sits in the sheet gutter. */
-  padding-right: 2px;
-}
-/* Flex child fills the sheet; do not cap viewport shorter than the dialog body. */
-.background-library-body-scroll .ui-scroll-area-viewport {
-  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 .background-library-shelves {
   display: grid;
   gap: var(--space-4);
   min-width: 0;
-  padding-bottom: var(--space-2);
+  /* Last shelf (Dynamic) must clear the fold above Select. */
+  padding-bottom: var(--space-5);
 }
 .background-library-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   min-width: 0;
-  padding-bottom: var(--space-2);
+  padding-bottom: var(--space-5);
 }
 .background-library-grid .background-swatch {
   width: 100%;
@@ -454,12 +458,17 @@
   font-weight: var(--weight-semibold);
   color: var(--muted);
 }
-/* Edge-bleed: next tile clips against the modal frame, not mid-padding. */
+/*
+  Horizontal shelf scroller. No negative left margin — that was clipping
+  Colours + the first chip against the dialog overflow. Right peek stays via
+  3.4-column tile width inside the padded content box.
+*/
 .background-shelf-bleed {
   --shelf-gap: var(--space-3);
   container-type: inline-size;
-  margin-inline: calc(-1 * var(--library-pad));
-  padding-inline-start: var(--library-pad);
+  margin-inline: 0;
+  /* Focus/selection rings on the first and last chips. */
+  padding-inline: 4px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -479,9 +488,10 @@
   box-sizing: border-box;
 }
 .background-shelf-compact .background-shelf-track {
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-items: center;
-  padding-block: 6px;
+  /* Room for the selection ring above/below chips. */
+  padding-block: 8px;
 }
 /* 3 full tiles + ~0.4 of a fourth peek. Applies to add/+ tiles and wraps alike. */
 .background-shelf-track > .background-swatch,
@@ -558,13 +568,22 @@
   flex: 0 0 40px;
   width: 40px;
   height: 40px;
+  min-width: 40px;
   min-height: 40px;
   padding: 0;
-  border-radius: 999px;
-  border: 2px solid transparent;
+  border: 0;
+  border-radius: 50%;
   background: transparent;
   color: var(--text);
   overflow: visible;
+  transition: none;
+}
+.wallpaper-colour-chip:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+.wallpaper-colour-chip:focus-visible {
+  outline: none;
 }
 .wallpaper-colour-chip-paint {
   display: flex;
@@ -573,18 +592,21 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent);
 }
-/* Same selected ring language as Appearance accent chips. */
-.wallpaper-colour-chip[aria-pressed="true"] {
-  border-color: var(--accent);
-  box-shadow:
-    0 0 0 2px var(--panel),
-    0 0 0 4px var(--accent);
+.wallpaper-colour-chip-paint svg {
+  display: block;
 }
-.wallpaper-colour-chip-add .wallpaper-colour-chip-paint {
+.wallpaper-colour-chip-add:not(.wallpaper-colour-chip-filled) .wallpaper-colour-chip-paint {
   background: var(--panel-high);
   color: var(--muted);
-  border: var(--border-width) solid var(--line);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* Flush accent ring. Replaces the hairline so selection is a single stroke. */
+.wallpaper-colour-chip[aria-pressed="true"] .wallpaper-colour-chip-paint,
+.wallpaper-colour-chip-picking .wallpaper-colour-chip-paint,
+.wallpaper-colour-chip:focus-visible .wallpaper-colour-chip-paint {
+  box-shadow: 0 0 0 var(--focus-width) var(--accent);
 }
 .background-swatch {
   display: flex;

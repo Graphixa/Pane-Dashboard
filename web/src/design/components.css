@@ -323,8 +323,11 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
   bottom: max(16px, env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   width: min(720px, calc(100vw - 32px));
-  max-height: min(42dvh, 380px);
   overscroll-behavior: contain;
+}
+/* Short sheet for motion/overlay adjusters; wallpaper library sets its own height. */
+.ui-dialog.ui-dialog-bottom:not(.background-library-dialog) {
+  max-height: min(42dvh, 380px);
 }
 .ui-dialog.background-library-dialog {
   overflow: hidden;
