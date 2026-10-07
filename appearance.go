@@ -42,7 +42,6 @@ type Glass struct {
 	Displacement int    `json:"displacement,omitempty" yaml:"displacement,omitempty"`
 	Aberration   int    `json:"aberration,omitempty" yaml:"aberration,omitempty"`
 	Saturation   int    `json:"saturation,omitempty" yaml:"saturation,omitempty"`
-	Elasticity   int    `json:"elasticity,omitempty" yaml:"elasticity,omitempty"`
 }
 type Palette struct {
 	Background string `json:"background" yaml:"background"`
@@ -155,10 +154,8 @@ func validateAppearance(c Config) error {
 		if !slices.Contains([]string{"solid", "glass"}, g.Mode) || g.Opacity < 0 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
 			return fmt.Errorf("invalid global glass settings")
 		}
-		if g.Displacement < 0 || g.Displacement > 150 || g.Aberration < 0 || g.Aberration > 5 || g.Elasticity < 0 || g.Elasticity > 100 {
-			return fmt.Errorf("invalid global glass settings")
-		}
-		if g.Saturation != 0 && (g.Saturation < 100 || g.Saturation > 200) {
+		if g.Displacement < 0 || g.Displacement > 100 || g.Aberration < 0 || g.Aberration > 100 ||
+			g.Saturation < 0 || g.Saturation > 100 {
 			return fmt.Errorf("invalid global glass settings")
 		}
 	}

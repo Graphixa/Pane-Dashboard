@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   Config,
   Pane,
-  capacity,
   clone,
   frame,
   freePosition,
@@ -45,7 +44,8 @@ describe("tile dimensions and placement", () => {
     const c = base();
     const p = newPane(c);
     expect(p.title).toBe("");
-    expect(capacity(p.layout)).toEqual({ cols: 4, rows: 1 });
+    expect(p.layout.w).toBe(4);
+    expect(p.layout.h).toBe(1);
     c.items.push(p);
     validate(c);
   });
@@ -244,7 +244,8 @@ describe("validation and imports", () => {
   it("sizes a Docker import in four-column rows", () => {
     const c = base();
     const p = newPane(c, "", Array(9).fill(pane().apps[0]));
-    expect(capacity(p.layout)).toEqual({ cols: 4, rows: 3 });
+    expect(p.layout.w).toBe(4);
+    expect(p.layout.h).toBe(3);
     c.items.push(p);
     validate(c);
   });

@@ -15,6 +15,7 @@ import {
   appearanceStyle,
   contrast,
   defaultBackground,
+  defaultGlass,
   imageReference,
   migrateBackground,
   motionDurationSeconds,
@@ -264,7 +265,7 @@ describe("global appearance", () => {
     expect(dark["--surface-fill"]).toBe("rgba(255,255,255,0.128)");
     expect(dark["--surface-fill"]).not.toContain("26,34,46");
     expect(dark["--surface-filter"]).toContain("20px");
-    expect(dark["--surface-filter"]).toContain("saturate(140%)");
+    expect(dark["--surface-filter"]).toContain("saturate(150%)");
     expect(dark["--surface-depth"]).toContain("14px 44px");
     expect(dark["--surface-depth"]).not.toContain("inset");
     expect(dark["--surface-shine"]).toContain("linear-gradient");
@@ -283,6 +284,15 @@ describe("global appearance", () => {
     expect(Number(light["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0])).toBeGreaterThan(
       Number(dark["--surface-fill"].match(/[\d.]+(?=\)$)/)?.[0]),
     );
+  });
+  it("defaults glass fine tuning to a clear wash with full edge bend", () => {
+    expect(defaultGlass).toMatchObject({
+      opacity: 15,
+      blur: 2,
+      saturation: 75,
+      displacement: 100,
+      aberration: 60,
+    });
   });
   it("floors frost when displacement is on so refraction warps the backdrop", () => {
     const style = appearanceStyle({
@@ -452,6 +462,53 @@ describe("global appearance", () => {
       expect(previews.at(-1)?.appearance.background).toMatchObject({
         kind: "solid",
         colour: "#445566",
+      });
+    });
+  });
+  it("paints a custom overlay during the drag and commits the draft once", async () => {
+    const previews: Config[] = [];
+    const background = {
+      ...defaultBackground,
+      kind: "gradient" as const,
+      preset: "ocean" as const,
+    };
+    const cfg = config();
+    cfg.appearance.background = background;
+    render(
+      <>
+        <Background settings={background} />
+        <Settings
+          config={cfg}
+          apply={vi.fn()}
+          imported={vi.fn()}
+          close={vi.fn()}
+          readOnly={false}
+          onPreview={(draft) => {
+            if (draft) previews.push(draft);
+          }}
+        />
+      </>,
+    );
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Custom colour" }));
+    const input = await screen.findByLabelText("Pick Custom colour");
+    const before = previews.length;
+    fireEvent.input(input, { target: { value: "#112233" } });
+    fireEvent.change(input, { target: { value: "#445566" } });
+    const overlayStyle =
+      document.querySelector(".scene-overlay")?.getAttribute("style") ?? "";
+    expect(overlayStyle).toContain("rgba(68, 85, 102, 0.25)");
+    expect(
+      previews
+        .slice(before)
+        .some((draft) => draft.appearance.background?.overlayColour === "#445566"),
+    ).toBe(false);
+    await waitFor(() => {
+      expect(previews.at(-1)?.appearance.background).toMatchObject({
+        overlay: "custom",
+        overlayColour: "#445566",
       });
     });
   });

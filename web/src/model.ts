@@ -66,9 +66,6 @@ export const slotsFromFrame = (g: Geometry): Geometry => ({
 });
 export const uid = () => crypto.randomUUID();
 export const clone = <T>(v: T): T => structuredClone(v);
-export function capacity(g: Geometry) {
-  return { cols: g.w, rows: g.h };
-}
 export function minimum(p: Pane) {
   const cols = Math.max(1, ...p.apps.map((a) => a.col + 1)),
     rows = Math.max(1, ...p.apps.map((a) => a.row + 1));
@@ -208,8 +205,7 @@ export function validate(value: unknown): asserts value is Config {
       (total += p.apps.length) > 2000
     )
       throw Error("Too many apps.");
-    const cap = capacity(g);
-    if (cap.cols < 1 || cap.rows < 1)
+    if (g.w < 1 || g.h < 1)
       throw Error("Pane is too small for an app cell.");
     const slots = new Set<string>();
     for (const a of p.apps) {
@@ -244,8 +240,8 @@ export function validate(value: unknown): asserts value is Config {
         throw Error("Use HTTP(S) addresses without credentials.");
       const slot = `${a.col}:${a.row}`;
       if (
-        !integer(a.col, 0, cap.cols - 1) ||
-        !integer(a.row, 0, cap.rows - 1) ||
+        !integer(a.col, 0, g.w - 1) ||
+        !integer(a.row, 0, g.h - 1) ||
         slots.has(slot)
       )
         throw Error(
@@ -319,10 +315,9 @@ export function importApps(
   } else {
     p = n.items.find((p) => p.id === destination)!;
     if (!p) throw Error("Choose a destination pane.");
-    const cap = capacity(p.layout);
     const slots: { col: number; row: number }[] = [];
-    for (let row = 0; row < cap.rows; row++)
-      for (let col = 0; col < cap.cols; col++)
+    for (let row = 0; row < p.layout.h; row++)
+      for (let col = 0; col < p.layout.w; col++)
         if (!p.apps.some((a) => a.col === col && a.row === row))
           slots.push({ col, row });
     if (slots.length < apps.length)

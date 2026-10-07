@@ -3,7 +3,6 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import * as Menu from '@radix-ui/react-dropdown-menu';
-import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { ChevronLeft, X } from 'lucide-react';
 import { Button, IconButton, Text } from './components';
 import { SurfaceProvider, useSurface } from './surface';
@@ -82,10 +81,6 @@ export function DropdownMenu({trigger, items, open, onOpenChange}: {trigger: Rea
   return <Menu.Root open={open} onOpenChange={onOpenChange}><Menu.Trigger asChild>{trigger}</Menu.Trigger><Menu.Portal><Menu.Content {...surface} className="ui-menu ui-overlay-surface" align="end" sideOffset={8} collisionPadding={12}>
     {items.map(item => <Menu.Item key={item.label} disabled={item.disabled} onSelect={item.onSelect} className="ui-menu-item">{item.icon}{item.label}</Menu.Item>)}
   </Menu.Content></Menu.Portal></Menu.Root>;
-}
-export function Tooltip({label, children}: {label: string; children: ReactElement}) {
-  const surface = useSurface();
-  return <TooltipPrimitive.Provider delayDuration={400}><TooltipPrimitive.Root><TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger><TooltipPrimitive.Portal><TooltipPrimitive.Content {...surface} className="ui-tooltip ui-overlay-surface" sideOffset={6}>{label}</TooltipPrimitive.Content></TooltipPrimitive.Portal></TooltipPrimitive.Root></TooltipPrimitive.Provider>;
 }
 /** Caller-owned copy for discard, delete and replace confirmations. */
 export type ConfirmRequest = {

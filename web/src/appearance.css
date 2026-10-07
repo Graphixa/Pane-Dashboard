@@ -206,14 +206,6 @@
     border: 0;
     box-shadow: var(--surface-highlight, 0 0 0 transparent);
   }
-  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-warp,
-  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-tint,
-  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-shine,
-  [data-pane-style="glass"] .pane.pane-glass-elastic .pane-glass-rim,
-  [data-pane-style="glass"] .pane.pane-glass-elastic > .app-grid {
-    will-change: transform;
-    transition: transform 0.12s ease-out;
-  }
   [data-pane-style="glass"] .pane-glass-warp {
     display: block;
     position: absolute;
@@ -318,12 +310,6 @@
 .choice-row [aria-pressed="true"] {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
-}
-.background-gallery {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin: 12px 0;
 }
 .background-current-group {
   margin-bottom: 0;
@@ -702,7 +688,6 @@
 }
 .background-swatch:hover .swatch-mini-scene .scene-motion i,
 .background-swatch:focus-visible .swatch-mini-scene .scene-motion i,
-.background-folder:hover .swatch-mini-scene .scene-motion i,
 .background-current-preview:hover .swatch-mini-scene .scene-motion i {
   animation-play-state: running;
 }
@@ -725,20 +710,6 @@
   .swatch-mini-scene .scene-motion i {
     animation: none;
   }
-  .background-strip-scroller .ui-scroll-area-viewport {
-    scroll-behavior: auto;
-  }
-}
-.background-swatch .swatch-custom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in srgb, var(--panel-high) 80%, transparent);
-  color: var(--muted);
-}
-.background-swatch .swatch-custom-set {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, var(--panel-high));
 }
 .image-field {
   display: grid;
@@ -825,25 +796,6 @@
 .file-picker {
   display: none;
 }
-.range-field {
-  display: block;
-  margin: 16px 0;
-}
-.range-field > span {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.range-field output {
-  color: var(--muted);
-}
-.range-field input {
-  width: 100%;
-  accent-color: var(--accent);
-  padding: 0;
-}
 .colour-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -863,7 +815,6 @@
     width: min(180px, 27vw);
     height: 40px;
   }
-  .background-gallery,
   .colour-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

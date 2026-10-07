@@ -45,7 +45,6 @@ export type Glass = {
   displacement: number;
   aberration: number;
   saturation: number;
-  elasticity: number;
 };
 export type Palette = {
   background: string;
@@ -139,16 +138,27 @@ export function withMotionStyle(style: MotionStyle): Pick<
 > {
   return { motionStyle: style, motion: style !== "none" };
 }
-// Defaults favour a visible edge bend with moderate frost and saturation.
+// Defaults favour a clear wash with full edge bend and moderate chroma.
 export const defaultGlass: Glass = {
   mode: "solid",
-  opacity: 55,
-  blur: 16,
-  displacement: 70,
-  aberration: 2,
-  saturation: 140,
-  elasticity: 0,
+  opacity: 15,
+  blur: 2,
+  displacement: 100,
+  aberration: 60,
+  saturation: 75,
 };
+/** CSS saturate() percent for a stored 0–100 saturation control (75 → 150%). */
+export function glassSaturationCss(saturation: number) {
+  return Math.round(Math.min(100, Math.max(0, saturation)) * 2);
+}
+/** SVG displacement scale for a stored 0–100 control (100 → former max of 150). */
+export function glassDisplacementScale(displacement: number) {
+  return Math.round(Math.min(100, Math.max(0, displacement)) * 1.5);
+}
+/** Map 0–100 aberration into the filter’s former 0–5 units. */
+export function glassAberrationUnits(aberration: number) {
+  return Math.min(100, Math.max(0, aberration)) / 20;
+}
 export function normaliseGlass(
   g: Partial<Glass> & Pick<Glass, "mode" | "opacity" | "blur">,
 ): Glass {
@@ -159,7 +169,6 @@ export function normaliseGlass(
     displacement: g.displacement ?? defaultGlass.displacement,
     aberration: g.aberration ?? defaultGlass.aberration,
     saturation: g.saturation ?? defaultGlass.saturation,
-    elasticity: g.elasticity ?? defaultGlass.elasticity,
   };
 }
 export const palettes: Record<"dark" | "light", Palette> = {
@@ -478,16 +487,14 @@ export function validateVisuals(a: AppearanceOptions) {
       "displacement",
       "aberration",
       "saturation",
-      "elasticity",
     ]);
     if (
       !["solid", "glass"].includes(a.glass.mode) ||
       !within(a.glass.opacity, 0, 100) ||
       !within(a.glass.blur, 0, 24) ||
-      !within(a.glass.displacement, 0, 150) ||
-      !within(a.glass.aberration, 0, 5) ||
-      !within(a.glass.saturation, 100, 200) ||
-      !within(a.glass.elasticity, 0, 100)
+      !within(a.glass.displacement, 0, 100) ||
+      !within(a.glass.aberration, 0, 100) ||
+      !within(a.glass.saturation, 0, 100)
     )
       throw Error("Invalid global glass settings.");
   }
@@ -542,7 +549,7 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
     // Base frost when displacing so the filter warps backdrop, not the AA edge.
     "--surface-filter":
       g.mode === "glass"
-        ? `blur(${g.displacement > 0 ? Math.max(g.blur, 6) : g.blur}px) saturate(${g.saturation}%)`
+        ? `blur(${g.displacement > 0 ? Math.max(g.blur, 6) : g.blur}px) saturate(${glassSaturationCss(g.saturation)}%)`
         : "none",
     // Outer depth only — inset bevels read as embossed metal, not liquid glass.
     "--surface-depth":

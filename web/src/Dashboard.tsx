@@ -25,7 +25,6 @@ import {
   Config,
   Pane,
   canPresent,
-  capacity,
   clone,
   minimum,
   moveApp,
@@ -110,11 +109,8 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
   const [glassVisible, setGlassVisible] = useState<Set<string>>(
     () => new Set(),
   );
-  const [glassMouse, setGlassMouse] = useState<{ x: number; y: number } | null>(
-    null,
-  );
   const display = settingsPreview ?? config;
-  const glass = normaliseGlass(display.appearance.glass ?? { mode: "solid", opacity: 55, blur: 16 });
+  const glass = normaliseGlass(display.appearance.glass ?? { mode: "solid", opacity: 15, blur: 2 });
   const glassMode = glass.mode === "glass";
   const onGlassVisible = useCallback((id: string, visible: boolean) => {
     setGlassVisible((prev) => {
@@ -131,27 +127,6 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
     visibleCount: glassVisible.size,
     interacting: glassInteracting,
   });
-  useEffect(() => {
-    if (!glassMode || glass.elasticity <= 0 || glassInteracting) {
-      setGlassMouse(null);
-      return;
-    }
-    let raf = 0;
-    let pending: { x: number; y: number } | null = null;
-    const onMove = (e: MouseEvent) => {
-      pending = { x: e.clientX, y: e.clientY };
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        if (pending) setGlassMouse(pending);
-      });
-    };
-    window.addEventListener("mousemove", onMove, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("mousemove", onMove);
-    };
-  }, [glassMode, glass.elasticity, glassInteracting]);
   const width = gridWidth(
     display.dashboard.widthMode === "full"
       ? availableWidth
@@ -281,7 +256,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
   );
   const paneContent = (p: Pane) => {
     const live = preview?.find((l) => l.i === p.id);
-    const cap = capacity(live ? slotsFromFrame(live) : p.layout);
+    const cap = live ? slotsFromFrame(live) : p.layout;
     return (
       <section
         className={`pane-frame ${selected === p.id && editing ? "focused" : ""}`}
@@ -355,9 +330,6 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             <GlassPaneLayers
               paneId={p.id}
               onVisibleChange={onGlassVisible}
-              mouse={glassMouse}
-              elasticity={glass.elasticity}
-              elasticEnabled={!glassInteracting && glassRefract !== "off"}
               refract={glassRefract}
               displacement={glass.displacement}
               aberration={glass.aberration}
@@ -369,15 +341,15 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
               mobile
                 ? undefined
                 : {
-                    gridTemplateColumns: `repeat(${cap.cols}, ${size.w}px)`,
+                    gridTemplateColumns: `repeat(${cap.w}, ${size.w}px)`,
                     gridAutoRows: `${size.h}px`,
                   }
             }
           >
             {editing &&
-              Array.from({ length: cap.cols * cap.rows }, (_, i) => {
-                const col = i % cap.cols,
-                  row = Math.floor(i / cap.cols);
+              Array.from({ length: cap.w * cap.h }, (_, i) => {
+                const col = i % cap.w,
+                  row = Math.floor(i / cap.w);
                 if (p.apps.some((a) => a.col === col && a.row === row))
                   return null;
                 return (

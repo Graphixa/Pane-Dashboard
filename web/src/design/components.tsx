@@ -108,8 +108,7 @@ export function SettingsRow({ label, hint, children, className }: {
   </div>;
 }
 
-export { AspectRatio } from "./aspect";
 export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup, ScrollArea } from "./controls";
-export { Modal, Popover, DropdownMenu, Tooltip, useConfirmation } from "./overlays";
+export { Modal, Popover, DropdownMenu, useConfirmation } from "./overlays";
 export type { ConfirmRequest } from "./overlays";
 export { ThemeSurface } from "./surface";

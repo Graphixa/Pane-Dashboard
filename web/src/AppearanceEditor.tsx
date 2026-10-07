@@ -384,8 +384,8 @@ export default function AppearanceEditor({
               <Range
                 label="Saturation"
                 value={g.saturation}
-                min={100}
-                max={200}
+                min={0}
+                max={100}
                 unit="%"
                 change={(saturation) => setGlass({ saturation })}
               />
@@ -393,23 +393,17 @@ export default function AppearanceEditor({
                 label="Displacement"
                 value={g.displacement}
                 min={0}
-                max={150}
+                max={100}
+                unit="%"
                 change={(displacement) => setGlass({ displacement })}
               />
               <Range
                 label="Chromatic aberration"
                 value={g.aberration}
                 min={0}
-                max={5}
-                change={(aberration) => setGlass({ aberration })}
-              />
-              <Range
-                label="Elasticity"
-                value={g.elasticity}
-                min={0}
                 max={100}
                 unit="%"
-                change={(elasticity) => setGlass({ elasticity })}
+                change={(aberration) => setGlass({ aberration })}
               />
             </SettingsGroup>
           </Section>

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Play, Plus, Trash2, X } from "lucide-react";
 import {
-  AspectRatio,
   Button,
   IconButton,
   Input,
@@ -21,10 +20,12 @@ import {
 import ImageField from "./ImageField";
 import {
   accentPresets,
+  defaultBackground,
   defaultOverlayColour,
   gradients,
   motionStyleLabels,
   motionStyles,
+  overlayBackground,
   prependBackgroundImage,
   solidBackgroundPaint,
   withMotionStyle,
@@ -43,6 +44,57 @@ function defaultMotionFor(kind: BackgroundSettings["kind"]): MotionStyle {
   return kind === "image" ? "ken-burns" : "drift";
 }
 
+function parseHexInput(value: string): string | null {
+  const next = value.startsWith("#") ? value : `#${value}`;
+  if (!/^#[a-fA-F0-9]{6}$/.test(next)) return null;
+  return next.toLowerCase();
+}
+
+function ColourPopoverFields({
+  pickerLabel,
+  swatchValue,
+  hex,
+  onHexChange,
+  onSwatchChange,
+  onHexCommit,
+}: {
+  pickerLabel: string;
+  swatchValue: string;
+  hex: string;
+  onHexChange: (value: string) => void;
+  onSwatchChange: (value: string) => void;
+  onHexCommit: (raw: string) => void;
+}) {
+  return (
+    <div className="colour-popover-body">
+      <Label className="colour-popover-swatch">
+        <Input
+          type="color"
+          aria-label={`Pick ${pickerLabel}`}
+          value={swatchValue}
+          onChange={(e) => onSwatchChange(e.target.value)}
+        />
+      </Label>
+      <Label className="colour-popover-hex">
+        <span>Hex</span>
+        <Input
+          spellCheck={false}
+          maxLength={7}
+          value={hex}
+          onChange={(e) => onHexChange(e.target.value)}
+          onBlur={(e) => onHexCommit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onHexCommit(e.currentTarget.value);
+            }
+          }}
+        />
+      </Label>
+    </div>
+  );
+}
+
 function ColourSwatch({
   label,
   colour,
@@ -50,6 +102,7 @@ function ColourSwatch({
   hueDefault = false,
   onSelect,
   onColour,
+  paintLive,
 }: {
   label: string;
   colour: string;
@@ -57,26 +110,81 @@ function ColourSwatch({
   hueDefault?: boolean;
   onSelect?: () => void;
   onColour: (colour: string) => void;
+  paintLive?: (colour: string) => void;
 }) {
-  const [open, setOpen] = useState(false),
-    [hex, setHex] = useState(colour);
-  useEffect(() => setHex(colour), [colour]);
+  const [open, setOpen] = useState(false);
+  const [live, setLive] = useState(colour);
+  const [hex, setHex] = useState(colour);
+  const colourRef = useRef(colour);
+  const onColourRef = useRef(onColour);
+  const paintRef = useRef(paintLive);
+  const pending = useRef("");
+  const commitTimer = useRef(0);
+  colourRef.current = colour;
+  onColourRef.current = onColour;
+  paintRef.current = paintLive;
+  const flush = () => {
+    window.clearTimeout(commitTimer.current);
+    const next = pending.current;
+    pending.current = "";
+    if (!next || next === colourRef.current.toLowerCase()) return;
+    onColourRef.current(next);
+  };
+  useEffect(() => {
+    const parent = colour.toLowerCase();
+    if (pending.current && pending.current !== parent) {
+      window.clearTimeout(commitTimer.current);
+      pending.current = "";
+    }
+    setLive(colour);
+    setHex(colour);
+  }, [colour]);
+  useEffect(
+    () => () => {
+      window.clearTimeout(commitTimer.current);
+      const next = pending.current;
+      pending.current = "";
+      if (next && next !== colourRef.current.toLowerCase()) onColourRef.current(next);
+    },
+    [],
+  );
+  const noteInput = (value: string) => {
+    const next = value.toLowerCase();
+    if (!/^#[0-9a-f]{6}$/.test(next)) return;
+    pending.current = next;
+    setLive(next);
+    setHex(next);
+    paintRef.current?.(next);
+    // Same as the wallpaper tint picker: one draft commit after the drag.
+    window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(flush, 200);
+  };
   const applyHex = (value: string) => {
-    const next = value.startsWith("#") ? value : `#${value}`;
-    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
-      setHex(colour);
+    const normalised = parseHexInput(value);
+    if (!normalised) {
+      setHex(colourRef.current);
       return;
     }
-    setHex(next);
-    onSelect?.();
-    onColour(next.toLowerCase());
+    window.clearTimeout(commitTimer.current);
+    pending.current = "";
+    setLive(normalised);
+    setHex(normalised);
+    paintRef.current?.(normalised);
+    if (normalised !== colourRef.current.toLowerCase()) onColourRef.current(normalised);
   };
+  const close = () => {
+    flush();
+    setOpen(false);
+  };
+  const picking = open && live.toLowerCase() !== colour.toLowerCase();
+  const hue = hueDefault && !picking;
   return (
     <Popover
       label={label}
       open={open}
       onOpenChange={(next) => {
         if (next) onSelect?.();
+        else flush();
         setOpen(next);
       }}
       trigger={
@@ -89,8 +197,8 @@ function ColourSwatch({
         >
           <span className="overlay-swatch-frame">
             <span
-              className={`colour-tile-paint${hueDefault ? " overlay-custom-hue" : ""}`}
-              style={hueDefault ? undefined : { background: colour }}
+              className={`colour-tile-paint${hue ? " overlay-custom-hue" : ""}`}
+              style={hue ? undefined : { background: picking ? live : colour }}
               aria-hidden="true"
             />
             <span className="colour-tile-tick" aria-hidden="true">
@@ -104,44 +212,18 @@ function ColourSwatch({
         <Text as="span" variant="label">
           {label}
         </Text>
-        <IconButton
-          variant="quiet"
-          label={`Close ${label} picker`}
-          onClick={() => setOpen(false)}
-        >
+        <IconButton variant="quiet" label={`Close ${label} picker`} onClick={close}>
           <X size={16} aria-hidden="true" />
         </IconButton>
       </div>
-      <div className="colour-popover-body">
-        <Label className="colour-popover-swatch">
-          <Input
-            type="color"
-            aria-label={`Pick ${label}`}
-            value={colour}
-            onChange={(e) => {
-              onSelect?.();
-              onColour(e.target.value);
-              setHex(e.target.value);
-            }}
-          />
-        </Label>
-        <Label className="colour-popover-hex">
-          <span>Hex</span>
-          <Input
-            spellCheck={false}
-            maxLength={7}
-            value={hex}
-            onChange={(e) => setHex(e.target.value)}
-            onBlur={(e) => applyHex(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                applyHex(e.currentTarget.value);
-              }
-            }}
-          />
-        </Label>
-      </div>
+      <ColourPopoverFields
+        pickerLabel={label}
+        swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : colour}
+        hex={hex}
+        onHexChange={setHex}
+        onSwatchChange={noteInput}
+        onHexCommit={applyHex}
+      />
     </Popover>
   );
 }
@@ -265,11 +347,11 @@ function BackgroundCustomAdd({
           aria-label="Add photo"
           title="Add photo"
         >
-          <AspectRatio className="background-swatch-frame">
+          <div className="ui-aspect-ratio background-swatch-frame">
             <span className="background-swatch-add-placeholder" aria-hidden="true">
               <Plus size={22} />
             </span>
-          </AspectRatio>
+          </div>
         </Button>
       }
     >
@@ -350,12 +432,12 @@ function BackgroundImageTile({
         aria-pressed={pressed}
         onClick={onSelect}
       >
-        <AspectRatio className="background-swatch-frame">
+        <div className="ui-aspect-ratio background-swatch-frame">
           <span
             className="background-swatch-paint background-current-image"
             style={{ backgroundImage: `url(${image})` }}
           />
-        </AspectRatio>
+        </div>
       </Button>
       <IconButton
         variant="quiet"
@@ -477,7 +559,7 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
   }
   return (
     <div className="background-current-preview">
-      <AspectRatio className="background-current-frame">{paint}</AspectRatio>
+      <div className="ui-aspect-ratio background-current-frame">{paint}</div>
     </div>
   );
 }
@@ -503,9 +585,9 @@ function StillTile({
       aria-pressed={pressed}
       onClick={onSelect}
     >
-      <AspectRatio className="background-swatch-frame">
+      <div className="ui-aspect-ratio background-swatch-frame">
         <span className="background-swatch-paint" style={{ background: paint }} />
-      </AspectRatio>
+      </div>
     </Button>
   );
 }
@@ -533,7 +615,7 @@ function AnimatedTile({
       aria-pressed={pressed}
       onClick={onSelect}
     >
-      <AspectRatio className="background-swatch-frame">
+      <div className="ui-aspect-ratio background-swatch-frame">
         <span
           className={`swatch-mini-scene scene-${kind}`}
           style={{ background: gradients[preset] }}
@@ -547,7 +629,7 @@ function AnimatedTile({
             <Play size={12} fill="currentColor" />
           </span>
         </span>
-      </AspectRatio>
+      </div>
     </Button>
   );
 }
@@ -691,6 +773,19 @@ function paintWallpaperTint(hex: string) {
   });
 }
 
+/** Scene overlay only. Same settle-then-commit path as the wallpaper tint. */
+function paintOverlayColour(hex: string, opacity: number) {
+  const paint = overlayBackground({
+    ...defaultBackground,
+    overlay: "custom",
+    overlayColour: hex,
+    overlayOpacity: opacity,
+  });
+  document.querySelectorAll<HTMLElement>(".scene-overlay").forEach((node) => {
+    node.style.background = paint;
+  });
+}
+
 function WallpaperColourChip({
   name,
   colour,
@@ -778,12 +873,11 @@ function WallpaperCustomColour({
     commitTimer.current = window.setTimeout(flush, 200);
   };
   const applyHex = (value: string) => {
-    const next = value.startsWith("#") ? value : `#${value}`;
-    if (!/^#[a-fA-F0-9]{6}$/.test(next)) {
+    const normalised = parseHexInput(value);
+    if (!normalised) {
       setHex(colourRef.current);
       return;
     }
-    const normalised = next.toLowerCase();
     window.clearTimeout(commitTimer.current);
     pending.current = "";
     setLive(normalised);
@@ -839,32 +933,14 @@ function WallpaperCustomColour({
           <X size={16} aria-hidden="true" />
         </IconButton>
       </div>
-      <div className="colour-popover-body">
-        <Label className="colour-popover-swatch">
-          <Input
-            type="color"
-            aria-label="Pick Custom colour"
-            value={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}
-            onChange={(e) => noteInput(e.target.value)}
-          />
-        </Label>
-        <Label className="colour-popover-hex">
-          <span>Hex</span>
-          <Input
-            spellCheck={false}
-            maxLength={7}
-            value={hex}
-            onChange={(e) => setHex(e.target.value)}
-            onBlur={(e) => applyHex(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                applyHex(e.currentTarget.value);
-              }
-            }}
-          />
-        </Label>
-      </div>
+      <ColourPopoverFields
+        pickerLabel="Custom colour"
+        swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}
+        hex={hex}
+        onHexChange={setHex}
+        onSwatchChange={noteInput}
+        onHexCommit={applyHex}
+      />
     </Popover>
   );
 }
@@ -983,6 +1059,7 @@ function OverlaySettingsBody({
                 defaultOverlayColour(theme).toLowerCase()
               }
               onSelect={() => background({ overlay: "custom" })}
+              paintLive={(hex) => paintOverlayColour(hex, b.overlayOpacity)}
               onColour={(overlayColour) =>
                 background({ overlay: "custom", overlayColour })
               }
