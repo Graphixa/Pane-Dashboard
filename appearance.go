@@ -151,6 +151,13 @@ func validateAppearance(c Config) error {
 		}
 	}
 	if g := c.Appearance.Glass; g != nil {
+		// Previous files stored the effect units: displacement 0–150, saturation as CSS percent 0–200.
+		if g.Displacement > 100 && g.Displacement <= 150 {
+			g.Displacement = int(math.Round(float64(g.Displacement) / 1.5))
+		}
+		if g.Saturation > 100 && g.Saturation <= 200 {
+			g.Saturation = int(math.Round(float64(g.Saturation) / 2))
+		}
 		if !slices.Contains([]string{"solid", "glass"}, g.Mode) || g.Opacity < 0 || g.Opacity > 100 || g.Blur < 0 || g.Blur > 24 {
 			return fmt.Errorf("invalid global glass settings")
 		}

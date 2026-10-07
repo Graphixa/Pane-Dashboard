@@ -16,6 +16,7 @@ import {
   contrast,
   defaultBackground,
   defaultGlass,
+  normaliseGlass,
   imageReference,
   migrateBackground,
   motionDurationSeconds,
@@ -293,6 +294,17 @@ describe("global appearance", () => {
       displacement: 100,
       aberration: 60,
     });
+  });
+  it("folds legacy glass effect units onto the 0–100 controls", () => {
+    expect(
+      normaliseGlass({ mode: "glass", opacity: 0, blur: 2, displacement: 150, saturation: 157 }),
+    ).toMatchObject({ displacement: 100, saturation: 79 });
+    expect(() =>
+      validateVisuals({
+        theme: "dark",
+        glass: { mode: "glass", opacity: 0, blur: 2, displacement: 151 },
+      }),
+    ).toThrow(/glass/i);
   });
   it("floors frost when displacement is on so refraction warps the backdrop", () => {
     const style = appearanceStyle({

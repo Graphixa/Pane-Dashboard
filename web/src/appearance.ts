@@ -159,6 +159,12 @@ export function glassDisplacementScale(displacement: number) {
 export function glassAberrationUnits(aberration: number) {
   return Math.min(100, Math.max(0, aberration)) / 20;
 }
+/** Previous files stored effect units above 100: displacement 0–150, saturation as CSS percent 0–200. */
+function foldLegacyGlass(value: number | undefined, divisor: number, legacyMax: number, fallback: number) {
+  if (value === undefined) return fallback;
+  if (value > 100 && value <= legacyMax) return Math.round(value / divisor);
+  return value;
+}
 export function normaliseGlass(
   g: Partial<Glass> & Pick<Glass, "mode" | "opacity" | "blur">,
 ): Glass {
@@ -166,9 +172,9 @@ export function normaliseGlass(
     mode: g.mode,
     opacity: g.opacity,
     blur: g.blur,
-    displacement: g.displacement ?? defaultGlass.displacement,
+    displacement: foldLegacyGlass(g.displacement, 1.5, 150, defaultGlass.displacement),
     aberration: g.aberration ?? defaultGlass.aberration,
-    saturation: g.saturation ?? defaultGlass.saturation,
+    saturation: foldLegacyGlass(g.saturation, 2, 200, defaultGlass.saturation),
   };
 }
 export const palettes: Record<"dark" | "light", Palette> = {
