@@ -455,7 +455,7 @@
   min-width: 0;
   padding: var(--space-3) var(--space-4);
 }
-/* Image tiles run to the card's side edges and clip there, including when scrolled. */
+/* Image tiles clip on the card edge only while others are off that side. */
 .background-shelf:not(.background-shelf-compact) .background-shelf-box {
   padding-inline: 0;
 }
@@ -510,6 +510,18 @@
   width: max-content;
   min-width: 100%;
   box-sizing: border-box;
+}
+/* Inset at rest and at the scroll ends. Mid-scroll, tiles still clip on the card edge. */
+.background-shelf:not(.background-shelf-compact) .background-shelf-track::before,
+.background-shelf:not(.background-shelf-compact) .background-shelf-track::after {
+  content: "";
+  flex: 0 0 var(--space-4);
+}
+.background-shelf:not(.background-shelf-compact) .background-shelf-track::before {
+  margin-inline-end: calc(var(--shelf-gap) * -1);
+}
+.background-shelf:not(.background-shelf-compact) .background-shelf-track::after {
+  margin-inline-start: calc(var(--shelf-gap) * -1);
 }
 .background-shelf-compact .background-shelf-track {
   gap: var(--space-3);
