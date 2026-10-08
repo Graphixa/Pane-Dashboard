@@ -710,6 +710,19 @@
   opacity: var(--motion-strength, 0.4);
   pointer-events: none;
 }
+/* Pack thumbs: still frame until hover/focus (matches legacy scene-motion cue). */
+.scene-dynamic-thumb .scene-dynamic,
+.scene-dynamic-thumb .scene-dynamic * {
+  animation-play-state: paused !important;
+}
+.background-swatch:hover .scene-dynamic-thumb .scene-dynamic,
+.background-swatch:hover .scene-dynamic-thumb .scene-dynamic *,
+.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic,
+.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic *,
+.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic,
+.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic * {
+  animation-play-state: running !important;
+}
 .swatch-mini-scene .scene-motion i {
   animation-play-state: paused;
 }
@@ -734,8 +747,10 @@
   z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  .swatch-mini-scene .scene-motion i {
-    animation: none;
+  .swatch-mini-scene .scene-motion i,
+  .scene-dynamic-thumb .scene-dynamic,
+  .scene-dynamic-thumb .scene-dynamic * {
+    animation: none !important;
   }
 }
 .image-field {

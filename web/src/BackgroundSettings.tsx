@@ -36,9 +36,10 @@ import {
   type MotionStyle,
   type OverlayMode,
 } from "./appearance";
+import DynamicScene from "./dynamic/DynamicScene";
 import { defaultDynamicParams } from "./dynamic/params";
 import { getDynamicPack, listDynamicPacks } from "./dynamic/registry";
-import type { DynamicControl, DynamicPack } from "./dynamic/types";
+import type { DynamicControl, DynamicPack, DynamicParams } from "./dynamic/types";
 
 type BackgroundUpdate = (update: Partial<BackgroundSettings>) => void;
 
@@ -404,18 +405,14 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
         style={{ backgroundImage: `url(${b.image})` }}
       />
     );
-  } else if (b.kind === "dynamic") {
-    const pack = listDynamicPacks().find((p) => p.id === b.dynamicId);
+  } else if (b.kind === "dynamic" && b.dynamicId) {
     paint = (
-      <span
-        className="swatch-mini-scene scene-dynamic-thumb"
-        style={{ background: gradients[b.preset] }}
-      >
-        <span className="swatch-dynamic-label">{pack?.name ?? "Dynamic"}</span>
-        <span className="swatch-play" aria-hidden="true">
-          <Play size={12} fill="currentColor" />
-        </span>
-      </span>
+      <DynamicThumb
+        dynamicId={b.dynamicId}
+        params={b.dynamicParams}
+        preset={b.preset}
+        showPlay
+      />
     );
   } else {
     paint = (
@@ -460,6 +457,48 @@ function StillTile({
   );
 }
 
+/** Mini pack preview: paused until the tile/current band is hovered or focused. */
+function DynamicThumb({
+  dynamicId,
+  params,
+  preset,
+  showPlay = false,
+}: {
+  dynamicId: string;
+  params?: DynamicParams;
+  preset: BackgroundSettings["preset"];
+  showPlay?: boolean;
+}) {
+  const pack = getDynamicPack(dynamicId);
+  if (!pack) {
+    return (
+      <span
+        className="swatch-mini-scene scene-dynamic-thumb"
+        style={{ background: gradients[preset] }}
+      />
+    );
+  }
+  const paint =
+    typeof params?.palette === "string" && params.palette in gradients
+      ? gradients[params.palette as keyof typeof gradients]
+      : (gradients[preset] ?? gradients.dusk);
+  return (
+    <span className="swatch-mini-scene scene-dynamic-thumb">
+      <DynamicScene
+        dynamicId={pack.id}
+        params={params ?? defaultDynamicParams(pack)}
+        paused={false}
+        gradientPaint={paint}
+      />
+      {showPlay ? (
+        <span className="swatch-play" aria-hidden="true">
+          <Play size={12} fill="currentColor" />
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function DynamicTile({
   pack,
   pressed,
@@ -482,15 +521,7 @@ function DynamicTile({
       onClick={onSelect}
     >
       <div className="ui-aspect-ratio background-swatch-frame">
-        <span
-          className="swatch-mini-scene scene-dynamic-thumb"
-          style={{ background: gradients[preset] }}
-        >
-          <span className="swatch-dynamic-label">{pack.name}</span>
-          <span className="swatch-play" aria-hidden="true">
-            <Play size={12} fill="currentColor" />
-          </span>
-        </span>
+        <DynamicThumb dynamicId={pack.id} preset={preset} showPlay />
       </div>
     </Button>
   );

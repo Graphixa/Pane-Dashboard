@@ -429,6 +429,11 @@ describe("global appearance", () => {
     expect(
       screen.getByRole("button", { name: "Dust" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    expect(
+      screen
+        .getByRole("button", { name: "Dust" })
+        .querySelector('.scene-dynamic[data-dynamic-id="dust"]'),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Select" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Customize dynamic effect" }),
