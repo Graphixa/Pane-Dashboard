@@ -134,6 +134,9 @@ describe("global appearance", () => {
     expect(migrated.dynamicParams?.speed).toBe(55);
     expect(migrated.dynamicParams?.palette).toBe("ocean");
     expect(migrated.motionStyle).toBe("none");
+    expect(
+      migrateBackground({ kind: "dynamic", dynamicId: "diagonals" }, "dark").kind,
+    ).toBe("none");
     const r = render(
       <Background
         settings={{
@@ -438,6 +441,56 @@ describe("global appearance", () => {
       dynamicId: "dust",
     });
   }, 15_000);
+  it("paints a dynamic pack colour during the drag and commits the draft once", async () => {
+    const previews: Config[] = [];
+    const background = {
+      ...defaultBackground,
+      kind: "dynamic" as const,
+      dynamicId: "dust",
+      dynamicParams: { seed: "#ff00a6", speed: 35, angle: 0, glow: 20 },
+    };
+    const cfg = config();
+    cfg.appearance.background = background;
+    render(
+      <>
+        <Background settings={background} />
+        <Settings
+          config={cfg}
+          apply={vi.fn()}
+          imported={vi.fn()}
+          close={vi.fn()}
+          readOnly={false}
+          onPreview={(draft) => {
+            if (draft) previews.push(draft);
+          }}
+        />
+      </>,
+    );
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Customize dynamic effect" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Colour" }));
+    const input = await screen.findByLabelText("Pick Colour");
+    const before = previews.length;
+    fireEvent.input(input, { target: { value: "#112233" } });
+    fireEvent.change(input, { target: { value: "#445566" } });
+    const host = document.querySelector(
+      '.scene-dynamic[data-dynamic-id="dust"]',
+    ) as HTMLElement | null;
+    expect(host?.style.getPropertyValue("--pane-seed")).toBe("#445566");
+    expect(
+      previews
+        .slice(before)
+        .some((draft) => draft.appearance.background?.dynamicParams?.seed === "#445566"),
+    ).toBe(false);
+    await waitFor(() => {
+      expect(previews.at(-1)?.appearance.background?.dynamicParams?.seed).toBe(
+        "#445566",
+      );
+    });
+  });
   it("applies a solid colour wallpaper from the Colours strip", () => {
     const apply = vi.fn(),
       c = config();

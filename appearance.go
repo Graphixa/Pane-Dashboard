@@ -40,7 +40,7 @@ type Background struct {
 
 // Bundled wallpaper packs under web/dynamic (keep in sync with manifests).
 var knownDynamicPacks = []string{
-	"waves", "aurora", "flow", "dust", "fireflies", "matrix", "stars", "bokeh", "diagonals", "snow",
+	"waves", "aurora", "flow", "dust", "fireflies", "matrix", "stars", "bokeh", "snow", "grid", "beams",
 }
 var dynamicIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
 var dynamicKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
@@ -140,6 +140,12 @@ func validateAppearance(c Config) error {
 		}
 		if !slices.Contains([]string{"none", "solid", "gradient", "image", "dynamic"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") || (b.MotionStyle != "" && !slices.Contains([]string{"none", "ken-burns", "breathe", "drift", "twist"}, b.MotionStyle)) {
 			return fmt.Errorf("invalid background settings or image")
+		}
+		// Retired pack: drop quietly so old configs still open.
+		if b.Kind == "dynamic" && b.DynamicID == "diagonals" {
+			b.Kind = "none"
+			b.DynamicID = ""
+			b.DynamicParams = nil
 		}
 		if b.Kind == "dynamic" {
 			if !dynamicIDPattern.MatchString(b.DynamicID) || !slices.Contains(knownDynamicPacks, b.DynamicID) {

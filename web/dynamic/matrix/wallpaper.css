@@ -1,37 +1,67 @@
 .rain {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 0%, #041a0c, #020805 55%);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: var(--pane-seed, #33ff66);
+  background: radial-gradient(ellipse 80% 70% at 50% 40%, #08120c, #010302);
+}
+.pane-art {
+  font-size: calc(12px + var(--pane-size, 3) * 1.2px);
 }
 .col {
   position: absolute;
-  top: -25%;
+  top: 0;
   left: var(--x, 0%);
-  width: 4.5%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3em;
-  font-size: calc(11px + var(--pane-size, 3) * 1px);
-  opacity: 0.9;
-  animation: matrix-fall var(--pane-speed, 36s) linear infinite;
-  animation-delay: var(--delay, 0s);
+  width: 0.9em;
+  height: 100%;
+  overflow: hidden;
+  background: rgb(255 255 255 / 0.06);
+  mask-image:
+    radial-gradient(0.15em 0.06em at 0.27em 0.35em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.18em 0.5em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.18em 1.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 1.5em, #000 70%, transparent),
+    radial-gradient(0.09em 0.09em at 0.41em 1.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 2.8em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 2.5em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.41em 3.5em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.18em 3.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 3.8em, #000 70%, transparent),
+    radial-gradient(0.15em 0.06em at 0.27em 4.35em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.41em 4.5em, #000 70%, transparent),
+    radial-gradient(0.09em 0.09em at 0.41em 5.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 5.2em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 5.8em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.63em 6.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 6.5em, #000 70%, transparent),
+    radial-gradient(0.09em 0.09em at 0.41em 7.5em, #000 70%, transparent),
+    radial-gradient(0.15em 0.06em at 0.27em 7.35em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 8.2em, #000 70%, transparent),
+    radial-gradient(0.15em 0.06em at 0.54em 8.65em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.18em 8.5em, #000 70%, transparent),
+    radial-gradient(0.28em 0.06em at 0.41em 9.8em, #000 70%, transparent),
+    radial-gradient(0.06em 0.3em at 0.63em 9.5em, #000 70%, transparent);
+  mask-size: 0.9em 10em;
+  mask-position: 0 var(--off, 0);
+  filter: drop-shadow(0 0 calc(var(--pane-glow, 10) * 0.35px) #fff);
 }
-.col i {
-  font-style: normal;
-  text-shadow: 0 0 calc(var(--pane-glow, 10) * 1px) var(--pane-seed, #33ff66);
-}
-.col i:first-child {
-  color: color-mix(in srgb, var(--pane-seed, #33ff66) 55%, white);
-  text-shadow: 0 0 calc(var(--pane-glow, 10) * 1.6px) var(--pane-seed, #33ff66);
+.col::before {
+  content: "";
+  position: absolute;
+  top: calc(var(--len, 8em) * -1);
+  left: 0;
+  width: 100%;
+  height: calc(100% + var(--len, 8em));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(255 255 255 / 0.55) 40%,
+      #fff 90%,
+      #fff 0
+    )
+    top / 100% var(--len, 8em) no-repeat;
+  animation: matrix-fall var(--pane-speed, 8s) linear var(--delay, 0s) infinite;
 }
 @keyframes matrix-fall {
-  from {
-    transform: translateY(-15%);
-  }
   to {
-    transform: translateY(125%);
+    transform: translateY(100%);
   }
 }

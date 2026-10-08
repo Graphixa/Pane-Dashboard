@@ -1,0 +1,66 @@
+.field {
+  position: absolute;
+  inset: 0;
+  font-size: 16px;
+  --cell: 3em;
+  background: #06080d;
+}
+.lattice {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.12) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    linear-gradient(90deg, rgb(255 255 255 / 0.12) 1px, transparent 1px) 0 0 / var(--cell) var(--cell);
+}
+.wash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 70% at 50% 110%, rgb(255 255 255 / 0.18), transparent);
+}
+.beam-col,
+.beam-row {
+  position: absolute;
+}
+.beam-col {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  left: var(--x, 50%);
+}
+.beam-row {
+  left: 0;
+  right: 0;
+  height: 1px;
+  top: var(--y, 50%);
+}
+.beam-col::before,
+.beam-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 0 0.2em #fff) drop-shadow(0 0 0.6em #fff);
+  animation: beams-fall calc(var(--pane-speed, 10s) * var(--tmul, 1)) cubic-bezier(0.5, 0, 0.7, 1) var(--delay, 0s) infinite;
+}
+.beam-col::before {
+  background: linear-gradient(to top, #fff, rgb(255 255 255 / 0.85) 0.8em, transparent 8em);
+}
+.beam-row::before {
+  background: linear-gradient(to left, #fff, rgb(255 255 255 / 0.85) 0.8em, transparent 10em);
+  animation-name: beams-sweep;
+}
+@keyframes beams-fall {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+@keyframes beams-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}

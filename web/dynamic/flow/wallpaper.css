@@ -4,42 +4,94 @@
   justify-content: center;
   height: 100%;
   width: 100%;
-  background: radial-gradient(
-    circle at center,
-    color-mix(in srgb, var(--pane-seed, #f3004d), black 75%) 0%,
-    #000 100%
-  );
+  background: radial-gradient(circle at center, #12050a 0%, #000 100%);
+  overflow: hidden;
 }
-.wave-wrapper {
-  position: relative;
-  width: 100%;
-  height: 25%;
-}
-.wave-svg {
+.blob {
   position: absolute;
-  width: 250%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  filter: blur(calc(var(--pane-blur, 25) * 1px));
+  width: 70%;
+  height: 70%;
+  border-radius: 42% 58% 50% 50%;
+  filter: blur(calc(28px + var(--pane-blur, 25) * 1.2px));
   mix-blend-mode: screen;
-}
-.wave-svg path { fill: var(--pane-seed, #f3004d); }
-.wave-1 {
   opacity: calc(var(--pane-opacity, 50) / 100);
-  animation: flow-move var(--pane-speed, 40s) infinite ease-in-out;
+  animation: flow-morph var(--pane-speed, 12s) ease-in-out infinite;
 }
-.wave-2 {
-  opacity: calc(var(--pane-opacity, 50) / 100 * 0.6);
-  filter: blur(calc(var(--pane-blur, 25) * 1px)) brightness(1.5) hue-rotate(-10deg);
-  animation: flow-move calc(var(--pane-speed, 40s) * 1.4) infinite ease-in-out reverse;
+.blob-a {
+  background: radial-gradient(
+    ellipse at 40% 45%,
+    color-mix(in srgb, var(--pane-seed, #f3004d) 80%, white),
+    color-mix(in srgb, var(--pane-seed, #f3004d) 30%, transparent) 55%,
+    transparent 72%
+  );
+  left: -10%;
+  top: 5%;
 }
-.wave-3 {
-  opacity: calc(var(--pane-opacity, 50) / 100 * 0.4);
-  filter: blur(calc(var(--pane-blur, 25) * 1px)) brightness(0.7) hue-rotate(15deg);
-  animation: flow-move calc(var(--pane-speed, 40s) * 2) infinite linear;
+.blob-b {
+  background: radial-gradient(
+    ellipse at 55% 50%,
+    color-mix(in srgb, var(--pane-seed-2, #7c3aed) 75%, white),
+    color-mix(in srgb, var(--pane-seed-2, #7c3aed) 28%, transparent) 58%,
+    transparent 74%
+  );
+  right: -15%;
+  top: 15%;
+  animation-delay: -6s;
+  animation-direction: reverse;
+  animation-duration: calc(var(--pane-speed, 12s) * 1.35);
 }
-@keyframes flow-move {
-  0%, 100% { transform: translateX(0) scaleY(1); }
-  50% { transform: translateX(-35%) scaleY(2); }
+.blob-c {
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    color-mix(in srgb, var(--pane-seed, #f3004d) 45%, var(--pane-seed-2, #7c3aed)),
+    transparent 70%
+  );
+  left: 20%;
+  bottom: -10%;
+  width: 55%;
+  height: 55%;
+  animation-delay: -12s;
+  animation-duration: calc(var(--pane-speed, 12s) * 1.7);
+  opacity: calc(var(--pane-opacity, 50) / 100 * 0.7);
+}
+.ribbon {
+  position: absolute;
+  width: 160%;
+  height: 28%;
+  left: -30%;
+  top: 36%;
+  filter: blur(calc(18px + var(--pane-blur, 25) * 0.8px));
+  mix-blend-mode: screen;
+  opacity: calc(var(--pane-opacity, 50) / 100 * 0.55);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--pane-seed, #f3004d) 70%, transparent) 30%,
+    color-mix(in srgb, var(--pane-seed-2, #7c3aed) 70%, transparent) 70%,
+    transparent
+  );
+  animation: flow-sweep calc(var(--pane-speed, 12s) * 1.2) ease-in-out infinite alternate;
+}
+@keyframes flow-morph {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+    border-radius: 42% 58% 50% 50%;
+  }
+  33% {
+    transform: translate3d(8%, -6%, 0) scale(1.12) rotate(8deg);
+    border-radius: 55% 45% 60% 40%;
+  }
+  66% {
+    transform: translate3d(-6%, 8%, 0) scale(0.94) rotate(-6deg);
+    border-radius: 48% 52% 40% 60%;
+  }
+}
+@keyframes flow-sweep {
+  from {
+    transform: translate3d(-8%, 0, 0) skewX(-8deg) scaleY(0.9);
+  }
+  to {
+    transform: translate3d(10%, 4%, 0) skewX(10deg) scaleY(1.2);
+  }
 }

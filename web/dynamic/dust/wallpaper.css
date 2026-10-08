@@ -1,42 +1,103 @@
 .stream {
   position: absolute;
   inset: 0;
+  display: flex;
+  align-items: center;
   background: radial-gradient(
     circle at center,
-    color-mix(in srgb, var(--pane-seed, #ff00a6) 18%, #050208) 0%,
-    #050208 70%
+    color-mix(in srgb, var(--pane-seed, #ff00a6) 18%, #000) 0%,
+    #000 100%
   );
   transform: rotate(calc(var(--pane-angle, 0) * 1deg));
   transform-origin: center center;
 }
-.p {
+.firefly-stream {
   position: absolute;
   left: 0;
-  top: calc(50% + var(--v-offset, 0vh));
-  width: var(--size-v, 3px);
-  height: var(--size-v, 3px);
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
+.p {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(0.1px + var(--size-v, 1px));
+  height: calc(0.1px + var(--size-v, 1px));
+  background: #fff;
   border-radius: 50%;
-  background: var(--pane-seed, #ff00a6);
-  opacity: var(--op-v, 0.6);
-  box-shadow:
-    0 0 calc(var(--pane-glow, 20) * 1px) var(--pane-seed, #ff00a6),
-    0 0 calc(var(--pane-glow, 20) * 2px) color-mix(in srgb, var(--pane-seed, #ff00a6) 40%, transparent);
-  animation: dust-drift var(--pane-speed, 12s) linear infinite;
+  opacity: 0;
+  filter: blur(0.8px);
+  box-shadow: 0 0 calc(var(--pane-glow, 20) * 1px) #fff;
+  will-change: transform, opacity;
+  animation:
+    dust-drift var(--pane-speed, 14s) infinite linear,
+    dust-wiggle 7s infinite ease-in-out,
+    dust-fade calc(var(--pane-speed, 14s) * 0.35) infinite ease-in-out;
   animation-delay: var(--delay, 0s);
+}
+.wave-wrapper {
+  position: relative;
+  width: 100%;
+  height: 40%;
+  z-index: 1;
+}
+.wave-svg {
+  position: absolute;
+  width: 250%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  filter: blur(90px);
+  mix-blend-mode: screen;
+}
+.wave-svg path {
+  fill: var(--pane-seed, #ff00a6);
+}
+.wave-1 {
+  opacity: 0.35;
+  animation: dust-wave calc(var(--pane-speed, 14s) * 1.8) infinite ease-in-out;
+}
+.wave-2 {
+  opacity: 0.15;
+  filter: blur(90px) brightness(1.7);
+  animation: dust-wave calc(var(--pane-speed, 14s) * 2.5) infinite ease-in-out reverse;
 }
 @keyframes dust-drift {
   from {
-    transform: translate3d(-10vw, 0, 0);
-    opacity: 0;
-  }
-  12% {
-    opacity: var(--op-v, 0.6);
-  }
-  88% {
-    opacity: var(--op-v, 0.6);
+    transform: translate(0, var(--v-offset, 0vh));
   }
   to {
-    transform: translate3d(110vw, calc(var(--v-offset, 0vh) * 0.15), 0);
+    transform: translate(110vw, calc(5vh + var(--v-offset, 0vh)));
+  }
+}
+@keyframes dust-wiggle {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+  50% {
+    margin-top: 40px;
+  }
+}
+@keyframes dust-fade {
+  0%,
+  100% {
     opacity: 0;
+  }
+  30%,
+  70% {
+    opacity: var(--op-v, 0.6);
+  }
+}
+@keyframes dust-wave {
+  0%,
+  100% {
+    transform: translateX(0) scaleY(1);
+  }
+  50% {
+    transform: translateX(-25%) scaleY(1.3);
   }
 }

@@ -195,4 +195,15 @@ func TestDynamicPackValidation(t *testing.T) {
 	if err := validate(c); err != nil {
 		t.Fatal(err)
 	}
+	c.Appearance.Background = &Background{
+		Kind: "dynamic", DynamicID: "diagonals", Preset: "dusk", Position: "center",
+		Overlay: "dark-solid", OverlayOpacity: 25, OverlayColour: "#111720",
+		DynamicParams: map[string]any{"seed": "#112233"},
+	}
+	if err := validate(c); err != nil {
+		t.Fatal(err)
+	}
+	if c.Appearance.Background.Kind != "none" || c.Appearance.Background.DynamicID != "" {
+		t.Fatalf("diagonals should fall back to none: %+v", c.Appearance.Background)
+	}
 }

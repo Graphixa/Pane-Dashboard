@@ -25,6 +25,8 @@ describe("sanitizeDynamicCss", () => {
       "bokeh",
     );
     expect(css).toContain('@scope (.scene-dynamic[data-dynamic-id="bokeh"])');
+    expect(css).toContain(".pane-art::after");
+    expect(css).toContain("mix-blend-mode:multiply");
     expect(css).toContain(".orb");
     expect(css).toContain("@keyframes pane-bokeh-pulse");
     expect(css).toContain("animation: pane-bokeh-pulse");

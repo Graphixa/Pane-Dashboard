@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, Play, Plus, Trash2 } from "lucide-react";
 import {
   Button,
+  ColourField,
+  ColourPopoverFields,
   IconButton,
-  Input,
-  Label,
   Modal,
   Popover,
   PopoverHead,
@@ -18,6 +18,7 @@ import {
   SwitchRow,
   Text,
   useConfirmation,
+  useDeferredColour,
 } from "./design/components";
 import ImageField from "./ImageField";
 import {
@@ -49,57 +50,6 @@ function defaultMotionFor(kind: BackgroundSettings["kind"]): MotionStyle {
   return kind === "image" ? "ken-burns" : "drift";
 }
 
-function parseHexInput(value: string): string | null {
-  const next = value.startsWith("#") ? value : `#${value}`;
-  if (!/^#[a-fA-F0-9]{6}$/.test(next)) return null;
-  return next.toLowerCase();
-}
-
-function ColourPopoverFields({
-  pickerLabel,
-  swatchValue,
-  hex,
-  onHexChange,
-  onSwatchChange,
-  onHexCommit,
-}: {
-  pickerLabel: string;
-  swatchValue: string;
-  hex: string;
-  onHexChange: (value: string) => void;
-  onSwatchChange: (value: string) => void;
-  onHexCommit: (raw: string) => void;
-}) {
-  return (
-    <div className="colour-popover-body">
-      <Label className="colour-popover-swatch">
-        <Input
-          type="color"
-          aria-label={`Pick ${pickerLabel}`}
-          value={swatchValue}
-          onChange={(e) => onSwatchChange(e.target.value)}
-        />
-      </Label>
-      <Label className="colour-popover-hex">
-        <span>Hex</span>
-        <Input
-          spellCheck={false}
-          maxLength={7}
-          value={hex}
-          onChange={(e) => onHexChange(e.target.value)}
-          onBlur={(e) => onHexCommit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              onHexCommit(e.currentTarget.value);
-            }
-          }}
-        />
-      </Label>
-    </div>
-  );
-}
-
 function ColourSwatch({
   label,
   colour,
@@ -118,65 +68,11 @@ function ColourSwatch({
   paintLive?: (colour: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [live, setLive] = useState(colour);
-  const [hex, setHex] = useState(colour);
-  const colourRef = useRef(colour);
-  const onColourRef = useRef(onColour);
-  const paintRef = useRef(paintLive);
-  const pending = useRef("");
-  const commitTimer = useRef(0);
-  colourRef.current = colour;
-  onColourRef.current = onColour;
-  paintRef.current = paintLive;
-  const flush = () => {
-    window.clearTimeout(commitTimer.current);
-    const next = pending.current;
-    pending.current = "";
-    if (!next || next === colourRef.current.toLowerCase()) return;
-    onColourRef.current(next);
-  };
-  useEffect(() => {
-    const parent = colour.toLowerCase();
-    if (pending.current && pending.current !== parent) {
-      window.clearTimeout(commitTimer.current);
-      pending.current = "";
-    }
-    setLive(colour);
-    setHex(colour);
-  }, [colour]);
-  useEffect(
-    () => () => {
-      window.clearTimeout(commitTimer.current);
-      const next = pending.current;
-      pending.current = "";
-      if (next && next !== colourRef.current.toLowerCase()) onColourRef.current(next);
-    },
-    [],
-  );
-  const noteInput = (value: string) => {
-    const next = value.toLowerCase();
-    if (!/^#[0-9a-f]{6}$/.test(next)) return;
-    pending.current = next;
-    setLive(next);
-    setHex(next);
-    paintRef.current?.(next);
-    // Same as the wallpaper tint picker: one draft commit after the drag.
-    window.clearTimeout(commitTimer.current);
-    commitTimer.current = window.setTimeout(flush, 200);
-  };
-  const applyHex = (value: string) => {
-    const normalised = parseHexInput(value);
-    if (!normalised) {
-      setHex(colourRef.current);
-      return;
-    }
-    window.clearTimeout(commitTimer.current);
-    pending.current = "";
-    setLive(normalised);
-    setHex(normalised);
-    paintRef.current?.(normalised);
-    if (normalised !== colourRef.current.toLowerCase()) onColourRef.current(normalised);
-  };
+  const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
+    colour,
+    onColour,
+    paintLive,
+  });
   const close = () => {
     flush();
     setOpen(false);
@@ -797,63 +693,11 @@ function WallpaperCustomColour({
   onColour: (colour: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [live, setLive] = useState(colour);
-  const [hex, setHex] = useState(colour);
-  const colourRef = useRef(colour);
-  const onColourRef = useRef(onColour);
-  const pending = useRef("");
-  const commitTimer = useRef(0);
-  colourRef.current = colour;
-  onColourRef.current = onColour;
-  const flush = () => {
-    window.clearTimeout(commitTimer.current);
-    const next = pending.current;
-    pending.current = "";
-    if (!next || next === colourRef.current.toLowerCase()) return;
-    onColourRef.current(next);
-  };
-  useEffect(() => {
-    const parent = colour.toLowerCase();
-    if (pending.current && pending.current !== parent) {
-      window.clearTimeout(commitTimer.current);
-      pending.current = "";
-    }
-    setLive(colour);
-    setHex(colour);
-  }, [colour]);
-  useEffect(
-    () => () => {
-      window.clearTimeout(commitTimer.current);
-      const next = pending.current;
-      pending.current = "";
-      if (next && next !== colourRef.current.toLowerCase()) onColourRef.current(next);
-    },
-    [],
-  );
-  const noteInput = (value: string) => {
-    const next = value.toLowerCase();
-    if (!/^#[0-9a-f]{6}$/.test(next)) return;
-    pending.current = next;
-    setLive(next);
-    setHex(next);
-    paintWallpaperTint(next);
-    // ponytail: one draft commit after the drag. Per-tick commits re-render glass.
-    window.clearTimeout(commitTimer.current);
-    commitTimer.current = window.setTimeout(flush, 200);
-  };
-  const applyHex = (value: string) => {
-    const normalised = parseHexInput(value);
-    if (!normalised) {
-      setHex(colourRef.current);
-      return;
-    }
-    window.clearTimeout(commitTimer.current);
-    pending.current = "";
-    setLive(normalised);
-    setHex(normalised);
-    paintWallpaperTint(normalised);
-    if (normalised !== colourRef.current.toLowerCase()) onColourRef.current(normalised);
-  };
+  const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
+    colour,
+    onColour,
+    paintLive: paintWallpaperTint,
+  });
   const picking = open && live.toLowerCase() !== colour.toLowerCase();
   const filled = pressed || picking;
   return (
@@ -1041,6 +885,13 @@ function OverlaySettingsBody({
   );
 }
 
+/** Scene CSS var only. Skips the Settings/dashboard render until the drag settles. */
+function paintDynamicCssVar(cssVar: string, hex: string) {
+  document.querySelectorAll<HTMLElement>(".scene-dynamic").forEach((node) => {
+    node.style.setProperty(cssVar, hex);
+  });
+}
+
 function DynamicControlFields({
   pack,
   params,
@@ -1094,17 +945,15 @@ function DynamicControlFields({
             </SettingsRow>
           );
         }
-        const hex = typeof value === "string" ? value : control.default;
+        const hex = typeof value === "string" ? value : String(control.default);
         return (
-          <Label key={control.key} className="colour-popover-hex">
-            <span>{control.label}</span>
-            <Input
-              type="color"
-              aria-label={control.label}
-              value={/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#a2cbbb"}
-              onChange={(e) => onChange(control.key, e.target.value)}
-            />
-          </Label>
+          <ColourField
+            key={control.key}
+            label={control.label}
+            colour={/^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toLowerCase() : "#a2cbbb"}
+            onColour={(next) => onChange(control.key, next)}
+            paintLive={(next) => paintDynamicCssVar(control.cssVar, next)}
+          />
         );
       })}
     </SettingsGroup>

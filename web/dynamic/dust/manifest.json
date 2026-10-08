@@ -1,7 +1,7 @@
 {
   "id": "dust",
   "name": "Dust",
-  "description": "Firefly stream across a dark field.",
+  "description": "Centre stream of glowing motes.",
   "controls": [
     { "key": "seed", "label": "Colour", "type": "colour", "default": "#ff00a6", "cssVar": "--pane-seed" },
     { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 35, "cssVar": "--pane-speed", "map": "duration" },

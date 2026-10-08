@@ -9,11 +9,12 @@ import { getDynamicPack, knownDynamicIds, listDynamicPacks } from "./registry";
 
 const expected = [
   "aurora",
+  "beams",
   "bokeh",
-  "diagonals",
   "dust",
   "fireflies",
   "flow",
+  "grid",
   "matrix",
   "snow",
   "stars",
@@ -45,6 +46,14 @@ describe("dynamic pack registry", () => {
     const duration = parseFloat(cssValueForControl(speed, 40));
     expect(duration).toBeGreaterThanOrEqual(3);
     expect(duration).toBeLessThanOrEqual(20);
+  });
+
+  it("exposes two colour controls on blend packs", () => {
+    for (const id of ["aurora", "flow"] as const) {
+      const pack = getDynamicPack(id)!;
+      const colours = pack.controls.filter((c) => c.type === "colour");
+      expect(colours.map((c) => c.key).sort()).toEqual(["seed", "seed2"]);
+    }
   });
 });
 

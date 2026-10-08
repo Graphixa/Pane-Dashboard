@@ -141,9 +141,15 @@ export function sanitizeDynamicCss(raw: string, packId: string): string {
       scoped,
     );
   }
+  // White/grey artwork in .pane-art is multiplied by --pane-seed; keep the sky outside that box.
+  // No isolation — multiply must sample the dark field behind sparse particles.
+  const tint = [
+    `.pane-art{position:absolute;inset:0;}`,
+    `.pane-art::after{content:"";position:absolute;inset:0;background:var(--pane-seed,#ffffff);mix-blend-mode:multiply;pointer-events:none;z-index:2;}`,
+  ].join("");
   return [
     `${scope}{position:absolute;inset:0;overflow:hidden;pointer-events:none;}`,
-    `@scope (${scope}){${css}}`,
+    `@scope (${scope}){${tint}${css}}`,
     `${scope}.motion-paused,${scope}.motion-paused *{animation-play-state:paused!important;}`,
     `@media (prefers-reduced-motion:reduce){${scope},${scope} *{animation:none!important;}}`,
   ].join("\n");

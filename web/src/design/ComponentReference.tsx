@@ -4,7 +4,7 @@ import { CSSProperties, useState } from "react";
 import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
-  Button, Checkbox, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
+  Button, Checkbox, ColourField, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
   Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
 } from "./components";
 
@@ -25,6 +25,7 @@ export default function ComponentReference() {
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checked, setChecked] = useState(true);
+  const [sampleColour, setSampleColour] = useState("#7db7ff");
   const { confirm, confirmation } = useConfirmation();
   const style = { ...appearanceStyle({ theme, fontFamily: font }),
     "--pane-title-size": `${paneSize}px`, "--icon-size": "80px" } as CSSProperties;
@@ -88,6 +89,12 @@ export default function ComponentReference() {
         <SettingsGroup>
           <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
           <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+          <ColourField
+            label="Accent colour"
+            hint="Live preview while dragging; draft commits after the drag settles."
+            colour={sampleColour}
+            onColour={setSampleColour}
+          />
           <SettingsRow>
             <TextField label="Dashboard name" value={name} onChange={e => setName(e.target.value)} />
           </SettingsRow>

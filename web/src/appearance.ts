@@ -372,10 +372,19 @@ export function migrateBackground(
   }
   if (kind === "dynamic") {
     dynamicId = typeof dynamicId === "string" ? dynamicId : "";
-    const pack = DYNAMIC_ID_RE.test(dynamicId) ? getDynamicPack(dynamicId) : undefined;
-    dynamicParams = pack
-      ? validateDynamicParams(pack, dynamicParams ?? {})
-      : (dynamicParams ?? {});
+    // Retired pack: drop quietly so old configs still open.
+    if (dynamicId === "diagonals") {
+      kind = "none";
+      dynamicId = undefined;
+      dynamicParams = undefined;
+    } else {
+      const pack = DYNAMIC_ID_RE.test(dynamicId)
+        ? getDynamicPack(dynamicId)
+        : undefined;
+      dynamicParams = pack
+        ? validateDynamicParams(pack, dynamicParams ?? {})
+        : (dynamicParams ?? {});
+    }
   } else {
     dynamicId = undefined;
     dynamicParams = undefined;

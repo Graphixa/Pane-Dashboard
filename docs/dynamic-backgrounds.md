@@ -28,6 +28,12 @@ Pack CSS is injected under `@scope (.scene-dynamic[data-dynamic-id="…"])` with
 
 Every control needs `key`, `label`, `type`, `default`, and `cssVar` matching `^--pane-[a-z0-9-]+$`.
 
+## Colour / tint
+
+Most packs are monochrome: paint luminous artwork white/grey inside a `.pane-art` box and keep the dark sky outside it. The sanitiser injects a shared `.pane-art::after` layer that multiplies `--pane-seed` over that box, so one Colour control tints the whole effect.
+
+Blend packs (aurora, flow) declare a second colour (`--pane-seed-2`) and paint gradients from both colours directly—they skip the multiply tint. Dust keeps white motes and seed-coloured ribbons without multiplying the motes.
+
 ## CSS rules
 
 - Prefer selectors under the pack root (Pane scopes CSS to `.scene-dynamic[data-dynamic-id="…"]`).
