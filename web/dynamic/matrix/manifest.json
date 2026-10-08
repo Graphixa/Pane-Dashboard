@@ -1,0 +1,11 @@
+{
+  "id": "matrix",
+  "name": "Matrix",
+  "description": "Falling code columns.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#33ff66", "cssVar": "--pane-seed" },
+    { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 60, "cssVar": "--pane-speed", "map": "duration" },
+    { "key": "glow", "label": "Glow", "type": "range", "min": 0, "max": 24, "default": 10, "cssVar": "--pane-glow" },
+    { "key": "size", "label": "Size", "type": "range", "min": 0, "max": 10, "default": 3, "cssVar": "--pane-size" }
+  ]
+}

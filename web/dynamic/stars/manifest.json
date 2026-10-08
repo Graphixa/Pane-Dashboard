@@ -1,0 +1,9 @@
+{
+  "id": "stars",
+  "name": "Stars",
+  "description": "Twinkling starfield.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#ffffff", "cssVar": "--pane-seed" },
+    { "key": "speed", "label": "Twinkle", "type": "range", "min": 0, "max": 100, "default": 50, "cssVar": "--pane-speed", "map": "duration" }
+  ]
+}

@@ -1,0 +1,42 @@
+.stream {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--pane-seed, #ff00a6) 18%, #050208) 0%,
+    #050208 70%
+  );
+  transform: rotate(calc(var(--pane-angle, 0) * 1deg));
+  transform-origin: center center;
+}
+.p {
+  position: absolute;
+  left: 0;
+  top: calc(50% + var(--v-offset, 0vh));
+  width: var(--size-v, 3px);
+  height: var(--size-v, 3px);
+  border-radius: 50%;
+  background: var(--pane-seed, #ff00a6);
+  opacity: var(--op-v, 0.6);
+  box-shadow:
+    0 0 calc(var(--pane-glow, 20) * 1px) var(--pane-seed, #ff00a6),
+    0 0 calc(var(--pane-glow, 20) * 2px) color-mix(in srgb, var(--pane-seed, #ff00a6) 40%, transparent);
+  animation: dust-drift var(--pane-speed, 12s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes dust-drift {
+  from {
+    transform: translate3d(-10vw, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--op-v, 0.6);
+  }
+  88% {
+    opacity: var(--op-v, 0.6);
+  }
+  to {
+    transform: translate3d(110vw, calc(var(--v-offset, 0vh) * 0.15), 0);
+    opacity: 0;
+  }
+}

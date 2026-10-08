@@ -78,9 +78,11 @@ describe("global appearance", () => {
       <Background
         settings={{
           ...defaultBackground,
-          kind: "waves",
+          kind: "image",
+          image: png,
+          images: [png],
           motion: true,
-          motionStyle: "drift",
+          motionStyle: "ken-burns",
           intensity: 40,
         }}
       />,
@@ -91,9 +93,11 @@ describe("global appearance", () => {
       <Background
         settings={{
           ...defaultBackground,
-          kind: "waves",
+          kind: "image",
+          image: png,
+          images: [png],
           motion: true,
-          motionStyle: "drift",
+          motionStyle: "ken-burns",
           intensity: 80,
         }}
       />,
@@ -105,7 +109,9 @@ describe("global appearance", () => {
       <Background
         settings={{
           ...defaultBackground,
-          kind: "waves",
+          kind: "image",
+          image: png,
+          images: [png],
           motion: false,
           motionStyle: "none",
           intensity: 80,
@@ -113,6 +119,36 @@ describe("global appearance", () => {
       />,
     );
     expect(scene().style.getPropertyValue("--motion-duration")).toBe("20.8s");
+  });
+  it("mounts dynamic packs and migrates legacy waves", () => {
+    const migrated = migrateBackground(
+      {
+        kind: "waves",
+        intensity: 55,
+        preset: "ocean",
+      },
+      "dark",
+    );
+    expect(migrated.kind).toBe("dynamic");
+    expect(migrated.dynamicId).toBe("waves");
+    expect(migrated.dynamicParams?.speed).toBe(55);
+    expect(migrated.dynamicParams?.palette).toBe("ocean");
+    expect(migrated.motionStyle).toBe("none");
+    const r = render(
+      <Background
+        settings={{
+          ...defaultBackground,
+          kind: "dynamic",
+          dynamicId: "dust",
+          dynamicParams: { speed: 35, seed: "#ff00a6", glow: 20 },
+        }}
+      />,
+    );
+    const host = r.container.querySelector(
+      '.scene-dynamic[data-dynamic-id="dust"]',
+    ) as HTMLElement;
+    expect(host).not.toBeNull();
+    expect(host.style.getPropertyValue("--pane-seed")).toBe("#ff00a6");
   });
   it("keeps font and motion when visiting Appearance then Background", async () => {
     const cfg = config();
@@ -371,6 +407,37 @@ describe("global appearance", () => {
     expect(saved.appearance.glass.opacity).toBe(55);
     expect(saved.items).toEqual(c.items);
   }, 15_000);
+  it("lists dynamic packs and customizes declared controls", async () => {
+    const apply = vi.fn(),
+      c = config();
+    render(
+      <Settings
+        config={c}
+        apply={apply}
+        imported={vi.fn()}
+        close={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Background" }));
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    expect(screen.getByRole("heading", { name: "Dynamic" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Dust" }));
+    expect(
+      screen.getByRole("button", { name: "Dust" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Customize dynamic effect" }),
+    );
+    expect(screen.getByRole("slider", { name: "Speed" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    expect(apply.mock.calls[0][0].appearance.background).toMatchObject({
+      kind: "dynamic",
+      dynamicId: "dust",
+    });
+  }, 15_000);
   it("applies a solid colour wallpaper from the Colours strip", () => {
     const apply = vi.fn(),
       c = config();
@@ -503,7 +570,7 @@ describe("global appearance", () => {
     );
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     fireEvent.click(screen.getByRole("button", { name: "Background" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Customize overlay" }));
     fireEvent.click(screen.getByRole("button", { name: "Custom colour" }));
     const input = await screen.findByLabelText("Pick Custom colour");
     const before = previews.length;
@@ -587,7 +654,7 @@ describe("global appearance", () => {
     expect(
       screen.getByRole("switch", { name: "Motion effects" }).getAttribute("aria-checked"),
     ).toBe("true");
-    fireEvent.click(screen.getAllByRole("button", { name: "Customize" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Customize motion" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
     const style = screen.getByLabelText("Motion style");
     expect(style.textContent).toContain("Drift");
@@ -654,6 +721,12 @@ describe("global appearance", () => {
     expect(
       migrateBackground({ ...legacy, kind: "waves", image: "" }, "dark")
         .motionStyle,
+    ).toBe("none");
+    expect(
+      migrateBackground(
+        { ...legacy, kind: "gradient", image: "", motion: true },
+        "dark",
+      ).motionStyle,
     ).toBe("drift");
   });
   it("does not persist a cancelled settings draft", async () => {
@@ -695,7 +768,7 @@ describe("global appearance", () => {
       <Background
         settings={{
           ...defaultBackground,
-          kind: "waves",
+          kind: "gradient",
           motion: false,
           motionStyle: "none",
         }}
@@ -708,6 +781,7 @@ describe("global appearance", () => {
           ...defaultBackground,
           kind: "image",
           image: "https://example.com/broken.png",
+          images: ["https://example.com/broken.png"],
           motion: true,
           motionStyle: "ken-burns",
         }}

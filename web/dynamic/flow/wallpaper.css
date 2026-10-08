@@ -1,0 +1,45 @@
+.viewport {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--pane-seed, #f3004d), black 75%) 0%,
+    #000 100%
+  );
+}
+.wave-wrapper {
+  position: relative;
+  width: 100%;
+  height: 25%;
+}
+.wave-svg {
+  position: absolute;
+  width: 250%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  filter: blur(calc(var(--pane-blur, 25) * 1px));
+  mix-blend-mode: screen;
+}
+.wave-svg path { fill: var(--pane-seed, #f3004d); }
+.wave-1 {
+  opacity: calc(var(--pane-opacity, 50) / 100);
+  animation: flow-move var(--pane-speed, 40s) infinite ease-in-out;
+}
+.wave-2 {
+  opacity: calc(var(--pane-opacity, 50) / 100 * 0.6);
+  filter: blur(calc(var(--pane-blur, 25) * 1px)) brightness(1.5) hue-rotate(-10deg);
+  animation: flow-move calc(var(--pane-speed, 40s) * 1.4) infinite ease-in-out reverse;
+}
+.wave-3 {
+  opacity: calc(var(--pane-opacity, 50) / 100 * 0.4);
+  filter: blur(calc(var(--pane-blur, 25) * 1px)) brightness(0.7) hue-rotate(15deg);
+  animation: flow-move calc(var(--pane-speed, 40s) * 2) infinite linear;
+}
+@keyframes flow-move {
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  50% { transform: translateX(-35%) scaleY(2); }
+}

@@ -1,0 +1,39 @@
+.bands {
+  position: absolute;
+  inset: 0;
+  opacity: calc(var(--pane-strength, 55) / 100);
+}
+.bands i {
+  position: absolute;
+  display: block;
+  width: 160%;
+  height: 70%;
+  left: -30%;
+  top: 30%;
+  border-radius: 48%;
+  border-top: 2px solid color-mix(in srgb, var(--pane-seed, #c0d9ed) 55%, white);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pane-seed, #c0d9ed) 22%, transparent),
+    transparent 42%
+  );
+  box-shadow: 0 -18px 48px color-mix(in srgb, var(--pane-seed, #c0d9ed) 18%, transparent);
+  animation: waves-drift var(--pane-speed, 54s) ease-in-out infinite alternate;
+}
+.bands i:nth-child(2) {
+  top: 40%;
+  animation-delay: -15s;
+  animation-direction: alternate-reverse;
+}
+.bands i:nth-child(3) {
+  top: 50%;
+  animation-delay: -30s;
+}
+@keyframes waves-drift {
+  from {
+    transform: translate3d(-3%, -2%, 0) rotate(-8deg);
+  }
+  to {
+    transform: translate3d(5%, 5%, 0) rotate(9deg);
+  }
+}

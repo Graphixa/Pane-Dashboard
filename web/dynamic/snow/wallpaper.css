@@ -1,0 +1,26 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#1a2332, #0d121a);
+}
+.flake {
+  position: absolute;
+  top: -5%;
+  left: var(--x, 50%);
+  width: var(--size, 4px);
+  height: var(--size, 4px);
+  border-radius: 50%;
+  background: var(--pane-seed, #ffffff);
+  opacity: 0.85;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pane-seed, #ffffff) 50%, transparent);
+  animation: snow-fall var(--pane-speed, 48s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes snow-fall {
+  from {
+    transform: translate3d(0, -5vh, 0);
+  }
+  to {
+    transform: translate3d(24px, 110vh, 0);
+  }
+}

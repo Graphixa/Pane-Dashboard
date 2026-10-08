@@ -1,0 +1,31 @@
+.field {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 40%, #1a0f28, #0a0610 70%);
+}
+.orb {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  width: var(--size, 80px);
+  height: var(--size, 80px);
+  margin: calc(var(--size, 80px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pane-seed, #7eb6ff) 75%, white) 0%,
+    color-mix(in srgb, var(--pane-seed, #7eb6ff) 35%, transparent) 45%,
+    transparent 72%
+  );
+  opacity: calc(var(--pane-opacity, 55) / 100);
+  animation: bokeh-float var(--pane-speed, 12s) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes bokeh-float {
+  from {
+    transform: translate(-8vw, 5vh) scale(0.85);
+  }
+  to {
+    transform: translate(9vw, -6vh) scale(1.2);
+  }
+}

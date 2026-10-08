@@ -1,0 +1,11 @@
+{
+  "id": "dust",
+  "name": "Dust",
+  "description": "Firefly stream across a dark field.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#ff00a6", "cssVar": "--pane-seed" },
+    { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 35, "cssVar": "--pane-speed", "map": "duration" },
+    { "key": "angle", "label": "Angle", "type": "range", "min": -90, "max": 90, "default": 0, "cssVar": "--pane-angle" },
+    { "key": "glow", "label": "Glow", "type": "range", "min": 0, "max": 40, "default": 20, "cssVar": "--pane-glow" }
+  ]
+}

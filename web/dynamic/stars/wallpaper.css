@@ -1,0 +1,29 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+}
+.star {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  width: var(--size, 2px);
+  height: var(--size, 2px);
+  margin: calc(var(--size, 2px) / -2);
+  border-radius: 50%;
+  background: var(--pane-seed, #ffffff);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--pane-seed, #ffffff) 70%, transparent);
+  animation: star-twinkle var(--pane-speed, 12s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.8);
+  }
+}

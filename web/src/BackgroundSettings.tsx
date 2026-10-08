@@ -35,6 +35,9 @@ import {
   type MotionStyle,
   type OverlayMode,
 } from "./appearance";
+import { defaultDynamicParams } from "./dynamic/params";
+import { getDynamicPack, listDynamicPacks } from "./dynamic/registry";
+import type { DynamicControl, DynamicPack } from "./dynamic/types";
 
 type BackgroundUpdate = (update: Partial<BackgroundSettings>) => void;
 
@@ -481,8 +484,10 @@ function currentName(b: BackgroundSettings, theme: "dark" | "light") {
   if (b.kind === "solid") return solidColourName(b.colour, theme);
   if (b.kind === "gradient") return titleCase(b.preset);
   if (b.kind === "image") return "Custom";
-  if (b.kind === "waves") return "Waves";
-  return "Aurora";
+  if (b.kind === "dynamic") {
+    return listDynamicPacks().find((p) => p.id === b.dynamicId)?.name ?? "Dynamic";
+  }
+  return "Dynamic";
 }
 
 function StillPreview({ b }: { b: BackgroundSettings }) {
@@ -503,17 +508,14 @@ function StillPreview({ b }: { b: BackgroundSettings }) {
         style={{ backgroundImage: `url(${b.image})` }}
       />
     );
-  } else if (b.kind === "waves" || b.kind === "aurora") {
+  } else if (b.kind === "dynamic") {
+    const pack = listDynamicPacks().find((p) => p.id === b.dynamicId);
     paint = (
       <span
-        className={`swatch-mini-scene scene-${b.kind}`}
+        className="swatch-mini-scene scene-dynamic-thumb"
         style={{ background: gradients[b.preset] }}
       >
-        <span className="scene-motion" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
+        <span className="swatch-dynamic-label">{pack?.name ?? "Dynamic"}</span>
         <span className="swatch-play" aria-hidden="true">
           <Play size={12} fill="currentColor" />
         </span>
@@ -562,15 +564,13 @@ function StillTile({
   );
 }
 
-function AnimatedTile({
-  kind,
-  label,
+function DynamicTile({
+  pack,
   pressed,
   preset,
   onSelect,
 }: {
-  kind: "waves" | "aurora";
-  label: string;
+  pack: DynamicPack;
   pressed: boolean;
   preset: BackgroundSettings["preset"];
   onSelect: () => void;
@@ -580,21 +580,17 @@ function AnimatedTile({
       variant="surface"
       type="button"
       className="background-swatch background-swatch-animated"
-      aria-label={label}
-      title={label}
+      aria-label={pack.name}
+      title={pack.name}
       aria-pressed={pressed}
       onClick={onSelect}
     >
       <div className="ui-aspect-ratio background-swatch-frame">
         <span
-          className={`swatch-mini-scene scene-${kind}`}
+          className="swatch-mini-scene scene-dynamic-thumb"
           style={{ background: gradients[preset] }}
         >
-          <span className="scene-motion" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
+          <span className="swatch-dynamic-label">{pack.name}</span>
           <span className="swatch-play" aria-hidden="true">
             <Play size={12} fill="currentColor" />
           </span>
@@ -639,7 +635,7 @@ function StillTiles({
   );
 }
 
-function AnimatedTiles({
+function DynamicTiles({
   b,
   background,
 }: {
@@ -648,17 +644,18 @@ function AnimatedTiles({
 }) {
   return (
     <>
-      {(["waves", "aurora"] as const).map((kind) => (
-        <AnimatedTile
-          key={kind}
-          kind={kind}
-          label={kind === "waves" ? "Waves" : "Aurora"}
-          pressed={b.kind === kind}
+      {listDynamicPacks().map((pack) => (
+        <DynamicTile
+          key={pack.id}
+          pack={pack}
+          pressed={b.kind === "dynamic" && b.dynamicId === pack.id}
           preset={b.preset}
           onSelect={() => {
             background({
-              kind,
-              ...(b.motionStyle === "none" ? withMotionStyle("drift") : {}),
+              kind: "dynamic",
+              dynamicId: pack.id,
+              dynamicParams: defaultDynamicParams(pack),
+              ...withMotionStyle("none"),
             });
           }}
         />
@@ -669,15 +666,17 @@ function AnimatedTiles({
 
 type CollectionId = "my-images" | "gradients" | "dynamic";
 
-const COLLECTIONS: {
+function wallpaperCollections(): {
   id: CollectionId;
   title: string;
   count: number;
-}[] = [
-  { id: "my-images", title: "My images", count: 1 },
-  { id: "gradients", title: "Gradients", count: 1 + Object.keys(gradients).length },
-  { id: "dynamic", title: "Dynamic", count: 2 },
-];
+}[] {
+  return [
+    { id: "my-images", title: "My images", count: 1 },
+    { id: "gradients", title: "Gradients", count: 1 + Object.keys(gradients).length },
+    { id: "dynamic", title: "Dynamic", count: listDynamicPacks().length },
+  ];
+}
 
 /** Horizontal shelf: tiles sit in a settings-group inset and clip there. No chevrons or strip scrollbars. */
 function WallpaperShelf({
@@ -1042,6 +1041,76 @@ function OverlaySettingsBody({
   );
 }
 
+function DynamicControlFields({
+  pack,
+  params,
+  onChange,
+}: {
+  pack: DynamicPack;
+  params: Record<string, string | number | boolean>;
+  onChange: (key: string, value: string | number | boolean) => void;
+}) {
+  return (
+    <SettingsGroup>
+      {pack.controls.map((control: DynamicControl) => {
+        const value = params[control.key] ?? control.default;
+        if (control.type === "range") {
+          return (
+            <Range
+              key={control.key}
+              label={control.label}
+              value={typeof value === "number" ? value : control.default}
+              min={control.min}
+              max={control.max}
+              unit={control.map === "duration" ? "" : ""}
+              change={(n) => onChange(control.key, n)}
+            />
+          );
+        }
+        if (control.type === "toggle") {
+          return (
+            <SwitchRow
+              key={control.key}
+              label={control.label}
+              checked={!!value}
+              onCheckedChange={(checked) => onChange(control.key, checked)}
+            />
+          );
+        }
+        if (control.type === "select") {
+          return (
+            <SettingsRow key={control.key} label={control.label}>
+              <Select
+                aria-label={control.label}
+                value={String(value)}
+                onValueChange={(v) => onChange(control.key, v)}
+              >
+                {control.options.map((o) => (
+                  <SelectOption key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectOption>
+                ))}
+              </Select>
+            </SettingsRow>
+          );
+        }
+        const hex = typeof value === "string" ? value : control.default;
+        return (
+          <Label key={control.key} className="colour-popover-hex">
+            <span>{control.label}</span>
+            <Input
+              type="color"
+              aria-label={control.label}
+              value={/^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#a2cbbb"}
+              onChange={(e) => onChange(control.key, e.target.value)}
+            />
+          </Label>
+        );
+      })}
+    </SettingsGroup>
+  );
+}
+
 export default function BackgroundSettings({
   settings: b,
   theme,
@@ -1060,6 +1129,7 @@ export default function BackgroundSettings({
   const [collection, setCollection] = useState<CollectionId | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [dynamicOpen, setDynamicOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
   const librarySnapshot = useRef<BackgroundSettings | null>(null);
   const lastMotion = useRef<MotionStyle>(
@@ -1075,15 +1145,19 @@ export default function BackgroundSettings({
     if (b.overlayOpacity > 0) lastOverlayOpacity.current = b.overlayOpacity;
   }, [b.overlayOpacity]);
   useEffect(() => {
-    onPreviewAdjust?.(motionOpen || overlayOpen || libraryOpen);
+    onPreviewAdjust?.(motionOpen || overlayOpen || libraryOpen || dynamicOpen);
     return () => onPreviewAdjust?.(false);
-  }, [motionOpen, overlayOpen, libraryOpen, onPreviewAdjust]);
+  }, [motionOpen, overlayOpen, libraryOpen, dynamicOpen, onPreviewAdjust]);
 
   const motionOn = b.motionStyle !== "none";
   const overlayOn = b.overlayOpacity > 0;
   const canAdjust = b.kind !== "none";
+  const showImageMotion = b.kind === "image";
+  const dynamicPack =
+    b.kind === "dynamic" && b.dynamicId ? getDynamicPack(b.dynamicId) : undefined;
   const closeMotion = () => setMotionOpen(false);
   const closeOverlay = () => setOverlayOpen(false);
+  const closeDynamic = () => setDynamicOpen(false);
   const snapshotBackground = (value: BackgroundSettings): BackgroundSettings => ({
     ...value,
     images: [...(value.images ?? [])],
@@ -1155,7 +1229,8 @@ export default function BackgroundSettings({
     }
   };
   const collectionTitle =
-    COLLECTIONS.find((item) => item.id === collection)?.title ?? "Choose wallpaper";
+    wallpaperCollections().find((item) => item.id === collection)?.title ??
+    "Choose wallpaper";
 
   return (
     <>
@@ -1198,43 +1273,40 @@ export default function BackgroundSettings({
             </Select>
           </SettingsRow>
         )}
-        {(b.kind === "waves" || b.kind === "aurora") && (
-          <SettingsRow label="Animation palette">
-            <Select
-              aria-label="Animation palette"
-              value={b.preset}
-              onValueChange={(value) =>
-                background({
-                  preset: value as BackgroundSettings["preset"],
-                })
-              }
+        {dynamicPack && (
+          <SettingsRow label="Dynamic effect">
+            <Button
+              type="button"
+              variant="quiet"
+              className="background-effect-customize"
+              aria-label="Customize dynamic effect"
+              onClick={() => setDynamicOpen(true)}
             >
-              {Object.keys(gradients).map((k) => (
-                <SelectOption key={k} value={k}>
-                  {titleCase(k)}
-                </SelectOption>
-              ))}
-            </Select>
+              Customize
+            </Button>
           </SettingsRow>
         )}
         {canAdjust && (
           <>
-            <SwitchRow
-              label="Motion effects"
-              checked={motionOn}
-              onCheckedChange={setMotionEnabled}
-              action={
-                <Button
-                  type="button"
-                  variant="quiet"
-                  className="background-effect-customize"
-                  disabled={!motionOn}
-                  onClick={() => setMotionOpen(true)}
-                >
-                  Customize
-                </Button>
-              }
-            />
+            {showImageMotion && (
+              <SwitchRow
+                label="Motion effects"
+                checked={motionOn}
+                onCheckedChange={setMotionEnabled}
+                action={
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    className="background-effect-customize"
+                    aria-label="Customize motion"
+                    disabled={!motionOn}
+                    onClick={() => setMotionOpen(true)}
+                  >
+                    Customize
+                  </Button>
+                }
+              />
+            )}
             <SwitchRow
               label="Wallpaper overlay"
               checked={overlayOn}
@@ -1244,6 +1316,7 @@ export default function BackgroundSettings({
                   type="button"
                   variant="quiet"
                   className="background-effect-customize"
+                  aria-label="Customize overlay"
                   disabled={!overlayOn}
                   onClick={() => setOverlayOpen(true)}
                 >
@@ -1285,7 +1358,7 @@ export default function BackgroundSettings({
                   <StillTiles b={b} background={background} />
                 )}
                 {collection === "dynamic" && (
-                  <AnimatedTiles b={b} background={background} />
+                  <DynamicTiles b={b} background={background} />
                 )}
               </div>
             ) : (
@@ -1324,7 +1397,7 @@ export default function BackgroundSettings({
                   showAll
                   onShowAll={() => setCollection("dynamic")}
                 >
-                  <AnimatedTiles b={b} background={background} />
+                  <DynamicTiles b={b} background={background} />
                 </WallpaperShelf>
               </div>
             )}
@@ -1400,6 +1473,32 @@ export default function BackgroundSettings({
           <OverlaySettingsBody b={b} theme={theme} background={background} />
           <div className="ui-actions">
             <Button variant="primary" onClick={closeOverlay}>
+              Done
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {dynamicOpen && dynamicPack && (
+        <Modal
+          nested
+          placement="bottom"
+          backdrop="none"
+          title={`${dynamicPack.name} settings`}
+          close={closeDynamic}
+          className="background-adjust-dialog"
+        >
+          <DynamicControlFields
+            pack={dynamicPack}
+            params={b.dynamicParams ?? {}}
+            onChange={(key, value) =>
+              background({
+                dynamicParams: { ...(b.dynamicParams ?? {}), [key]: value },
+              })
+            }
+          />
+          <div className="ui-actions">
+            <Button variant="primary" onClick={closeDynamic}>
               Done
             </Button>
           </div>

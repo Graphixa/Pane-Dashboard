@@ -1,0 +1,37 @@
+.rain {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, #041a0c, #020805 55%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--pane-seed, #33ff66);
+}
+.col {
+  position: absolute;
+  top: -25%;
+  left: var(--x, 0%);
+  width: 4.5%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3em;
+  font-size: calc(11px + var(--pane-size, 3) * 1px);
+  opacity: 0.9;
+  animation: matrix-fall var(--pane-speed, 36s) linear infinite;
+  animation-delay: var(--delay, 0s);
+}
+.col i {
+  font-style: normal;
+  text-shadow: 0 0 calc(var(--pane-glow, 10) * 1px) var(--pane-seed, #33ff66);
+}
+.col i:first-child {
+  color: color-mix(in srgb, var(--pane-seed, #33ff66) 55%, white);
+  text-shadow: 0 0 calc(var(--pane-glow, 10) * 1.6px) var(--pane-seed, #33ff66);
+}
+@keyframes matrix-fall {
+  from {
+    transform: translateY(-15%);
+  }
+  to {
+    transform: translateY(125%);
+  }
+}

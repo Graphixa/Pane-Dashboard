@@ -1,0 +1,31 @@
+.field {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 30% 70%, #142010, #070a06 65%);
+}
+.fly {
+  position: absolute;
+  left: var(--x, 50%);
+  top: var(--y, 50%);
+  width: calc(var(--pane-size, 4) * 1px);
+  height: calc(var(--pane-size, 4) * 1px);
+  margin: calc(var(--pane-size, 4) * -0.5px);
+  border-radius: 50%;
+  background: var(--pane-seed, #d4e157);
+  box-shadow:
+    0 0 calc(var(--pane-glow, 14) * 1px) var(--pane-seed, #d4e157),
+    0 0 calc(var(--pane-glow, 14) * 2.2px) color-mix(in srgb, var(--pane-seed, #d4e157) 35%, transparent);
+  animation: fly-pulse var(--pane-speed, 12s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+@keyframes fly-pulse {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(0.55);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translate(6vw, -8vh) scale(1.35);
+    opacity: 1;
+  }
+}

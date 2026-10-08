@@ -189,15 +189,15 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     expect(screen.getByText("Forest")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Motion effects" })).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "Motion effects" })).toBeNull();
     expect(screen.getByRole("switch", { name: "Wallpaper overlay" })).toBeTruthy();
-    const motionCustomize = screen.getAllByRole("button", { name: "Customize" })[0];
-    expect(motionCustomize.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByRole("switch", { name: "Motion effects" }));
-    expect(motionCustomize.hasAttribute("disabled")).toBe(false);
-    fireEvent.click(motionCustomize);
+    const overlayCustomize = screen.getByRole("button", {
+      name: "Customize overlay",
+    });
+    expect(overlayCustomize.hasAttribute("disabled")).toBe(false);
+    fireEvent.click(overlayCustomize);
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Motion settings" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Overlay settings" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));

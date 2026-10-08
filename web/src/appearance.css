@@ -93,6 +93,22 @@
   position: absolute;
   inset: 0;
 }
+.scene-dynamic {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.swatch-dynamic-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-align: center;
+}
 .scene-motion {
   position: absolute;
   inset: 0;

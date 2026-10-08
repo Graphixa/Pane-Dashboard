@@ -1,4 +1,8 @@
 import type { CSSProperties } from "react";
+import { getDynamicPack } from "./dynamic/registry";
+import { validateDynamicParams } from "./dynamic/params";
+import type { DynamicParams } from "./dynamic/types";
+import { DYNAMIC_ID_RE } from "./dynamic/types";
 export type OverlayMode =
   | "dark-solid"
   | "dark-gradient"
@@ -20,8 +24,16 @@ export const motionStyleLabels: Record<MotionStyle, string> = {
   drift: "Drift",
   twist: "Twist",
 };
+export type BackgroundKind =
+  | "none"
+  | "solid"
+  | "gradient"
+  | "image"
+  | "dynamic";
+/** Legacy kinds accepted only during migrateBackground. */
+export type LegacyBackgroundKind = BackgroundKind | "waves" | "aurora";
 export type Background = {
-  kind: "none" | "solid" | "gradient" | "image" | "waves" | "aurora";
+  kind: BackgroundKind;
   preset: "dusk" | "ocean" | "forest" | "mist";
   colour: string;
   /** Active wallpaper image (data URI or HTTP(S) URL). */
@@ -35,6 +47,10 @@ export type Background = {
   motion: boolean;
   motionStyle: MotionStyle;
   intensity: number;
+  /** Pack id when kind is dynamic. */
+  dynamicId?: string;
+  /** Pack control values keyed by manifest control key. */
+  dynamicParams?: DynamicParams;
 };
 /** Cap keeps embedded backups within the 8 MiB configuration bound. */
 export const maxBackgroundImages = 4;
@@ -112,14 +128,16 @@ export const defaultBackground: Background = {
 };
 export function resolveMotionStyle(
   raw: Partial<Background>,
-  kind: Background["kind"],
+  kind: LegacyBackgroundKind,
   motion: boolean,
 ): MotionStyle {
+  if (kind === "dynamic" || kind === "waves" || kind === "aurora") return "none";
   if (raw.motionStyle && motionStyles.includes(raw.motionStyle))
     return raw.motionStyle;
   if (!motion) return "none";
   return kind === "image" ? "ken-burns" : "drift";
 }
+
 /** Map speed (0–100) to CSS animation duration without rewriting it on every tick. */
 export function motionDurationSeconds(intensity: number) {
   const n = Number.isFinite(intensity) ? Math.min(100, Math.max(0, intensity)) : 40;
@@ -317,18 +335,70 @@ export function prependBackgroundImage(
 }
 
 export function migrateBackground(
-  raw: Partial<Background> & { dimming?: number },
+  raw: Omit<Partial<Background>, "kind"> & {
+    dimming?: number;
+    kind?: LegacyBackgroundKind;
+  },
   theme: "dark" | "light",
 ): Background {
   const base = { ...defaultBackground, ...raw };
-  const motionStyle = resolveMotionStyle(raw, base.kind, !!base.motion);
-  const motion = motionStyle !== "none";
+  const legacyKind = (raw.kind ?? base.kind) as LegacyBackgroundKind;
   const image = typeof base.image === "string" ? base.image : "";
   const images = normaliseBackgroundImages(image, raw.images ?? base.images);
   const colour =
     typeof raw.colour === "string" && /^#[a-fA-F0-9]{6}$/.test(raw.colour)
       ? raw.colour.toLowerCase()
       : defaultBackground.colour;
+  let kind: BackgroundKind = ["none", "solid", "gradient", "image", "dynamic"].includes(
+    legacyKind,
+  )
+    ? (legacyKind as BackgroundKind)
+    : "none";
+  let dynamicId = typeof raw.dynamicId === "string" ? raw.dynamicId : base.dynamicId;
+  let dynamicParams =
+    raw.dynamicParams && typeof raw.dynamicParams === "object"
+      ? { ...raw.dynamicParams }
+      : base.dynamicParams
+        ? { ...base.dynamicParams }
+        : undefined;
+  if (legacyKind === "waves" || legacyKind === "aurora") {
+    kind = "dynamic";
+    dynamicId = legacyKind;
+    const n = Number.isFinite(base.intensity)
+      ? Math.min(100, Math.max(0, Math.round(base.intensity)))
+      : 40;
+    dynamicParams = { speed: n, strength: n };
+    if (legacyKind === "waves") dynamicParams.palette = base.preset;
+  }
+  if (kind === "dynamic") {
+    dynamicId = typeof dynamicId === "string" ? dynamicId : "";
+    const pack = DYNAMIC_ID_RE.test(dynamicId) ? getDynamicPack(dynamicId) : undefined;
+    dynamicParams = pack
+      ? validateDynamicParams(pack, dynamicParams ?? {})
+      : (dynamicParams ?? {});
+  } else {
+    dynamicId = undefined;
+    dynamicParams = undefined;
+  }
+  const motionStyle = resolveMotionStyle(
+    raw as Partial<Background>,
+    kind,
+    !!base.motion,
+  );
+  const motion = motionStyle !== "none";
+  const core = {
+    kind,
+    preset: base.preset,
+    colour,
+    image,
+    images,
+    position: base.position,
+    motion,
+    motionStyle,
+    intensity: base.intensity,
+    dynamicId,
+    dynamicParams,
+  };
   if (
     raw.overlay &&
     overlayModes.includes(raw.overlay) &&
@@ -336,18 +406,10 @@ export function migrateBackground(
     typeof raw.overlayColour === "string"
   ) {
     return {
-      kind: base.kind,
-      preset: base.preset,
-      colour,
-      image,
-      images,
+      ...core,
       overlay: raw.overlay,
       overlayOpacity: raw.overlayOpacity,
       overlayColour: raw.overlayColour,
-      position: base.position,
-      motion,
-      motionStyle,
-      intensity: base.intensity,
     };
   }
   const dimming =
@@ -355,18 +417,10 @@ export function migrateBackground(
       ? raw.dimming
       : defaultBackground.overlayOpacity;
   return {
-    kind: base.kind,
-    preset: base.preset,
-    colour,
-    image,
-    images,
+    ...core,
     overlay: theme === "light" ? "light-solid" : "dark-solid",
     overlayOpacity: dimming,
     overlayColour: defaultOverlayColour(theme),
-    position: base.position,
-    motion,
-    motionStyle,
-    intensity: base.intensity,
   };
 }
 const rgb = (hex: string) =>
@@ -461,10 +515,12 @@ export function validateVisuals(a: AppearanceOptions) {
       "motion",
       "motionStyle",
       "intensity",
+      "dynamicId",
+      "dynamicParams",
     ]);
     const b = a.background;
     if (
-      !["none", "solid", "gradient", "image", "waves", "aurora"].includes(b.kind) ||
+      !["none", "solid", "gradient", "image", "dynamic"].includes(b.kind) ||
       !Object.hasOwn(gradients, b.preset) ||
       !imageReference(b.image) ||
       !Array.isArray(b.images) ||
@@ -483,6 +539,16 @@ export function validateVisuals(a: AppearanceOptions) {
       b.motion !== (b.motionStyle !== "none")
     )
       throw Error("Invalid background settings or image.");
+    if (b.kind === "dynamic") {
+      if (typeof b.dynamicId !== "string" || !DYNAMIC_ID_RE.test(b.dynamicId))
+        throw Error("Invalid background settings or image.");
+      const pack = getDynamicPack(b.dynamicId);
+      if (!pack) throw Error("Invalid background settings or image.");
+      b.dynamicParams = validateDynamicParams(pack, b.dynamicParams);
+    } else {
+      delete b.dynamicId;
+      delete b.dynamicParams;
+    }
   }
   if (a.glass !== undefined) {
     a.glass = normaliseGlass(a.glass);

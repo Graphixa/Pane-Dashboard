@@ -1,0 +1,11 @@
+{
+  "id": "flow",
+  "name": "Flow",
+  "description": "PS3-style centre stream ribbons.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#f3004d", "cssVar": "--pane-seed" },
+    { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 55, "cssVar": "--pane-speed", "map": "duration" },
+    { "key": "blur", "label": "Softness", "type": "range", "min": 0, "max": 60, "default": 25, "cssVar": "--pane-blur" },
+    { "key": "opacity", "label": "Opacity", "type": "range", "min": 10, "max": 100, "default": 50, "cssVar": "--pane-opacity" }
+  ]
+}

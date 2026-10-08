@@ -1,0 +1,67 @@
+.veils {
+  position: absolute;
+  inset: -15%;
+  opacity: calc(var(--pane-strength, 70) / 100);
+  filter: blur(calc(18px + var(--pane-softness, 30) * 0.4px));
+  mix-blend-mode: screen;
+}
+.veils i {
+  position: absolute;
+  display: block;
+  width: 70%;
+  height: 90%;
+  left: -10%;
+  top: -10%;
+  border-radius: 45% 55% 50% 50%;
+  background: radial-gradient(
+    ellipse at 40% 50%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 70%, white),
+    color-mix(in srgb, var(--pane-seed, #5eead4) 25%, transparent) 45%,
+    transparent 72%
+  );
+  transform: rotate(-18deg);
+  animation: aurora-drift var(--pane-speed, 54s) ease-in-out infinite alternate;
+}
+.veils i:nth-child(2) {
+  left: 20%;
+  top: 5%;
+  width: 75%;
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 55%, #c084fc),
+    transparent 70%
+  );
+  animation-delay: -16s;
+  animation-direction: alternate-reverse;
+}
+.veils i:nth-child(3) {
+  left: 45%;
+  top: -5%;
+  width: 65%;
+  background: radial-gradient(
+    ellipse at 45% 55%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 45%, #60a5fa),
+    transparent 68%
+  );
+  animation-delay: -32s;
+}
+.veils i:nth-child(4) {
+  left: 10%;
+  top: 25%;
+  width: 55%;
+  height: 70%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 40%, #34d399),
+    transparent 65%
+  );
+  animation-delay: -24s;
+}
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(-4%, -3%, 0) rotate(-14deg) scale(1);
+  }
+  to {
+    transform: translate3d(6%, 5%, 0) rotate(12deg) scale(1.08);
+  }
+}

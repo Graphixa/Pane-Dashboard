@@ -21,20 +21,29 @@ const imageLimit = 2 << 20
 const maxBackgroundImages = 4
 
 type Background struct {
-	Kind           string   `json:"kind" yaml:"kind"`
-	Preset         string   `json:"preset" yaml:"preset"`
-	Colour         string   `json:"colour,omitempty" yaml:"colour,omitempty"`
-	Image          string   `json:"image" yaml:"image"`
-	Images         []string `json:"images,omitempty" yaml:"images,omitempty"`
-	Dimming        int      `json:"dimming,omitempty" yaml:"dimming,omitempty"`
-	Overlay        string   `json:"overlay,omitempty" yaml:"overlay,omitempty"`
-	OverlayOpacity int      `json:"overlayOpacity,omitempty" yaml:"overlayOpacity,omitempty"`
-	OverlayColour  string   `json:"overlayColour,omitempty" yaml:"overlayColour,omitempty"`
-	Position       string   `json:"position" yaml:"position"`
-	Motion         bool     `json:"motion" yaml:"motion"`
-	MotionStyle    string   `json:"motionStyle,omitempty" yaml:"motionStyle,omitempty"`
-	Intensity      int      `json:"intensity" yaml:"intensity"`
+	Kind           string         `json:"kind" yaml:"kind"`
+	Preset         string         `json:"preset" yaml:"preset"`
+	Colour         string         `json:"colour,omitempty" yaml:"colour,omitempty"`
+	Image          string         `json:"image" yaml:"image"`
+	Images         []string       `json:"images,omitempty" yaml:"images,omitempty"`
+	Dimming        int            `json:"dimming,omitempty" yaml:"dimming,omitempty"`
+	Overlay        string         `json:"overlay,omitempty" yaml:"overlay,omitempty"`
+	OverlayOpacity int            `json:"overlayOpacity,omitempty" yaml:"overlayOpacity,omitempty"`
+	OverlayColour  string         `json:"overlayColour,omitempty" yaml:"overlayColour,omitempty"`
+	Position       string         `json:"position" yaml:"position"`
+	Motion         bool           `json:"motion" yaml:"motion"`
+	MotionStyle    string         `json:"motionStyle,omitempty" yaml:"motionStyle,omitempty"`
+	Intensity      int            `json:"intensity" yaml:"intensity"`
+	DynamicID      string         `json:"dynamicId,omitempty" yaml:"dynamicId,omitempty"`
+	DynamicParams  map[string]any `json:"dynamicParams,omitempty" yaml:"dynamicParams,omitempty"`
 }
+
+// Bundled wallpaper packs under web/dynamic (keep in sync with manifests).
+var knownDynamicPacks = []string{
+	"waves", "aurora", "flow", "dust", "fireflies", "matrix", "stars", "bokeh", "diagonals", "snow",
+}
+var dynamicIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
+var dynamicKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 type Glass struct {
 	Mode         string `json:"mode" yaml:"mode"`
 	Opacity      int    `json:"opacity" yaml:"opacity"`
@@ -110,8 +119,65 @@ func validateAppearance(c Config) error {
 		if len(b.Images) > maxBackgroundImages {
 			b.Images = b.Images[:maxBackgroundImages]
 		}
-		if !slices.Contains([]string{"none", "solid", "gradient", "image", "waves", "aurora"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") || (b.MotionStyle != "" && !slices.Contains([]string{"none", "ken-burns", "breathe", "drift", "twist"}, b.MotionStyle)) {
+		// Legacy waves/aurora → dynamic packs (same ids).
+		if b.Kind == "waves" || b.Kind == "aurora" {
+			id := b.Kind
+			n := b.Intensity
+			if n < 0 {
+				n = 0
+			}
+			if n > 100 {
+				n = 100
+			}
+			b.Kind = "dynamic"
+			b.DynamicID = id
+			b.DynamicParams = map[string]any{"speed": n, "strength": n}
+			if id == "waves" {
+				b.DynamicParams["palette"] = b.Preset
+			}
+			b.Motion = false
+			b.MotionStyle = "none"
+		}
+		if !slices.Contains([]string{"none", "solid", "gradient", "image", "dynamic"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") || (b.MotionStyle != "" && !slices.Contains([]string{"none", "ken-burns", "breathe", "drift", "twist"}, b.MotionStyle)) {
 			return fmt.Errorf("invalid background settings or image")
+		}
+		if b.Kind == "dynamic" {
+			if !dynamicIDPattern.MatchString(b.DynamicID) || !slices.Contains(knownDynamicPacks, b.DynamicID) {
+				return fmt.Errorf("invalid background settings or image")
+			}
+			if b.DynamicParams == nil {
+				b.DynamicParams = map[string]any{}
+			}
+			if len(b.DynamicParams) > 32 {
+				return fmt.Errorf("invalid background settings or image")
+			}
+			for key, value := range b.DynamicParams {
+				if !dynamicKeyPattern.MatchString(key) {
+					return fmt.Errorf("invalid background settings or image")
+				}
+				switch v := value.(type) {
+				case bool:
+				case string:
+					if len(v) > 64 {
+						return fmt.Errorf("invalid background settings or image")
+					}
+				case float64:
+					if v < -1000 || v > 1000 {
+						return fmt.Errorf("invalid background settings or image")
+					}
+				case int:
+					if v < -1000 || v > 1000 {
+						return fmt.Errorf("invalid background settings or image")
+					}
+				default:
+					return fmt.Errorf("invalid background settings or image")
+				}
+			}
+			b.Motion = false
+			b.MotionStyle = "none"
+		} else {
+			b.DynamicID = ""
+			b.DynamicParams = nil
 		}
 		if len(b.Images) > maxBackgroundImages {
 			return fmt.Errorf("invalid background settings or image")

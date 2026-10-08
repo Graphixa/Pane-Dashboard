@@ -155,3 +155,44 @@ func TestLegacyGlassUnits(t *testing.T) {
 		t.Fatalf("%+v", c.Appearance.Glass)
 	}
 }
+
+func TestLegacyWavesMigratesToDynamic(t *testing.T) {
+	c := defaultConfig()
+	c.Appearance.Background = &Background{
+		Kind: "waves", Preset: "ocean", Position: "center", Motion: true, MotionStyle: "drift", Intensity: 55,
+		Overlay: "dark-solid", OverlayOpacity: 25, OverlayColour: "#111720",
+	}
+	if err := validate(c); err != nil {
+		t.Fatal(err)
+	}
+	b := c.Appearance.Background
+	if b.Kind != "dynamic" || b.DynamicID != "waves" {
+		t.Fatalf("kind=%s id=%s", b.Kind, b.DynamicID)
+	}
+	if b.Motion || b.MotionStyle != "none" {
+		t.Fatalf("motion=%v style=%s", b.Motion, b.MotionStyle)
+	}
+	if b.DynamicParams["speed"] != 55 || b.DynamicParams["palette"] != "ocean" {
+		t.Fatalf("%+v", b.DynamicParams)
+	}
+}
+
+func TestDynamicPackValidation(t *testing.T) {
+	c := defaultConfig()
+	c.Appearance.Background = &Background{
+		Kind: "dynamic", DynamicID: "not-a-pack", Preset: "dusk", Position: "center",
+		Overlay: "dark-solid", OverlayOpacity: 25, OverlayColour: "#111720",
+		DynamicParams: map[string]any{"speed": 40},
+	}
+	if validate(c) == nil {
+		t.Fatal("unknown pack accepted")
+	}
+	c.Appearance.Background = &Background{
+		Kind: "dynamic", DynamicID: "dust", Preset: "dusk", Position: "center",
+		Overlay: "dark-solid", OverlayOpacity: 25, OverlayColour: "#111720",
+		DynamicParams: map[string]any{"seed": "#ff00a6", "speed": 35, "glow": 20},
+	}
+	if err := validate(c); err != nil {
+		t.Fatal(err)
+	}
+}
