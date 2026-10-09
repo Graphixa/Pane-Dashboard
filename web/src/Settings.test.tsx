@@ -158,7 +158,7 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: "ocean" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "Wallpaper overlay" })).toBeNull();
