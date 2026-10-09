@@ -29,7 +29,7 @@ vi.mock("./design/components", async () => {
   };
 });
 const initial = (): Config => ({
-  version: 2,
+  version: 3,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
   appearance: {
     showAppLabels: true,

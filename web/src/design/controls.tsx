@@ -5,6 +5,7 @@ import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
+import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { Check, ChevronDown } from 'lucide-react';
 import { useSurface } from './surface';
 
@@ -103,6 +104,32 @@ export function ScrollArea({
   </ScrollAreaPrimitive.Root>;
 }
 /** Label left, switch right; id association without nesting the control in the label. */
+export function Tabs({
+  value,
+  defaultValue,
+  onValueChange,
+  className = '',
+  children,
+}: {
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return <TabsPrimitive.Root value={value} defaultValue={defaultValue} onValueChange={onValueChange} className={`ui-tabs ${className}`}>{children}</TabsPrimitive.Root>;
+}
+export function TabsList({ className = '', children, 'aria-label': ariaLabel }: { className?: string; children: ReactNode; 'aria-label'?: string }) {
+  return <TabsPrimitive.List className={`ui-tabs-list ${className}`} aria-label={ariaLabel}>{children}</TabsPrimitive.List>;
+}
+export function TabsTrigger({ value, className = '', children, disabled }: { value: string; className?: string; children: ReactNode; disabled?: boolean }) {
+  const groupDisabled = useContext(DisabledContext);
+  return <TabsPrimitive.Trigger value={value} disabled={disabled || groupDisabled} className={`ui-tabs-trigger ${className}`}>{children}</TabsPrimitive.Trigger>;
+}
+export function TabsContent({ value, className = '', children }: { value: string; className?: string; children: ReactNode }) {
+  return <TabsPrimitive.Content value={value} className={`ui-tabs-content ${className}`}>{children}</TabsPrimitive.Content>;
+}
+
 export function SwitchRow({label, hint, action, checked, onCheckedChange, disabled, id}: {
   label: string;
   hint?: string;

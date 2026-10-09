@@ -108,7 +108,7 @@ export function SettingsRow({ label, hint, children, className }: {
   </div>;
 }
 
-export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup, ScrollArea } from "./controls";
+export { Input, Label, Select, SelectOption, Switch, SwitchRow, Checkbox, Range, Disclosure, FieldGroup, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent } from "./controls";
 export { Modal, Popover, PopoverHead, ImagePopoverActions, DropdownMenu, useConfirmation } from "./overlays";
 export type { ConfirmRequest } from "./overlays";
 export {

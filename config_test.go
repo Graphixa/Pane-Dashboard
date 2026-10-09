@@ -26,7 +26,7 @@ func TestValidation(t *testing.T) {
 		{"overlap", func(c *Config) { p := c.Items[0]; p.ID = "other"; p.Apps = []App{}; c.Items = append(c.Items, p) }},
 		{"occupied slot", func(c *Config) { a := c.Items[0].Apps[0]; a.ID = "other"; c.Items[0].Apps = append(c.Items[0].Apps, a) }},
 		{"global size", func(c *Config) { c.Appearance.AppSize = "large" }},
-		{"schema version", func(c *Config) { c.Version = 3 }},
+		{"schema version", func(c *Config) { c.Version = 2 }},
 		{"unsafe logo", func(c *Config) { c.Dashboard.Logo = "javascript:alert(1)" }},
 		{"logo credentials", func(c *Config) { c.Dashboard.Logo = "https://user:pass@example.com/logo.png" }},
 		{"title too large", func(c *Config) { c.Appearance.PaneTitleSize = 23 }},
@@ -71,7 +71,7 @@ func TestBrandingPersistence(t *testing.T) {
 }
 func TestStrictDecoding(t *testing.T) {
 	b, _ := json.Marshal(defaultConfig())
-	b = bytes.Replace(b, []byte(`"version":2`), []byte(`"version":2,"unknown":true`), 1)
+	b = bytes.Replace(b, []byte(`"version":3`), []byte(`"version":3,"unknown":true`), 1)
 	if _, e := decodeJSON(b); e == nil {
 		t.Fatal("unknown field accepted")
 	}
@@ -85,7 +85,7 @@ func TestStoreAndConflict(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	h := handler(s, nil)
+	h := handler(s, nil, nil)
 	get := httptest.NewRecorder()
 	h.ServeHTTP(get, httptest.NewRequest("GET", "/api/config", nil))
 	etag := get.Header().Get("ETag")
@@ -136,7 +136,7 @@ func TestAtomicFailureKeepsState(t *testing.T) {
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("If-Match", old)
 	w := httptest.NewRecorder()
-	handler(s, nil).ServeHTTP(w, r)
+	handler(s, nil, nil).ServeHTTP(w, r)
 	if w.Code != 500 || s.revision != old || len(s.config.Items) != 0 {
 		t.Fatal("failed save changed in-memory config")
 	}
@@ -146,7 +146,7 @@ func TestCrossOrigin(t *testing.T) {
 	r := httptest.NewRequest("PUT", "http://pane.local/api/config", nil)
 	r.Header.Set("Origin", "https://evil.example")
 	w := httptest.NewRecorder()
-	handler(s, nil).ServeHTTP(w, r)
+	handler(s, nil, nil).ServeHTTP(w, r)
 	if w.Code != 403 {
 		t.Fatal("cross-origin mutation accepted")
 	}

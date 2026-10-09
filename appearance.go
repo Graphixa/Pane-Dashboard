@@ -1,15 +1,8 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"fmt"
-	"image"
-	"image/jpeg"
-	"image/png"
-	"io"
 	"math"
-	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
@@ -17,33 +10,7 @@ import (
 )
 
 const configLimit = 8 << 20
-const imageLimit = 2 << 20
-const maxBackgroundImages = 4
 
-type Background struct {
-	Kind           string         `json:"kind" yaml:"kind"`
-	Preset         string         `json:"preset" yaml:"preset"`
-	Colour         string         `json:"colour,omitempty" yaml:"colour,omitempty"`
-	Image          string         `json:"image" yaml:"image"`
-	Images         []string       `json:"images,omitempty" yaml:"images,omitempty"`
-	Dimming        int            `json:"dimming,omitempty" yaml:"dimming,omitempty"`
-	Overlay        string         `json:"overlay,omitempty" yaml:"overlay,omitempty"`
-	OverlayOpacity int            `json:"overlayOpacity,omitempty" yaml:"overlayOpacity,omitempty"`
-	OverlayColour  string         `json:"overlayColour,omitempty" yaml:"overlayColour,omitempty"`
-	Position       string         `json:"position" yaml:"position"`
-	Motion         bool           `json:"motion" yaml:"motion"`
-	MotionStyle    string         `json:"motionStyle,omitempty" yaml:"motionStyle,omitempty"`
-	Intensity      int            `json:"intensity" yaml:"intensity"`
-	DynamicID      string         `json:"dynamicId,omitempty" yaml:"dynamicId,omitempty"`
-	DynamicParams  map[string]any `json:"dynamicParams,omitempty" yaml:"dynamicParams,omitempty"`
-}
-
-// Bundled wallpaper packs under web/dynamic (keep in sync with manifests).
-var knownDynamicPacks = []string{
-	"waves", "aurora", "flow", "dust", "fireflies", "matrix", "stars", "bokeh", "snow", "grid", "beams",
-}
-var dynamicIDPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,63}$`)
-var dynamicKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}$`)
 type Glass struct {
 	Mode         string `json:"mode" yaml:"mode"`
 	Opacity      int    `json:"opacity" yaml:"opacity"`
@@ -57,32 +24,6 @@ type Palette struct {
 	Surface    string `json:"surface" yaml:"surface"`
 	Text       string `json:"text" yaml:"text"`
 	Accent     string `json:"accent" yaml:"accent"`
-}
-
-func imageBoundsOK(w, h int, format string) bool {
-	return slices.Contains([]string{"png", "jpeg"}, format) && w >= 1 && h >= 1 && w <= 4096 && h <= 4096 && int64(w)*int64(h) <= 4_000_000
-}
-func decodeImage(data []byte) (image.Config, string, error) {
-	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || !imageBoundsOK(cfg.Width, cfg.Height, format) {
-		return cfg, format, fmt.Errorf("use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
-	}
-	return cfg, format, nil
-}
-func validImage(s string) bool {
-	if !strings.HasPrefix(s, "data:") {
-		return validURL(s, true)
-	}
-	parts := strings.SplitN(s, ",", 2)
-	if len(parts) != 2 || !slices.Contains([]string{"data:image/png;base64", "data:image/jpeg;base64"}, parts[0]) || len(parts[1]) > base64.StdEncoding.EncodedLen(imageLimit) {
-		return false
-	}
-	data, err := base64.StdEncoding.Strict().DecodeString(parts[1])
-	if err != nil || len(data) > imageLimit {
-		return false
-	}
-	_, format, err := decodeImage(data)
-	return err == nil && parts[0] == "data:image/"+format+";base64"
 }
 
 var hexColour = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -105,121 +46,29 @@ func contrast(a, b string) float64 {
 	x, y := luminance(a), luminance(b)
 	return (math.Max(x, y) + 0.05) / (math.Min(x, y) + 0.05)
 }
+
+// validLogo accepts empty, HTTP(S) image URLs, or same-origin media asset paths.
+// Embedded data URIs are rejected (Path A / schema 3).
+func validLogo(s string) bool {
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(s, "/media/assets/") {
+		return validMediaID(strings.TrimPrefix(s, "/media/assets/"))
+	}
+	if strings.HasPrefix(s, "/media/staging/") {
+		return validMediaID(strings.TrimPrefix(s, "/media/staging/"))
+	}
+	return validURL(s, false)
+}
+
 func validateAppearance(c Config) error {
-	if !slices.Contains([]string{"", "icon", "logo"}, c.Dashboard.Branding) || !slices.Contains([]string{"", "grid", "server", "panels"}, c.Dashboard.BuiltinIcon) || !validImage(c.Dashboard.Logo) {
+	if !slices.Contains([]string{"", "icon", "logo"}, c.Dashboard.Branding) || !slices.Contains([]string{"", "grid", "server", "panels"}, c.Dashboard.BuiltinIcon) || !validLogo(c.Dashboard.Logo) {
 		return fmt.Errorf("invalid header branding or image")
 	}
 	if b := c.Appearance.Background; b != nil {
-		if b.Images == nil {
-			b.Images = []string{}
-		}
-		if b.Image != "" && !slices.Contains(b.Images, b.Image) {
-			b.Images = append([]string{b.Image}, b.Images...)
-		}
-		if len(b.Images) > maxBackgroundImages {
-			b.Images = b.Images[:maxBackgroundImages]
-		}
-		// Legacy waves/aurora → dynamic packs (same ids).
-		if b.Kind == "waves" || b.Kind == "aurora" {
-			id := b.Kind
-			n := b.Intensity
-			if n < 0 {
-				n = 0
-			}
-			if n > 100 {
-				n = 100
-			}
-			b.Kind = "dynamic"
-			b.DynamicID = id
-			b.DynamicParams = map[string]any{"speed": n, "strength": n}
-			if id == "waves" {
-				b.DynamicParams["palette"] = b.Preset
-			}
-			b.Motion = false
-			b.MotionStyle = "none"
-		}
-		if !slices.Contains([]string{"none", "solid", "gradient", "image", "dynamic"}, b.Kind) || !slices.Contains([]string{"dusk", "ocean", "forest", "mist"}, b.Preset) || !slices.Contains([]string{"center", "top", "bottom"}, b.Position) || b.Intensity < 0 || b.Intensity > 100 || !validImage(b.Image) || (b.Kind == "image" && b.Image == "") || (b.MotionStyle != "" && !slices.Contains([]string{"none", "ken-burns", "breathe", "drift", "twist"}, b.MotionStyle)) {
-			return fmt.Errorf("invalid background settings or image")
-		}
-		// Retired pack: drop quietly so old configs still open.
-		if b.Kind == "dynamic" && b.DynamicID == "diagonals" {
-			b.Kind = "none"
-			b.DynamicID = ""
-			b.DynamicParams = nil
-		}
-		if b.Kind == "dynamic" {
-			if !dynamicIDPattern.MatchString(b.DynamicID) || !slices.Contains(knownDynamicPacks, b.DynamicID) {
-				return fmt.Errorf("invalid background settings or image")
-			}
-			if b.DynamicParams == nil {
-				b.DynamicParams = map[string]any{}
-			}
-			if len(b.DynamicParams) > 32 {
-				return fmt.Errorf("invalid background settings or image")
-			}
-			for key, value := range b.DynamicParams {
-				if !dynamicKeyPattern.MatchString(key) {
-					return fmt.Errorf("invalid background settings or image")
-				}
-				switch v := value.(type) {
-				case bool:
-				case string:
-					if len(v) > 64 {
-						return fmt.Errorf("invalid background settings or image")
-					}
-				case float64:
-					if v < -1000 || v > 1000 {
-						return fmt.Errorf("invalid background settings or image")
-					}
-				case int:
-					if v < -1000 || v > 1000 {
-						return fmt.Errorf("invalid background settings or image")
-					}
-				default:
-					return fmt.Errorf("invalid background settings or image")
-				}
-			}
-			b.Motion = false
-			b.MotionStyle = "none"
-		} else {
-			b.DynamicID = ""
-			b.DynamicParams = nil
-		}
-		if len(b.Images) > maxBackgroundImages {
-			return fmt.Errorf("invalid background settings or image")
-		}
-		for _, entry := range b.Images {
-			if entry == "" || !validImage(entry) {
-				return fmt.Errorf("invalid background settings or image")
-			}
-		}
-		if b.Kind == "image" && b.Image != "" && !slices.Contains(b.Images, b.Image) {
-			return fmt.Errorf("invalid background settings or image")
-		}
-		if b.Kind == "solid" {
-			if b.Colour == "" {
-				b.Colour = "#a2cbbb"
-			}
-			if !hexColour.MatchString(b.Colour) {
-				return fmt.Errorf("invalid background settings or image")
-			}
-		} else if b.Colour != "" && !hexColour.MatchString(b.Colour) {
-			return fmt.Errorf("invalid background settings or image")
-		}
-		if b.Overlay == "" {
-			if b.Dimming < 0 || b.Dimming > 80 {
-				return fmt.Errorf("invalid background settings or image")
-			}
-			if c.Appearance.Theme == "light" {
-				b.Overlay, b.OverlayColour = "light-solid", "#f5f6f2"
-			} else {
-				b.Overlay, b.OverlayColour = "dark-solid", "#111720"
-			}
-			b.OverlayOpacity = b.Dimming
-			b.Dimming = 0
-		}
-		if !slices.Contains([]string{"dark-solid", "dark-gradient", "light-solid", "light-gradient", "custom"}, b.Overlay) || b.OverlayOpacity < 0 || b.OverlayOpacity > 80 || !hexColour.MatchString(b.OverlayColour) {
-			return fmt.Errorf("invalid background overlay settings")
+		if err := validateBackground(b); err != nil {
+			return err
 		}
 	}
 	if g := c.Appearance.Glass; g != nil {
@@ -251,34 +100,16 @@ func validateAppearance(c Config) error {
 	return nil
 }
 
-// Preparation does not persist anything: Apply saves the returned image with the
-// configuration, so cancelling needs no cleanup and backups remain self-contained.
-func prepareImage(w http.ResponseWriter, r *http.Request) {
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 5<<20))
-	if err != nil {
-		apiError(w, 413, "Image exceeds 5 MiB")
-		return
+func validateConfigMedia(c Config, media *MediaStore) error {
+	if c.Appearance.Background != nil {
+		if err := validateBackgroundAssets(c.Appearance.Background, media); err != nil {
+			return err
+		}
 	}
-	img, format, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		apiError(w, 400, "Image is damaged or unsupported")
-		return
+	if id, ok := logoAssetID(c.Dashboard.Logo); ok && media != nil {
+		if _, err := media.GetMeta(id); err != nil {
+			return fmt.Errorf("missing logo media asset")
+		}
 	}
-	b := img.Bounds()
-	wPx, hPx := b.Dx(), b.Dy()
-	if !imageBoundsOK(wPx, hPx, format) {
-		apiError(w, 400, "use a PNG or JPEG image, at most 4 million pixels and 4096 px per side")
-		return
-	}
-	var out bytes.Buffer
-	if format == "png" {
-		err = png.Encode(&out, img)
-	} else {
-		err = jpeg.Encode(&out, img, &jpeg.Options{Quality: 88})
-	}
-	if err != nil || out.Len() > imageLimit {
-		apiError(w, 413, "Prepared image exceeds 2 MiB; choose a smaller image")
-		return
-	}
-	respond(w, 200, map[string]string{"image": "data:image/" + format + ";base64," + base64.StdEncoding.EncodeToString(out.Bytes())})
+	return nil
 }

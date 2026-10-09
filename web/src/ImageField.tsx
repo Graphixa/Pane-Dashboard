@@ -1,55 +1,76 @@
 import { Button, Input, Label, Notice } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
-import { imageReference } from "./appearance";
+import { logoReference } from "./appearance";
 
+export type StagedMedia = {
+  sessionId: string;
+  previewUrl: string;
+  kind: "image" | "video";
+  meta: {
+    mime: string;
+    width: number;
+    height: number;
+    name: string;
+    bytes: number;
+  };
+};
+
+/** Upload original bytes to staging. Preserves format; no JPEG conversion. */
+export async function stageMediaUpload(file: File): Promise<StagedMedia> {
+  const isVideo = file.type.startsWith("video/");
+  const isImage = ["image/png", "image/jpeg", "image/webp"].includes(file.type);
+  if (!isImage && !isVideo)
+    throw Error("Choose a PNG, JPEG, WebP, WebM or MP4 file.");
+  const limit = isVideo ? 40 * 1024 * 1024 : 12 * 1024 * 1024;
+  if (file.size > limit)
+    throw Error(
+      isVideo
+        ? "Choose a video up to 40 MiB."
+        : "Choose an image up to 12 MiB.",
+    );
+  const res = await fetch("/api/media/upload", {
+    method: "POST",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+      "X-Pane-Filename": file.name || "upload",
+    },
+    body: file,
+  });
+  const body = await res.json();
+  if (!res.ok) throw Error(body.error || "Upload failed.");
+  if (!body.sessionId || !body.previewUrl || !body.meta)
+    throw Error("Invalid upload response.");
+  return {
+    sessionId: body.sessionId,
+    previewUrl: body.previewUrl,
+    kind: body.meta.kind,
+    meta: body.meta,
+  };
+}
+
+/** Commit staged upload into a durable asset; returns serving path. */
+export async function commitStagedMedia(sessionId: string): Promise<string> {
+  const res = await fetch("/api/media/commit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw Error(body.error || "Could not save media.");
+  if (!body.assetId) throw Error("Invalid commit response.");
+  return `/media/assets/${body.assetId}`;
+}
+
+/** Upload and immediately commit so draft config holds durable asset paths. */
 export async function prepareUpload(
   file: File,
-  kind: "icon" | "logo" | "background",
+  _kind: "icon" | "logo" | "background",
 ): Promise<string> {
-  if (
-    !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-    file.size > 8 * 1024 * 1024
-  )
-    throw Error("Choose a PNG, JPEG or WebP image up to 8 MiB.");
-  const bitmap = await createImageBitmap(file);
-  try {
-    if (bitmap.width * bitmap.height > 20_000_000)
-      throw Error("Choose an image smaller than 20 million pixels.");
-    const maxW = kind === "icon" ? 512 : kind === "logo" ? 1200 : 1920,
-      maxH = kind === "icon" ? 512 : kind === "logo" ? 320 : 1920;
-    const scale = Math.min(1, maxW / bitmap.width, maxH / bitmap.height);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw Error("Image preparation is unavailable in this browser.");
-    if (kind === "background") {
-      ctx.fillStyle = "#111720";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-        (b) => (b ? resolve(b) : reject(Error("Could not prepare image."))),
-        kind === "background" ? "image/jpeg" : "image/png",
-        0.86,
-      ),
-    );
-    const res = await fetch("/api/images/prepare", {
-      method: "POST",
-      headers: { "Content-Type": blob.type },
-      body: blob,
-    });
-    const body = await res.json();
-    if (!res.ok) throw Error(body.error || "Upload could not be prepared.");
-    if (!imageReference(body.image) || !body.image.startsWith("data:"))
-      throw Error("Invalid image response.");
-    return body.image;
-  } finally {
-    bitmap.close();
-  }
+  const staged = await stageMediaUpload(file);
+  return commitStagedMedia(staged.sessionId);
 }
+
 export default function ImageField({
   label,
   value,
@@ -76,8 +97,13 @@ export default function ImageField({
       alive.current = false;
     };
   }, []);
-  const uploaded = value.startsWith("data:");
-  const formats = hint ?? "PNG, JPEG or WebP, up to 8 MiB.";
+  const uploaded =
+    value.startsWith("/media/assets/") || value.startsWith("/media/staging/");
+  const formats =
+    hint ??
+    (kind === "background"
+      ? "PNG, JPEG, WebP, WebM or MP4."
+      : "PNG, JPEG or WebP, up to 12 MiB.");
   const take = async (file: File) => {
     setError("");
     setBusy(true);
@@ -96,7 +122,8 @@ export default function ImageField({
   };
   return (
     <div className="image-field">
-      <Button variant="surface"
+      <Button
+        variant="surface"
         type="button"
         className="image-dropzone"
         data-drag={drag ? "true" : undefined}
@@ -125,7 +152,7 @@ export default function ImageField({
         <Upload size={28} aria-hidden="true" />
         <span className="image-dropzone-title">
           {busy
-            ? "Preparing…"
+            ? "Uploading…"
             : uploaded
               ? "Drop to replace, or click to browse"
               : "Drop an image here, or click to browse"}
@@ -136,7 +163,11 @@ export default function ImageField({
         ref={input}
         className="file-picker"
         type="file"
-        accept="image/png,image/jpeg,image/webp"
+        accept={
+          kind === "background"
+            ? "image/png,image/jpeg,image/webp,video/webm,video/mp4"
+            : "image/png,image/jpeg,image/webp"
+        }
         aria-label={`${label} file`}
         onChange={(e) => {
           const file = e.currentTarget.files?.[0];
@@ -163,7 +194,8 @@ export default function ImageField({
       </Label>
       <div className="image-field-meta">
         {value ? (
-          <Button variant="surface"
+          <Button
+            variant="surface"
             type="button"
             className="text-button"
             onClick={() => change("")}
@@ -173,14 +205,14 @@ export default function ImageField({
         ) : null}
         <p className="hint">
           {uploaded
-            ? "Uploaded image is included in backups."
-            : "Remote URLs stay as links; uploads are embedded in backups."}
+            ? "Uploaded media is stored beside configuration and included in portable archives."
+            : "Remote URLs stay as links; uploads become local media assets."}
         </p>
       </div>
-      {error && (
-        <Notice tone="error">{error}</Notice>
+      {error && <Notice tone="error">{error}</Notice>}
+      {value && !logoReference(value) && !uploaded && (
+        <Notice tone="error">Enter a valid HTTP(S) image URL.</Notice>
       )}
     </div>
   );
 }
-

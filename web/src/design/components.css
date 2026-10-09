@@ -1,3 +1,17 @@
+.ui-tabs { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ui-tabs-list {
+  display: flex; justify-content: center; gap: var(--space-1);
+  padding: var(--space-1); border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--panel) 88%, var(--text));
+}
+.ui-tabs-trigger {
+  appearance: none; border: 0; cursor: pointer; font: inherit;
+  min-height: var(--control-height); padding: var(--space-2) var(--space-4);
+  border-radius: calc(var(--radius-control) - 2px); background: transparent; color: var(--muted);
+}
+.ui-tabs-trigger[data-state="active"] { background: var(--panel); color: var(--text); font-weight: var(--weight-semibold); }
+.ui-tabs-content { min-width: 0; outline: none; }
+
 /* The single Pane control system. Feature CSS may arrange controls, not redefine tokens. */
 :where(.ui-button, .ui-input, .ui-select, .ui-switch, .ui-checkbox, .ui-disclosure-trigger, .ui-menu-item) {
   font-family: inherit;

@@ -1,994 +1,84 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Play, Plus, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   Button,
   ColourField,
-  ColourPopoverFields,
   IconButton,
   Modal,
-  Popover,
-  PopoverHead,
-  ImagePopoverActions,
   Range,
+  ScrollArea,
   Select,
   SelectOption,
-  ScrollArea,
   SettingsGroup,
   SettingsRow,
-  SwitchRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Text,
   useConfirmation,
-  useDeferredColour,
 } from "./design/components";
-import ImageField from "./ImageField";
+import { prepareUpload } from "./ImageField";
 import {
   accentPresets,
   defaultBackground,
-  defaultOverlayColour,
+  effectIds,
+  effectLabels,
   gradients,
+  mediaRefEqual,
+  mediaSrc,
   motionStyleLabels,
   motionStyles,
-  overlayBackground,
-  prependBackgroundImage,
+  prependLibrary,
   solidBackgroundPaint,
-  withMotionStyle,
-  type Background as BackgroundSettings,
+  wallpaperLabel,
+  type Background,
+  type Effect,
+  type EffectId,
+  type MediaRef,
   type MotionStyle,
-  type OverlayMode,
+  type Wallpaper,
 } from "./appearance";
-import DynamicScene from "./dynamic/DynamicScene";
-import { defaultDynamicParams } from "./dynamic/params";
-import { getDynamicPack, listDynamicPacks } from "./dynamic/registry";
-import type { DynamicControl, DynamicPack, DynamicParams } from "./dynamic/types";
+import { getEffectPack, listEffectPacks } from "./effects/registry";
 
-type BackgroundUpdate = (update: Partial<BackgroundSettings>) => void;
+type BackgroundUpdate = (update: Partial<Background>) => void;
 
-function titleCase(id: string) {
-  return id[0].toUpperCase() + id.slice(1);
+function assetRefFromPath(path: string): MediaRef | null {
+  const m = path.match(/^\/media\/assets\/([A-Za-z0-9_-]{1,128})$/);
+  return m ? { source: "asset", assetId: m[1] } : null;
 }
 
-function defaultMotionFor(kind: BackgroundSettings["kind"]): MotionStyle {
-  return kind === "image" ? "ken-burns" : "drift";
-}
-
-function ColourSwatch({
-  label,
-  colour,
-  pressed = false,
-  hueDefault = false,
-  onSelect,
-  onColour,
-  paintLive,
-}: {
-  label: string;
-  colour: string;
-  pressed?: boolean;
-  hueDefault?: boolean;
-  onSelect?: () => void;
-  onColour: (colour: string) => void;
-  paintLive?: (colour: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
-    colour,
-    onColour,
-    paintLive,
-  });
-  const close = () => {
-    flush();
-    setOpen(false);
-  };
-  const picking = open && live.toLowerCase() !== colour.toLowerCase();
-  const hue = hueDefault && !picking;
-  return (
-    <Popover
-      label={label}
-      open={open}
-      onOpenChange={(next) => {
-        if (next) onSelect?.();
-        else flush();
-        setOpen(next);
-      }}
-      trigger={
-        <Button
-          variant="surface"
-          aria-label={label}
-          title={label}
-          aria-pressed={pressed}
-          className="colour-tile overlay-swatch overlay-custom"
-        >
-          <span className="overlay-swatch-frame">
-            <span
-              className={`colour-tile-paint${hue ? " overlay-custom-hue" : ""}`}
-              style={hue ? undefined : { background: picking ? live : colour }}
-              aria-hidden="true"
-            />
-            <span className="colour-tile-tick" aria-hidden="true">
-              {pressed ? "✓" : ""}
-            </span>
-          </span>
-        </Button>
-      }
-    >
-      <PopoverHead title={label} closeLabel={`Close ${label} picker`} onClose={close} />
-      <ColourPopoverFields
-        pickerLabel={label}
-        swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : colour}
-        hex={hex}
-        onHexChange={setHex}
-        onSwatchChange={noteInput}
-        onHexCommit={applyHex}
-      />
-    </Popover>
-  );
-}
-
-function OverlayModeSwatch({
-  id,
-  label,
-  pressed,
-  className,
-  onSelect,
-}: {
-  id: OverlayMode;
-  label: string;
-  pressed: boolean;
-  className: string;
-  onSelect: (id: OverlayMode) => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      aria-label={label}
-      title={label}
-      aria-pressed={pressed}
-      className={`colour-tile overlay-swatch ${className}`}
-      onClick={() => onSelect(id)}
-    >
-      <span className="overlay-swatch-frame">
-        <span className="colour-tile-paint" aria-hidden="true" />
-        <span className="colour-tile-tick" aria-hidden="true">
-          {pressed ? "✓" : ""}
-        </span>
-      </span>
-    </Button>
-  );
-}
-
-function BackgroundCustomAdd({
-  settings,
-  onBusy,
-  background,
-  open,
-  onOpenChange,
-}: {
-  settings: BackgroundSettings;
-  onBusy: (busy: boolean) => void;
-  background: BackgroundUpdate;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [draft, setDraft] = useState("");
-  const revert = useRef<Partial<BackgroundSettings> | null>(null);
-  const beginEdit = () => {
-    if (revert.current) return;
-    revert.current = {
-      kind: settings.kind,
-      image: settings.image,
-      images: [...(settings.images ?? [])],
-      position: settings.position,
-      motion: settings.motion,
-      motionStyle: settings.motionStyle,
-    };
-    setDraft("");
-  };
-  useEffect(() => {
-    if (open) beginEdit();
-  }, [open]);
-  const cancel = () => {
-    if (busy) return;
-    if (revert.current) background(revert.current);
-    revert.current = null;
-    setDraft("");
-    onOpenChange(false);
-  };
-  const confirm = () => {
-    if (busy) return;
-    if (!draft) {
-      cancel();
-      return;
-    }
-    revert.current = null;
-    setDraft("");
-    onOpenChange(false);
-  };
-  return (
-    <Popover
-      label="Custom background image"
-      size="image"
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) {
-          cancel();
-          return;
-        }
-        beginEdit();
-        onOpenChange(true);
-      }}
-      trigger={
-        <Button
-          variant="surface"
-          type="button"
-          className="background-swatch background-swatch-add"
-          aria-label="Add photo"
-          title="Add photo"
-        >
-          <div className="ui-aspect-ratio background-swatch-frame">
-            <span className="background-swatch-add-placeholder" aria-hidden="true">
-              <Plus size={22} />
-            </span>
-          </div>
-        </Button>
-      }
-    >
-      <PopoverHead
-        title="Add image"
-        closeLabel="Close custom image picker"
-        disabled={busy}
-        onClose={cancel}
-      />
-      <ImageField
-        label="Background image"
-        kind="background"
-        value={draft}
-        change={(image) => {
-          setDraft(image);
-          const library = revert.current?.images ?? settings.images ?? [];
-          background({
-            kind: "image",
-            image,
-            images: prependBackgroundImage(library, image),
-          });
-        }}
-        onBusy={(v) => {
-          setBusy(v);
-          onBusy(v);
-        }}
-        hint="PNG, JPEG or WebP, up to 8 MiB. Newest uploads appear first."
-      />
-      <SettingsRow label="Image position">
-        <Select
-          value={settings.position}
-          onValueChange={(value) =>
-            background({
-              position: value as BackgroundSettings["position"],
-            })
-          }
-        >
-          <SelectOption value="center">Centre</SelectOption>
-          <SelectOption value="top">Top</SelectOption>
-          <SelectOption value="bottom">Bottom</SelectOption>
-        </Select>
-      </SettingsRow>
-      <ImagePopoverActions cancel={cancel} confirm={confirm} />
-    </Popover>
-  );
-}
-
-function BackgroundImageTile({
-  image,
-  index,
-  pressed,
-  onSelect,
-  onRemove,
-}: {
-  image: string;
-  index: number;
-  pressed: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-}) {
-  const label = `My image ${index + 1}`;
-  return (
-    <div className="background-swatch-wrap">
-      <Button
-        variant="surface"
-        type="button"
-        className="background-swatch"
-        aria-label={label}
-        title={label}
-        aria-pressed={pressed}
-        onClick={onSelect}
-      >
-        <div className="ui-aspect-ratio background-swatch-frame">
-          <span
-            className="background-swatch-paint background-current-image"
-            style={{ backgroundImage: `url(${image})` }}
-          />
-        </div>
-      </Button>
-      <IconButton
-        variant="quiet"
-        type="button"
-        className="background-swatch-remove"
-        label={`Remove ${label}`}
-        onClick={(event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onRemove();
-        }}
-      >
-        <Trash2 size={16} aria-hidden="true" />
-      </IconButton>
-    </div>
-  );
-}
-
-function MyImagesTiles({
-  b,
-  onBusy,
-  background,
-  customOpen,
-  onCustomOpenChange,
-  onRemoveImage,
-}: {
-  b: BackgroundSettings;
-  onBusy: (busy: boolean) => void;
-  background: BackgroundUpdate;
-  customOpen: boolean;
-  onCustomOpenChange: (open: boolean) => void;
-  onRemoveImage: (image: string) => void;
-}) {
-  const library = b.images?.length ? b.images : b.image ? [b.image] : [];
-  return (
-    <>
-      <BackgroundCustomAdd
-        settings={b}
-        onBusy={onBusy}
-        background={background}
-        open={customOpen}
-        onOpenChange={onCustomOpenChange}
-      />
-      {library.map((image, index) => (
-        <BackgroundImageTile
-          key={`${index}-${image.slice(0, 48)}`}
-          image={image}
-          index={index}
-          pressed={b.kind === "image" && b.image === image}
-          onSelect={() => background({ kind: "image", image })}
-          onRemove={() => onRemoveImage(image)}
-        />
-      ))}
-    </>
-  );
-}
-
-function solidColourName(
-  colour: string,
-  theme: "dark" | "light",
-): string {
-  const hex = colour.toLowerCase();
-  return (
-    accentPresets[theme].find((p) => p.colour.toLowerCase() === hex)?.name ??
-    "Custom"
-  );
-}
-
-function currentName(b: BackgroundSettings, theme: "dark" | "light") {
-  if (b.kind === "none") return "None";
-  if (b.kind === "solid") return solidColourName(b.colour, theme);
-  if (b.kind === "gradient") return titleCase(b.preset);
-  if (b.kind === "image") return "Custom";
-  if (b.kind === "dynamic") {
-    return listDynamicPacks().find((p) => p.id === b.dynamicId)?.name ?? "Dynamic";
-  }
-  return "Dynamic";
-}
-
-function StillPreview({ b }: { b: BackgroundSettings }) {
-  let paint: ReactNode;
-  if (b.kind === "none") {
-    paint = <span className="background-swatch-paint" style={{ background: "var(--bg)" }} />;
-  } else if (b.kind === "solid") {
-    paint = (
-      <span
-        className="background-swatch-paint"
-        style={{ background: solidBackgroundPaint(b.colour) }}
-      />
-    );
-  } else if (b.kind === "image" && b.image) {
-    paint = (
-      <span
-        className="background-swatch-paint background-current-image"
-        style={{ backgroundImage: `url(${b.image})` }}
-      />
-    );
-  } else if (b.kind === "dynamic" && b.dynamicId) {
-    paint = (
-      <DynamicThumb
-        dynamicId={b.dynamicId}
-        params={b.dynamicParams}
-        preset={b.preset}
-        showPlay
-      />
-    );
-  } else {
-    paint = (
-      <span
-        className="background-swatch-paint"
-        style={{ background: gradients[b.preset] }}
-      />
-    );
-  }
-  return (
-    <div className="background-current-preview">
-      <div className="ui-aspect-ratio background-current-frame">{paint}</div>
-    </div>
-  );
-}
-
-function StillTile({
-  label,
-  pressed,
-  paint,
-  onSelect,
-}: {
-  label: string;
-  pressed: boolean;
-  paint: string;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      className="background-swatch"
-      aria-label={label}
-      title={label}
-      aria-pressed={pressed}
-      onClick={onSelect}
-    >
-      <div className="ui-aspect-ratio background-swatch-frame">
-        <span className="background-swatch-paint" style={{ background: paint }} />
-      </div>
-    </Button>
-  );
-}
-
-/** Mini pack preview: paused until the tile/current band is hovered or focused. */
-function DynamicThumb({
-  dynamicId,
-  params,
-  preset,
-  showPlay = false,
-}: {
-  dynamicId: string;
-  params?: DynamicParams;
-  preset: BackgroundSettings["preset"];
-  showPlay?: boolean;
-}) {
-  const pack = getDynamicPack(dynamicId);
-  if (!pack) {
+function StillPreview({ b }: { b: Background }) {
+  const w = b.wallpaper;
+  if (w.kind === "solid") {
     return (
       <span
-        className="swatch-mini-scene scene-dynamic-thumb"
-        style={{ background: gradients[preset] }}
+        className="wallpaper-current-swatch"
+        style={{ background: solidBackgroundPaint(w.colour) }}
       />
     );
   }
-  const paint =
-    typeof params?.palette === "string" && params.palette in gradients
-      ? gradients[params.palette as keyof typeof gradients]
-      : (gradients[preset] ?? gradients.dusk);
-  return (
-    <span className="swatch-mini-scene scene-dynamic-thumb">
-      <DynamicScene
-        dynamicId={pack.id}
-        params={params ?? defaultDynamicParams(pack)}
-        paused={false}
-        gradientPaint={paint}
-      />
-      {showPlay ? (
-        <span className="swatch-play" aria-hidden="true">
-          <Play size={12} fill="currentColor" />
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-function DynamicTile({
-  pack,
-  pressed,
-  preset,
-  onSelect,
-}: {
-  pack: DynamicPack;
-  pressed: boolean;
-  preset: BackgroundSettings["preset"];
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      className="background-swatch background-swatch-animated"
-      aria-label={pack.name}
-      title={pack.name}
-      aria-pressed={pressed}
-      onClick={onSelect}
-    >
-      <div className="ui-aspect-ratio background-swatch-frame">
-        <DynamicThumb dynamicId={pack.id} preset={preset} showPlay />
-      </div>
-    </Button>
-  );
-}
-
-function StillTiles({
-  b,
-  background,
-}: {
-  b: BackgroundSettings;
-  background: BackgroundUpdate;
-}) {
-  return (
-    <>
-      <StillTile
-        label="None"
-        pressed={b.kind === "none"}
-        paint="var(--bg)"
-        onSelect={() => {
-          background({ kind: "none" });
-        }}
-      />
-      {Object.entries(gradients).map(([id, gradient]) => (
-        <StillTile
-          key={id}
-          label={titleCase(id)}
-          pressed={b.kind === "gradient" && b.preset === id}
-          paint={gradient}
-          onSelect={() => {
-            background({
-              kind: "gradient",
-              preset: id as BackgroundSettings["preset"],
-            });
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
-function DynamicTiles({
-  b,
-  background,
-}: {
-  b: BackgroundSettings;
-  background: BackgroundUpdate;
-}) {
-  return (
-    <>
-      {listDynamicPacks().map((pack) => (
-        <DynamicTile
-          key={pack.id}
-          pack={pack}
-          pressed={b.kind === "dynamic" && b.dynamicId === pack.id}
-          preset={b.preset}
-          onSelect={() => {
-            background({
-              kind: "dynamic",
-              dynamicId: pack.id,
-              dynamicParams: defaultDynamicParams(pack),
-              ...withMotionStyle("none"),
-            });
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
-type CollectionId = "my-images" | "gradients" | "dynamic";
-
-function wallpaperCollections(): {
-  id: CollectionId;
-  title: string;
-  count: number;
-}[] {
-  return [
-    { id: "my-images", title: "My images", count: 1 },
-    { id: "gradients", title: "Gradients", count: 1 + Object.keys(gradients).length },
-    { id: "dynamic", title: "Dynamic", count: listDynamicPacks().length },
-  ];
-}
-
-/** Horizontal shelf: tiles sit in a settings-group inset and clip there. No chevrons or strip scrollbars. */
-function WallpaperShelf({
-  heading,
-  label,
-  compact = false,
-  showAll,
-  onShowAll,
-  children,
-}: {
-  heading: string;
-  label: string;
-  compact?: boolean;
-  showAll?: boolean;
-  onShowAll?: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`background-shelf${compact ? " background-shelf-compact" : ""}`}>
-      <div className="background-shelf-head">
-        <Text as="h3" variant="label" className="background-shelf-heading">
-          {heading}
-        </Text>
-        {showAll && onShowAll && (
-          <Button
-            type="button"
-            variant="quiet"
-            className="background-shelf-show-all"
-            aria-label={`Show all ${heading}`}
-            onClick={onShowAll}
-          >
-            Show all
-          </Button>
-        )}
-      </div>
-      <SettingsGroup className="background-shelf-box">
-        <div
-          className="background-shelf-bleed"
-          tabIndex={0}
-          role="group"
-          aria-label={label}
-        >
-          <div className="background-shelf-track">{children}</div>
-        </div>
-      </SettingsGroup>
-    </section>
-  );
-}
-
-/** Readable plus/check on a tint swatch. */
-function chipInk(hex: string) {
-  const n = Number.parseInt(hex.slice(1), 16);
-  if (!Number.isFinite(n)) return "#ffffff";
-  const y = ((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114;
-  return y > 160000 ? "#1a222e" : "#ffffff";
-}
-
-/** Scene tint only. Skips the Settings/dashboard render until the drag settles. */
-function paintWallpaperTint(hex: string) {
-  const paint = solidBackgroundPaint(hex);
-  document.querySelectorAll<HTMLElement>("[data-wallpaper-tint]").forEach((node) => {
-    node.style.background = paint;
-  });
-}
-
-/** Scene overlay only. Same settle-then-commit path as the wallpaper tint. */
-function paintOverlayColour(hex: string, opacity: number) {
-  const paint = overlayBackground({
-    ...defaultBackground,
-    overlay: "custom",
-    overlayColour: hex,
-    overlayOpacity: opacity,
-  });
-  document.querySelectorAll<HTMLElement>(".scene-overlay").forEach((node) => {
-    node.style.background = paint;
-  });
-}
-
-function WallpaperColourChip({
-  name,
-  colour,
-  pressed,
-  onSelect,
-}: {
-  name: string;
-  colour: string;
-  pressed: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      className="wallpaper-colour-chip"
-      aria-label={name}
-      title={name}
-      aria-pressed={pressed}
-      onClick={onSelect}
-    >
+  if (w.kind === "gradient") {
+    return (
       <span
-        className="wallpaper-colour-chip-paint"
-        style={{ background: colour, color: chipInk(colour) }}
-        aria-hidden="true"
-      >
-        {pressed ? <Check size={16} strokeWidth={2.75} /> : null}
-      </span>
-    </Button>
-  );
-}
-
-function WallpaperCustomColour({
-  colour,
-  pressed,
-  onColour,
-}: {
-  colour: string;
-  pressed: boolean;
-  onColour: (colour: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
-    colour,
-    onColour,
-    paintLive: paintWallpaperTint,
-  });
-  const picking = open && live.toLowerCase() !== colour.toLowerCase();
-  const filled = pressed || picking;
-  return (
-    <Popover
-      label="Custom colour"
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) flush();
-        setOpen(next);
-      }}
-      trigger={
-        <Button
-          variant="surface"
-          type="button"
-          className={`wallpaper-colour-chip wallpaper-colour-chip-add${picking ? " wallpaper-colour-chip-picking" : ""}${filled ? " wallpaper-colour-chip-filled" : ""}`}
-          aria-label="Custom colour"
-          title="Custom colour"
-          aria-pressed={pressed}
-        >
-          <span
-            className="wallpaper-colour-chip-paint"
-            style={filled ? { background: live, color: chipInk(live) } : undefined}
-            aria-hidden="true"
-          >
-            {pressed && !open ? (
-              <Check size={16} strokeWidth={2.75} />
-            ) : (
-              <Plus size={16} />
-            )}
-          </span>
-        </Button>
-      }
-    >
-      <PopoverHead
-        title="Custom colour"
-        closeLabel="Close Custom colour picker"
-        onClose={() => {
-          flush();
-          setOpen(false);
+        className="wallpaper-current-swatch"
+        style={{ background: gradients[w.preset] }}
+      />
+    );
+  }
+  if (w.kind === "image" || w.kind === "video") {
+    return (
+      <span
+        className="wallpaper-current-swatch wallpaper-current-media"
+        style={{
+          backgroundImage: `url(${mediaSrc(w.media)})`,
+          backgroundSize: "cover",
+          backgroundPosition: w.position,
         }}
       />
-      <ColourPopoverFields
-        pickerLabel="Custom colour"
-        swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}
-        hex={hex}
-        onHexChange={setHex}
-        onSwatchChange={noteInput}
-        onHexCommit={applyHex}
-      />
-    </Popover>
-  );
-}
-
-function WallpaperColoursShelf({
-  b,
-  theme,
-  background,
-}: {
-  b: BackgroundSettings;
-  theme: "dark" | "light";
-  background: BackgroundUpdate;
-}) {
-  const selected =
-    b.kind === "solid" ? b.colour.toLowerCase() : "";
-  const presetMatch = accentPresets[theme].some(
-    (p) => p.colour.toLowerCase() === selected,
-  );
-  return (
-    <WallpaperShelf heading="Colours" label="Colours" compact>
-      <WallpaperCustomColour
-        colour={b.colour}
-        pressed={b.kind === "solid" && !presetMatch}
-        onColour={(colour) => background({ kind: "solid", colour })}
-      />
-      {accentPresets[theme].map(({ name, colour }) => (
-        <WallpaperColourChip
-          key={colour}
-          name={name}
-          colour={colour}
-          pressed={selected === colour.toLowerCase()}
-          onSelect={() =>
-            background({ kind: "solid", colour: colour.toLowerCase() })
-          }
-        />
-      ))}
-    </WallpaperShelf>
-  );
-}
-
-function OverlaySettingsBody({
-  b,
-  theme,
-  background,
-}: {
-  b: BackgroundSettings;
-  theme: "dark" | "light";
-  background: BackgroundUpdate;
-}) {
-  return (
-    <>
-      <Text as="p" variant="support">
-        Improve contrast over the background. Theme changes keep solid or
-        gradient unless Custom is selected.
-      </Text>
-      <div className="overlay-groups">
-        <div className="overlay-group">
-          <h4 className="overlay-group-label">Solid</h4>
-          <div
-            className="overlay-swatches"
-            role="group"
-            aria-label="Solid overlays"
-          >
-            <OverlayModeSwatch
-              id="dark-solid"
-              label="Dark solid"
-              pressed={b.overlay === "dark-solid"}
-              className="overlay-solid overlay-tone-dark"
-              onSelect={(id) => background({ overlay: id })}
-            />
-            <OverlayModeSwatch
-              id="light-solid"
-              label="Light solid"
-              pressed={b.overlay === "light-solid"}
-              className="overlay-solid overlay-tone-light"
-              onSelect={(id) => background({ overlay: id })}
-            />
-          </div>
-        </div>
-        <div className="overlay-group">
-          <h4 className="overlay-group-label">Gradient</h4>
-          <div
-            className="overlay-swatches"
-            role="group"
-            aria-label="Gradient overlays"
-          >
-            <OverlayModeSwatch
-              id="dark-gradient"
-              label="Dark gradient"
-              pressed={b.overlay === "dark-gradient"}
-              className="overlay-gradient overlay-tone-dark"
-              onSelect={(id) => background({ overlay: id })}
-            />
-            <OverlayModeSwatch
-              id="light-gradient"
-              label="Light gradient"
-              pressed={b.overlay === "light-gradient"}
-              className="overlay-gradient overlay-tone-light"
-              onSelect={(id) => background({ overlay: id })}
-            />
-          </div>
-        </div>
-        <div className="overlay-group overlay-group-custom">
-          <h4 className="overlay-group-label">Custom</h4>
-          <div
-            className="overlay-swatches"
-            role="group"
-            aria-label="Custom overlay"
-          >
-            <ColourSwatch
-              label="Custom colour"
-              colour={b.overlayColour}
-              pressed={b.overlay === "custom"}
-              hueDefault={
-                b.overlayColour.toLowerCase() ===
-                defaultOverlayColour(theme).toLowerCase()
-              }
-              onSelect={() => background({ overlay: "custom" })}
-              paintLive={(hex) => paintOverlayColour(hex, b.overlayOpacity)}
-              onColour={(overlayColour) =>
-                background({ overlay: "custom", overlayColour })
-              }
-            />
-          </div>
-        </div>
-      </div>
-      <Range
-        label="Overlay opacity"
-        value={b.overlayOpacity}
-        min={0}
-        max={80}
-        unit="%"
-        change={(overlayOpacity) => background({ overlayOpacity })}
-      />
-    </>
-  );
-}
-
-/** Scene CSS var only. Skips the Settings/dashboard render until the drag settles. */
-function paintDynamicCssVar(cssVar: string, hex: string) {
-  document.querySelectorAll<HTMLElement>(".scene-dynamic").forEach((node) => {
-    node.style.setProperty(cssVar, hex);
-  });
-}
-
-function DynamicControlFields({
-  pack,
-  params,
-  onChange,
-}: {
-  pack: DynamicPack;
-  params: Record<string, string | number | boolean>;
-  onChange: (key: string, value: string | number | boolean) => void;
-}) {
-  return (
-    <SettingsGroup>
-      {pack.controls.map((control: DynamicControl) => {
-        const value = params[control.key] ?? control.default;
-        if (control.type === "range") {
-          return (
-            <Range
-              key={control.key}
-              label={control.label}
-              value={typeof value === "number" ? value : control.default}
-              min={control.min}
-              max={control.max}
-              unit={control.map === "duration" ? "" : ""}
-              change={(n) => onChange(control.key, n)}
-            />
-          );
-        }
-        if (control.type === "toggle") {
-          return (
-            <SwitchRow
-              key={control.key}
-              label={control.label}
-              checked={!!value}
-              onCheckedChange={(checked) => onChange(control.key, checked)}
-            />
-          );
-        }
-        if (control.type === "select") {
-          return (
-            <SettingsRow key={control.key} label={control.label}>
-              <Select
-                aria-label={control.label}
-                value={String(value)}
-                onValueChange={(v) => onChange(control.key, v)}
-              >
-                {control.options.map((o) => (
-                  <SelectOption key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectOption>
-                ))}
-              </Select>
-            </SettingsRow>
-          );
-        }
-        const hex = typeof value === "string" ? value : String(control.default);
-        return (
-          <ColourField
-            key={control.key}
-            label={control.label}
-            colour={/^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toLowerCase() : "#a2cbbb"}
-            onColour={(next) => onChange(control.key, next)}
-            paintLive={(next) => paintDynamicCssVar(control.cssVar, next)}
-          />
-        );
-      })}
-    </SettingsGroup>
-  );
+    );
+  }
+  return <span className="wallpaper-current-swatch" style={{ background: "var(--bg)" }} />;
 }
 
 export default function BackgroundSettings({
@@ -998,392 +88,554 @@ export default function BackgroundSettings({
   background,
   onPreviewAdjust,
 }: {
-  settings: BackgroundSettings;
+  settings: Background;
   theme: "dark" | "light";
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [collection, setCollection] = useState<CollectionId | null>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [tab, setTab] = useState<"static" | "animated">("static");
   const [motionOpen, setMotionOpen] = useState(false);
-  const [overlayOpen, setOverlayOpen] = useState(false);
-  const [dynamicOpen, setDynamicOpen] = useState(false);
-  const [customOpen, setCustomOpen] = useState(false);
-  const librarySnapshot = useRef<BackgroundSettings | null>(null);
+  const [effectOpen, setEffectOpen] = useState(false);
+  const [tintOpen, setTintOpen] = useState(false);
+  const snapshot = useRef<Background | null>(null);
   const lastMotion = useRef<MotionStyle>(
-    b.motionStyle !== "none" ? b.motionStyle : defaultMotionFor(b.kind),
+    b.photoMotion.style !== "none" ? b.photoMotion.style : "ken-burns",
   );
-  const lastOverlayOpacity = useRef(
-    b.overlayOpacity > 0 ? b.overlayOpacity : 25,
-  );
-  useEffect(() => {
-    if (b.motionStyle !== "none") lastMotion.current = b.motionStyle;
-  }, [b.motionStyle]);
-  useEffect(() => {
-    if (b.overlayOpacity > 0) lastOverlayOpacity.current = b.overlayOpacity;
-  }, [b.overlayOpacity]);
-  useEffect(() => {
-    onPreviewAdjust?.(motionOpen || overlayOpen || libraryOpen || dynamicOpen);
-    return () => onPreviewAdjust?.(false);
-  }, [motionOpen, overlayOpen, libraryOpen, dynamicOpen, onPreviewAdjust]);
+  const lastEffect = useRef<Effect | undefined>(b.effect);
+  const lastTint = useRef(b.tint);
 
-  const motionOn = b.motionStyle !== "none";
-  const overlayOn = b.overlayOpacity > 0;
-  const canAdjust = b.kind !== "none";
-  const showImageMotion = b.kind === "image";
-  const dynamicPack =
-    b.kind === "dynamic" && b.dynamicId ? getDynamicPack(b.dynamicId) : undefined;
-  const closeMotion = () => setMotionOpen(false);
-  const closeOverlay = () => setOverlayOpen(false);
-  const closeDynamic = () => setDynamicOpen(false);
-  const snapshotBackground = (value: BackgroundSettings): BackgroundSettings => ({
-    ...value,
-    images: [...(value.images ?? [])],
-  });
-  const openLibrary = () => {
-    librarySnapshot.current = snapshotBackground(b);
-    setCollection(null);
-    setCustomOpen(false);
-    setLibraryOpen(true);
+  useEffect(() => {
+    if (b.photoMotion.style !== "none") lastMotion.current = b.photoMotion.style;
+  }, [b.photoMotion.style]);
+  useEffect(() => {
+    if (b.effect) lastEffect.current = b.effect;
+  }, [b.effect]);
+  useEffect(() => {
+    if (b.tint) lastTint.current = b.tint;
+  }, [b.tint]);
+  useEffect(() => {
+    onPreviewAdjust?.(chooserOpen || motionOpen || effectOpen || tintOpen);
+    return () => onPreviewAdjust?.(false);
+  }, [chooserOpen, motionOpen, effectOpen, tintOpen, onPreviewAdjust]);
+
+  const openChooser = () => {
+    snapshot.current = structuredClone(b);
+    const kind = b.wallpaper.kind;
+    setTab(kind === "video" ? "animated" : "static");
+    setChooserOpen(true);
   };
-  const finishLibrary = () => {
-    setCollection(null);
-    setCustomOpen(false);
-    setLibraryOpen(false);
+  const discardChooser = () => {
+    if (snapshot.current) background(snapshot.current);
+    snapshot.current = null;
+    setChooserOpen(false);
   };
-  /** Keep the live preview and close the sheet. */
-  const commitLibrary = () => {
-    librarySnapshot.current = null;
-    finishLibrary();
+  const commitChooser = () => {
+    snapshot.current = null;
+    setChooserOpen(false);
   };
-  /** X / Escape: restore the snapshot taken on open. */
-  const discardLibrary = () => {
-    const snap = librarySnapshot.current;
-    librarySnapshot.current = null;
-    if (snap) background(snap);
-    finishLibrary();
+
+  const setWallpaper = (wallpaper: Wallpaper, library = b.library) => {
+    background({ wallpaper, library });
   };
-  const backToFolders = () => {
-    setCustomOpen(false);
-    setCollection(null);
+
+  const selectColour = (colour: string) => {
+    setWallpaper({ kind: "solid", colour });
   };
-  const removeLibraryImage = async (image: string) => {
-    const ok = await confirm({
-      title: "Remove image?",
-      description: "Remove this image from My images? This cannot be undone from here.",
-      cancelLabel: "Keep",
-      actionLabel: "Remove",
-      actionVariant: "danger",
-    });
-    if (!ok) return;
-    const next = (b.images ?? []).filter((entry) => entry !== image);
-    if (b.image === image) {
-      if (next[0]) background({ images: next, image: next[0], kind: "image" });
-      else background({ images: next, image: "", kind: "none" });
+  const selectGradient = (preset: keyof typeof gradients) => {
+    setWallpaper({ kind: "gradient", preset });
+  };
+  const selectMedia = (ref: MediaRef, kind: "image" | "video") => {
+    let library = b.library;
+    try {
+      library = prependLibrary(b.library, ref);
+    } catch (err) {
+      void confirm({
+        title: "Library full",
+        description: (err as Error).message,
+        cancelLabel: "OK",
+        actionLabel: "OK",
+      });
       return;
     }
-    background({ images: next });
-  };
-  const setMotionEnabled = (checked: boolean) => {
-    if (checked) {
-      const style =
-        lastMotion.current === "none"
-          ? defaultMotionFor(b.kind)
-          : lastMotion.current;
-      background(withMotionStyle(style));
+    if (kind === "image") {
+      setWallpaper({ kind: "image", media: ref, position: "center" }, library);
     } else {
-      setMotionOpen(false);
-      background(withMotionStyle("none"));
+      setWallpaper(
+        { kind: "video", media: ref, position: "center", playback: "loop" },
+        library,
+      );
     }
   };
-  const setOverlayEnabled = (checked: boolean) => {
-    if (checked) {
-      background({
-        overlayOpacity: lastOverlayOpacity.current || 25,
+
+  const upload = async (file: File) => {
+    onBusy(true);
+    try {
+      const path = await prepareUpload(file, "background");
+      const ref = assetRefFromPath(path);
+      if (!ref) throw Error("Invalid media response.");
+      const kind = file.type.startsWith("video/") ? "video" : "image";
+      selectMedia(ref, kind);
+      setTab(kind === "video" ? "animated" : "static");
+    } catch (err) {
+      await confirm({
+        title: "Upload failed",
+        description: (err as Error).message,
+        cancelLabel: "OK",
+        actionLabel: "OK",
       });
-    } else {
-      setOverlayOpen(false);
-      background({ overlayOpacity: 0 });
+    } finally {
+      onBusy(false);
     }
   };
-  const collectionTitle =
-    wallpaperCollections().find((item) => item.id === collection)?.title ??
-    "Choose wallpaper";
+
+  const imageLibrary = b.library.filter((r) => r.source === "url" || r.source === "asset");
+  // Library does not store kind; tiles assume image unless active video.
+  const isActive = (ref: MediaRef) =>
+    (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
+    mediaRefEqual(b.wallpaper.media, ref);
 
   return (
     <>
       {confirmation}
-      <SettingsGroup className="background-current-group">
-        <SettingsRow>
-          <div className="background-current">
-            <StillPreview b={b} />
-            <div className="background-current-meta">
-              <Text as="span" variant="support" className="background-current-eyebrow">
-                Currently set
-              </Text>
-              <Text as="span" variant="label" className="background-current-name">
-                {currentName(b, theme)}
-              </Text>
-              <Button
-                type="button"
-                className="background-current-change"
-                onClick={openLibrary}
-              >
-                Change wallpaper
-              </Button>
-            </div>
+      <SettingsGroup>
+        <div className="wallpaper-current">
+          <StillPreview b={b} />
+          <div className="wallpaper-current-copy">
+            <Text variant="label">Currently set</Text>
+            <Text variant="body">{wallpaperLabel(b)}</Text>
           </div>
-        </SettingsRow>
-        {b.kind === "image" && (
-          <SettingsRow label="Image position">
+          <Button type="button" onClick={openChooser}>
+            Change wallpaper
+          </Button>
+        </div>
+      </SettingsGroup>
+
+      {(b.wallpaper.kind === "image" || b.wallpaper.kind === "video") && (
+        <SettingsGroup>
+          <SettingsRow label="Position">
             <Select
               aria-label="Image position"
-              value={b.position}
-              onValueChange={(value) =>
+              value={b.wallpaper.position}
+              onValueChange={(position) => {
+                if (b.wallpaper.kind !== "image" && b.wallpaper.kind !== "video")
+                  return;
                 background({
-                  position: value as BackgroundSettings["position"],
-                })
-              }
+                  wallpaper: {
+                    ...b.wallpaper,
+                    position: position as "center" | "top" | "bottom",
+                  },
+                });
+              }}
             >
               <SelectOption value="center">Centre</SelectOption>
               <SelectOption value="top">Top</SelectOption>
               <SelectOption value="bottom">Bottom</SelectOption>
             </Select>
           </SettingsRow>
-        )}
-        {dynamicPack && (
-          <SettingsRow label="Dynamic effect">
-            <Button
-              type="button"
-              variant="quiet"
-              className="background-effect-customize"
-              aria-label="Customize dynamic effect"
-              onClick={() => setDynamicOpen(true)}
-            >
-              Customize
-            </Button>
-          </SettingsRow>
-        )}
-        {canAdjust && (
-          <>
-            {showImageMotion && (
-              <SwitchRow
-                label="Motion effects"
-                checked={motionOn}
-                onCheckedChange={setMotionEnabled}
-                action={
-                  <Button
-                    type="button"
-                    variant="quiet"
-                    className="background-effect-customize"
-                    aria-label="Customize motion"
-                    disabled={!motionOn}
-                    onClick={() => setMotionOpen(true)}
-                  >
-                    Customize
-                  </Button>
+          {b.wallpaper.kind === "video" && (
+            <SettingsRow label="Playback">
+              <Select
+                aria-label="Video playback"
+                value={b.wallpaper.playback}
+                onValueChange={(playback) => {
+                  if (b.wallpaper.kind !== "video") return;
+                  background({
+                    wallpaper: {
+                      ...b.wallpaper,
+                      playback: playback === "static" ? "static" : "loop",
+                    },
+                  });
+                }}
+              >
+                <SelectOption value="loop">Loop</SelectOption>
+                <SelectOption value="static">Static poster</SelectOption>
+              </Select>
+            </SettingsRow>
+          )}
+        </SettingsGroup>
+      )}
+
+      <SettingsGroup>
+        {b.wallpaper.kind === "image" && (
+          <SettingsRow
+            label={b.photoMotion.style === "none" ? "Add motion" : "Motion"}
+            hint={
+              b.photoMotion.style === "none"
+                ? undefined
+                : motionStyleLabels[b.photoMotion.style]
+            }
+          >
+            {b.photoMotion.style === "none" ? (
+              <Button
+                type="button"
+                onClick={() =>
+                  background({
+                    photoMotion: {
+                      style: lastMotion.current === "none" ? "ken-burns" : lastMotion.current,
+                      intensity: b.photoMotion.intensity || 40,
+                    },
+                  })
                 }
-              />
-            )}
-            <SwitchRow
-              label="Wallpaper overlay"
-              checked={overlayOn}
-              onCheckedChange={setOverlayEnabled}
-              action={
+              >
+                <Plus size={16} aria-hidden /> Add motion
+              </Button>
+            ) : (
+              <div className="wallpaper-row-actions">
+                <Button type="button" onClick={() => setMotionOpen(true)}>
+                  Customise
+                </Button>
                 <Button
                   type="button"
-                  variant="quiet"
-                  className="background-effect-customize"
-                  aria-label="Customize overlay"
-                  disabled={!overlayOn}
-                  onClick={() => setOverlayOpen(true)}
+                  onClick={() =>
+                    background({ photoMotion: { style: "none", intensity: b.photoMotion.intensity } })
+                  }
                 >
-                  Customize
+                  Remove
                 </Button>
-              }
-            />
-          </>
-        )}
-      </SettingsGroup>
-
-      {libraryOpen && (
-        <Modal
-          nested
-          placement="bottom"
-          backdrop="none"
-          title={collection ? collectionTitle : "Choose wallpaper"}
-          close={discardLibrary}
-          className="background-library-dialog"
-        >
-          <ScrollArea
-            className="background-library-body-scroll"
-            type="auto"
-            aria-label={collection ? collectionTitle : "Wallpaper shelves"}
-          >
-            {collection ? (
-              <div className="background-library-grid">
-                {collection === "my-images" && (
-                  <MyImagesTiles
-                    b={b}
-                    onBusy={onBusy}
-                    background={background}
-                    customOpen={customOpen}
-                    onCustomOpenChange={setCustomOpen}
-                    onRemoveImage={removeLibraryImage}
-                  />
-                )}
-                {collection === "gradients" && (
-                  <StillTiles b={b} background={background} />
-                )}
-                {collection === "dynamic" && (
-                  <DynamicTiles b={b} background={background} />
-                )}
-              </div>
-            ) : (
-              <div className="background-library-shelves">
-                <WallpaperColoursShelf
-                  b={b}
-                  theme={theme}
-                  background={background}
-                />
-                <WallpaperShelf
-                  heading="My images"
-                  label="My images"
-                  showAll
-                  onShowAll={() => setCollection("my-images")}
-                >
-                  <MyImagesTiles
-                    b={b}
-                    onBusy={onBusy}
-                    background={background}
-                    customOpen={customOpen}
-                    onCustomOpenChange={setCustomOpen}
-                    onRemoveImage={removeLibraryImage}
-                  />
-                </WallpaperShelf>
-                <WallpaperShelf
-                  heading="Gradients"
-                  label="Gradients"
-                  showAll
-                  onShowAll={() => setCollection("gradients")}
-                >
-                  <StillTiles b={b} background={background} />
-                </WallpaperShelf>
-                <WallpaperShelf
-                  heading="Dynamic"
-                  label="Dynamic"
-                  showAll
-                  onShowAll={() => setCollection("dynamic")}
-                >
-                  <DynamicTiles b={b} background={background} />
-                </WallpaperShelf>
               </div>
             )}
-          </ScrollArea>
-          <div className="ui-actions background-library-actions">
-            {collection ? (
-              <Button type="button" variant="secondary" onClick={backToFolders}>
-                Back
-              </Button>
-            ) : null}
-            <Button type="button" variant="primary" onClick={commitLibrary}>
-              Select
+          </SettingsRow>
+        )}
+
+        <SettingsRow
+          label={b.effect ? effectLabels[b.effect.id] : "Add effect"}
+          hint={b.effect ? "Transparent particle effect" : undefined}
+        >
+          {!b.effect ? (
+            <Button
+              type="button"
+              onClick={() => {
+                const pack = listEffectPacks()[0];
+                const params: Record<string, string | number | boolean> = {};
+                for (const c of pack.controls) params[c.key] = c.default;
+                background({
+                  effect: lastEffect.current ?? { id: pack.id, params },
+                });
+              }}
+            >
+              <Plus size={16} aria-hidden /> Add effect
             </Button>
-          </div>
+          ) : (
+            <div className="wallpaper-row-actions">
+              <Button type="button" onClick={() => setEffectOpen(true)}>
+                Customise
+              </Button>
+              <Button type="button" onClick={() => background({ effect: undefined })}>
+                Remove
+              </Button>
+            </div>
+          )}
+        </SettingsRow>
+
+        <SettingsRow label={b.tint ? "Tint" : "Add tint"}>
+          {!b.tint ? (
+            <Button
+              type="button"
+              onClick={() =>
+                background({
+                  tint: lastTint.current ?? { colour: "#a2cbbb", opacity: 25 },
+                })
+              }
+            >
+              <Plus size={16} aria-hidden /> Add tint
+            </Button>
+          ) : (
+            <div className="wallpaper-row-actions">
+              <Button type="button" onClick={() => setTintOpen(true)}>
+                Customise
+              </Button>
+              <Button type="button" onClick={() => background({ tint: undefined })}>
+                Remove
+              </Button>
+            </div>
+          )}
+        </SettingsRow>
+
+        <SettingsRow
+          label="Theme overlay"
+          hint="Lightens or darkens the background to suit your theme."
+        >
+          <Range
+            label="Opacity" min={0} max={80} unit="%" value={b.themeOverlayOpacity} change={(themeOverlayOpacity) => background({ themeOverlayOpacity })}
+          />
+        </SettingsRow>
+      </SettingsGroup>
+
+      {chooserOpen && (
+        <Modal
+          title="Choose wallpaper"
+          placement="bottom"
+          close={discardChooser}
+          
+        >
+          <div className="wallpaper-chooser-actions"><Button type="button" variant="primary" onClick={commitChooser}>Done</Button></div>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "static" | "animated")}>
+            <TabsList aria-label="Wallpaper type">
+              <TabsTrigger value="static">Static</TabsTrigger>
+              <TabsTrigger value="animated">Animated</TabsTrigger>
+            </TabsList>
+            <TabsContent value="static">
+              <ScrollArea className="wallpaper-chooser-scroll" aria-label="Static wallpapers">
+                <Text as="h4" variant="label">
+                  Colours
+                </Text>
+                <div className="colour-tile-row" role="group" aria-label="Colours">
+                  <ColourField
+                    label="Custom colour"
+                    colour={b.wallpaper.kind === "solid" ? b.wallpaper.colour : "#a2cbbb"} onColour={selectColour}
+                  />
+                  {accentPresets[theme].map((p) => (
+                    <Button
+                      key={p.colour}
+                      type="button"
+                      className="colour-tile"
+                      aria-pressed={
+                        b.wallpaper.kind === "solid" &&
+                        b.wallpaper.colour.toLowerCase() === p.colour.toLowerCase()
+                      }
+                      aria-label={p.name}
+                      onClick={() => selectColour(p.colour)}
+                      style={{ background: solidBackgroundPaint(p.colour) }}
+                    />
+                  ))}
+                </div>
+                <Text as="h4" variant="label">
+                  Gradients
+                </Text>
+                <div className="colour-tile-row" role="group" aria-label="Gradients">
+                  {(Object.keys(gradients) as (keyof typeof gradients)[]).map(
+                    (id) => (
+                      <Button
+                        key={id}
+                        type="button"
+                        className="colour-tile"
+                        aria-pressed={
+                          b.wallpaper.kind === "gradient" &&
+                          b.wallpaper.preset === id
+                        }
+                        aria-label={id}
+                        onClick={() => selectGradient(id)}
+                        style={{ background: gradients[id] }}
+                      />
+                    ),
+                  )}
+                </div>
+                <Text as="h4" variant="label">
+                  My media
+                </Text>
+                <div className="wallpaper-library-row">
+                  <label className="wallpaper-upload-tile">
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="file-picker"
+                      onChange={(e) => {
+                        const f = e.currentTarget.files?.[0];
+                        e.currentTarget.value = "";
+                        if (f) void upload(f);
+                      }}
+                    />
+                  </label>
+                  {imageLibrary.map((ref) => (
+                    <Button
+                      key={mediaSrc(ref)}
+                      type="button"
+                      className="wallpaper-library-tile"
+                      aria-pressed={isActive(ref)}
+                      onClick={() => selectMedia(ref, "image")}
+                      style={{
+                        backgroundImage: `url(${mediaSrc(ref)})`,
+                        backgroundSize: "cover",
+                      }}
+                    >
+                      <IconButton
+                        label="Remove from library"
+                        className="wallpaper-library-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const next = b.library.filter((x) => !mediaRefEqual(x, ref));
+                          if (isActive(ref)) {
+                            background({
+                              library: next,
+                              wallpaper: { kind: "none" },
+                            });
+                          } else background({ library: next });
+                        }}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </IconButton>
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => setWallpaper({ kind: "none" })}
+                >
+                  None
+                </Button>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="animated">
+              <ScrollArea className="wallpaper-chooser-scroll" aria-label="Animated wallpapers">
+                <Text as="h4" variant="label">
+                  Videos
+                </Text>
+                <div className="wallpaper-library-row">
+                  <label className="wallpaper-upload-tile">
+                    <span>Upload video</span>
+                    <input
+                      type="file"
+                      accept="video/webm,video/mp4"
+                      className="file-picker"
+                      onChange={(e) => {
+                        const f = e.currentTarget.files?.[0];
+                        e.currentTarget.value = "";
+                        if (f) void upload(f);
+                      }}
+                    />
+                  </label>
+                  {b.library.map((ref) => (
+                    <Button
+                      key={`v-${mediaSrc(ref)}`}
+                      type="button"
+                      className="wallpaper-library-tile"
+                      aria-pressed={
+                        b.wallpaper.kind === "video" &&
+                        mediaRefEqual(b.wallpaper.media, ref)
+                      }
+                      onClick={() => selectMedia(ref, "video")}
+                    >
+                      Video
+                    </Button>
+                  ))}
+                </div>
+                <Text variant="support">
+                  Built-in video loops will appear here once catalogue artwork is selected.
+                </Text>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </Modal>
       )}
 
       {motionOpen && (
-        <Modal
-          nested
-          placement="bottom"
-          backdrop="none"
-          title="Motion settings"
-          close={closeMotion}
-          className="background-adjust-dialog"
-        >
+        <Modal title="Motion" placement="bottom" close={() => setMotionOpen(false)}>
           <SettingsGroup>
-            <SettingsRow label="Motion style">
+            <SettingsRow label="Style">
               <Select
                 aria-label="Motion style"
-                value={b.motionStyle}
-                onValueChange={(value) => {
-                  const style = value as MotionStyle;
-                  if (style === b.motionStyle) return;
-                  background(withMotionStyle(style));
-                }}
+                value={b.photoMotion.style}
+                onValueChange={(style) =>
+                  background({
+                    photoMotion: {
+                      style: style as MotionStyle,
+                      intensity: b.photoMotion.intensity,
+                    },
+                  })
+                }
               >
-                {motionStyles
-                  .filter((id) => id !== "none")
-                  .map((id) => (
-                    <SelectOption key={id} value={id}>
-                      {motionStyleLabels[id]}
-                    </SelectOption>
-                  ))}
+                {motionStyles.map((id) => (
+                  <SelectOption key={id} value={id}>
+                    {motionStyleLabels[id]}
+                  </SelectOption>
+                ))}
               </Select>
             </SettingsRow>
-            <Range
-              label="Speed"
-              value={b.intensity}
-              min={0}
-              max={100}
-              unit="%"
-              change={(intensity) => background({ intensity })}
-            />
+            <SettingsRow label="Intensity">
+              <Range
+                label="Intensity" min={0} max={100} unit="%" value={b.photoMotion.intensity} change={(intensity) => background({ photoMotion: { ...b.photoMotion, intensity } })}
+              />
+            </SettingsRow>
           </SettingsGroup>
-          <div className="ui-actions">
-            <Button variant="primary" onClick={closeMotion}>
-              Done
-            </Button>
-          </div>
         </Modal>
       )}
 
-      {overlayOpen && (
-        <Modal
-          nested
-          placement="bottom"
-          backdrop="none"
-          title="Overlay settings"
-          close={closeOverlay}
-          className="background-adjust-dialog"
-        >
-          <OverlaySettingsBody b={b} theme={theme} background={background} />
-          <div className="ui-actions">
-            <Button variant="primary" onClick={closeOverlay}>
-              Done
-            </Button>
-          </div>
+      {effectOpen && b.effect && (
+        <Modal title="Effect" placement="bottom" close={() => setEffectOpen(false)}>
+          <SettingsGroup>
+            <SettingsRow label="Effect">
+              <Select
+                aria-label="Effect"
+                value={b.effect.id}
+                onValueChange={(id) => {
+                  const pack = getEffectPack(id);
+                  if (!pack) return;
+                  const params: Record<string, string | number | boolean> = {
+                    ...(b.effect?.params ?? {}),
+                  };
+                  for (const c of pack.controls) {
+                    if (params[c.key] === undefined) params[c.key] = c.default;
+                  }
+                  background({ effect: { id: id as EffectId, params } });
+                }}
+              >
+                {effectIds.map((id) => (
+                  <SelectOption key={id} value={id}>
+                    {effectLabels[id]}
+                  </SelectOption>
+                ))}
+              </Select>
+            </SettingsRow>
+            {getEffectPack(b.effect.id)?.controls.map((c) =>
+              c.type === "colour" ? (
+                <SettingsRow key={c.key} label={c.label}>
+                  <ColourField
+                    label={c.label}
+                    colour={String(b.effect?.params[c.key] ?? c.default)} onColour={(colour) =>
+                      background({
+                        effect: {
+                          id: b.effect!.id,
+                          params: { ...b.effect!.params, [c.key]: colour },
+                        },
+                      })
+                    }
+                  />
+                </SettingsRow>
+              ) : (
+                <SettingsRow key={c.key} label={c.label}>
+                  <Range
+                    label={c.label} min={c.min} max={c.max} value={Number(b.effect?.params[c.key] ?? c.default)} change={(n) =>
+                      background({
+                        effect: {
+                          id: b.effect!.id,
+                          params: { ...b.effect!.params, [c.key]: n },
+                        },
+                      })
+                    }
+                  />
+                </SettingsRow>
+              ),
+            )}
+          </SettingsGroup>
         </Modal>
       )}
 
-      {dynamicOpen && dynamicPack && (
-        <Modal
-          nested
-          placement="bottom"
-          backdrop="none"
-          title={`${dynamicPack.name} settings`}
-          close={closeDynamic}
-          className="background-adjust-dialog"
-        >
-          <DynamicControlFields
-            pack={dynamicPack}
-            params={b.dynamicParams ?? {}}
-            onChange={(key, value) =>
-              background({
-                dynamicParams: { ...(b.dynamicParams ?? {}), [key]: value },
-              })
-            }
-          />
-          <div className="ui-actions">
-            <Button variant="primary" onClick={closeDynamic}>
-              Done
-            </Button>
-          </div>
+      {tintOpen && b.tint && (
+        <Modal title="Tint" placement="bottom" close={() => setTintOpen(false)}>
+          <SettingsGroup>
+            <SettingsRow label="Colour">
+              <ColourField
+                label="Tint colour"
+                colour={b.tint.colour} onColour={(colour) =>
+                  background({ tint: { ...b.tint!, colour } })
+                }
+              />
+            </SettingsRow>
+            <SettingsRow label="Opacity">
+              <Range
+                label="Opacity" min={0} max={80} unit="%" value={b.tint.opacity} change={(opacity) => background({ tint: { ...b.tint!, opacity } })}
+              />
+            </SettingsRow>
+          </SettingsGroup>
         </Modal>
       )}
     </>
   );
 }
+
+// Keep defaultBackground import used for type parity in tests that re-export.
+void defaultBackground;

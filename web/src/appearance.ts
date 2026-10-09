@@ -1,14 +1,26 @@
 import type { CSSProperties } from "react";
-import { getDynamicPack } from "./dynamic/registry";
-import { validateDynamicParams } from "./dynamic/params";
-import type { DynamicParams } from "./dynamic/types";
-import { DYNAMIC_ID_RE } from "./dynamic/types";
-export type OverlayMode =
-  | "dark-solid"
-  | "dark-gradient"
-  | "light-solid"
-  | "light-gradient"
-  | "custom";
+
+export type MediaRef =
+  | { source: "asset"; assetId: string }
+  | { source: "builtin"; builtinId: string }
+  | { source: "url"; url: string };
+
+export type Wallpaper =
+  | { kind: "none" }
+  | { kind: "solid"; colour: string }
+  | { kind: "gradient"; preset: "dusk" | "ocean" | "forest" | "mist" }
+  | {
+      kind: "image";
+      media: MediaRef;
+      position: "center" | "top" | "bottom";
+    }
+  | {
+      kind: "video";
+      media: MediaRef;
+      position: "center" | "top" | "bottom";
+      playback: "loop" | "static";
+    };
+
 export const motionStyles = [
   "none",
   "ken-burns",
@@ -24,36 +36,42 @@ export const motionStyleLabels: Record<MotionStyle, string> = {
   drift: "Drift",
   twist: "Twist",
 };
-export type BackgroundKind =
-  | "none"
-  | "solid"
-  | "gradient"
-  | "image"
-  | "dynamic";
-/** Legacy kinds accepted only during migrateBackground. */
-export type LegacyBackgroundKind = BackgroundKind | "waves" | "aurora";
-export type Background = {
-  kind: BackgroundKind;
-  preset: "dusk" | "ocean" | "forest" | "mist";
-  colour: string;
-  /** Active wallpaper image (data URI or HTTP(S) URL). */
-  image: string;
-  /** My images library, newest first. Active `image` is kept in sync when kind is image. */
-  images: string[];
-  overlay: OverlayMode;
-  overlayOpacity: number;
-  overlayColour: string;
-  position: "center" | "top" | "bottom";
-  motion: boolean;
-  motionStyle: MotionStyle;
+
+export type PhotoMotion = {
+  style: MotionStyle;
   intensity: number;
-  /** Pack id when kind is dynamic. */
-  dynamicId?: string;
-  /** Pack control values keyed by manifest control key. */
-  dynamicParams?: DynamicParams;
 };
-/** Cap keeps embedded backups within the 8 MiB configuration bound. */
-export const maxBackgroundImages = 4;
+
+export const effectIds = ["snow", "fireflies", "shooting-stars"] as const;
+export type EffectId = (typeof effectIds)[number];
+export const effectLabels: Record<EffectId, string> = {
+  snow: "Snow",
+  fireflies: "Fireflies",
+  "shooting-stars": "Shooting stars",
+};
+
+export type Effect = {
+  id: EffectId;
+  params: Record<string, string | number | boolean>;
+};
+
+export type CreativeTint = {
+  colour: string;
+  opacity: number;
+};
+
+export type Background = {
+  wallpaper: Wallpaper;
+  library: MediaRef[];
+  photoMotion: PhotoMotion;
+  effect?: Effect;
+  tint?: CreativeTint;
+  themeOverlayOpacity: number;
+};
+
+/** Explicit reject when full — no silent eviction. */
+export const maxLibraryEntries = 24;
+
 export type Glass = {
   mode: "solid" | "glass";
   opacity: number;
@@ -85,7 +103,6 @@ export const defaultUiFont: UiFont = "geist";
 export function uiFontFamily(id?: UiFont) {
   return uiFonts.find((f) => f.id === resolveUiFont(id))?.family ?? "Geist";
 }
-/** Bundled font id for display and controls; invalid or empty values fall back to Geist. */
 export function resolveUiFont(value: unknown): UiFont {
   if (
     typeof value === "string" &&
@@ -95,68 +112,41 @@ export function resolveUiFont(value: unknown): UiFont {
     return value as UiFont;
   return defaultUiFont;
 }
-/** Drop empty or unknown fontFamily so optional appearance stays valid. */
 export function normaliseAppearanceFont<T extends { fontFamily?: UiFont }>(
   appearance: T,
 ): T {
   const { fontFamily, ...rest } = appearance;
   if (fontFamily === undefined) return appearance;
-  // Runtime configs may carry "" or other strings; strip anything not in uiFonts.
   if (uiFonts.some((f) => f.id === (fontFamily as string))) return appearance;
   return rest as T;
 }
-export const overlayModes: OverlayMode[] = [
-  "dark-solid",
-  "dark-gradient",
-  "light-solid",
-  "light-gradient",
-  "custom",
-];
-export const defaultBackground: Background = {
-  kind: "none",
-  preset: "dusk",
-  colour: "#a2cbbb",
-  image: "",
-  images: [],
-  overlay: "dark-solid",
-  overlayOpacity: 25,
-  overlayColour: "#111720",
-  position: "center",
-  motion: false,
-  motionStyle: "none",
-  intensity: 40,
-};
-export function resolveMotionStyle(
-  raw: Partial<Background>,
-  kind: LegacyBackgroundKind,
-  motion: boolean,
-): MotionStyle {
-  if (kind === "dynamic" || kind === "waves" || kind === "aurora") return "none";
-  if (raw.motionStyle && motionStyles.includes(raw.motionStyle))
-    return raw.motionStyle;
-  if (!motion) return "none";
-  return kind === "image" ? "ken-burns" : "drift";
-}
 
-/** Map speed (0–100) to CSS animation duration without rewriting it on every tick. */
+export const defaultBackground: Background = {
+  wallpaper: { kind: "none" },
+  library: [],
+  photoMotion: { style: "none", intensity: 40 },
+  themeOverlayOpacity: 25,
+};
+
 export function motionDurationSeconds(intensity: number) {
-  const n = Number.isFinite(intensity) ? Math.min(100, Math.max(0, intensity)) : 40;
+  const n = Number.isFinite(intensity)
+    ? Math.min(100, Math.max(0, intensity))
+    : 40;
   return Math.round((80 - n * 0.74) * 10) / 10;
 }
-/** Parse a typed integer for settings fields; empty or out-of-range returns undefined. */
 export function parseIntegerInput(raw: string, min: number, max: number) {
   if (raw.trim() === "") return undefined;
   const n = Number(raw);
   if (!Number.isInteger(n) || n < min || n > max) return undefined;
   return n;
 }
-export function withMotionStyle(style: MotionStyle): Pick<
-  Background,
-  "motionStyle" | "motion"
-> {
-  return { motionStyle: style, motion: style !== "none" };
+export function withMotionStyle(style: MotionStyle): PhotoMotion {
+  return {
+    style,
+    intensity: style === "none" ? 40 : 40,
+  };
 }
-// Defaults favour a clear wash with full edge bend and moderate chroma.
+
 export const defaultGlass: Glass = {
   mode: "solid",
   opacity: 15,
@@ -165,20 +155,21 @@ export const defaultGlass: Glass = {
   aberration: 60,
   saturation: 75,
 };
-/** CSS saturate() percent for a stored 0–100 saturation control (75 → 150%). */
 export function glassSaturationCss(saturation: number) {
   return Math.round(Math.min(100, Math.max(0, saturation)) * 2);
 }
-/** SVG displacement scale for a stored 0–100 control (100 → former max of 150). */
 export function glassDisplacementScale(displacement: number) {
   return Math.round(Math.min(100, Math.max(0, displacement)) * 1.5);
 }
-/** Map 0–100 aberration into the filter’s former 0–5 units. */
 export function glassAberrationUnits(aberration: number) {
   return Math.min(100, Math.max(0, aberration)) / 20;
 }
-/** Previous files stored effect units above 100: displacement 0–150, saturation as CSS percent 0–200. */
-function foldLegacyGlass(value: number | undefined, divisor: number, legacyMax: number, fallback: number) {
+function foldLegacyGlass(
+  value: number | undefined,
+  divisor: number,
+  legacyMax: number,
+  fallback: number,
+) {
   if (value === undefined) return fallback;
   if (value > 100 && value <= legacyMax) return Math.round(value / divisor);
   return value;
@@ -190,9 +181,19 @@ export function normaliseGlass(
     mode: g.mode,
     opacity: g.opacity,
     blur: g.blur,
-    displacement: foldLegacyGlass(g.displacement, 1.5, 150, defaultGlass.displacement),
+    displacement: foldLegacyGlass(
+      g.displacement,
+      1.5,
+      150,
+      defaultGlass.displacement,
+    ),
     aberration: g.aberration ?? defaultGlass.aberration,
-    saturation: foldLegacyGlass(g.saturation, 2, 200, defaultGlass.saturation),
+    saturation: foldLegacyGlass(
+      g.saturation,
+      2,
+      200,
+      defaultGlass.saturation,
+    ),
   };
 }
 export const palettes: Record<"dark" | "light", Palette> = {
@@ -209,7 +210,6 @@ export const palettes: Record<"dark" | "light", Palette> = {
     accent: "#287962",
   },
 };
-/** Named accent chips: lighter on Midnight, darker on Daylight (Mint pair is the theme default). */
 export const accentPresets: Record<
   "dark" | "light",
   { name: string; colour: string }[]
@@ -239,7 +239,6 @@ export function accentPresetName(
   return accentPresets[theme].find((p) => p.colour.toLowerCase() === colour)
     ?.name;
 }
-/** Keep a named accent across theme changes; drop fully custom palettes. */
 export function paletteForThemeChange(
   from: "dark" | "light",
   to: "dark" | "light",
@@ -265,223 +264,216 @@ export const gradients = {
     "radial-gradient(ellipse at 20% 80%, #497453, transparent 60%), linear-gradient(135deg, #182b2d, #243c34)",
   mist: "radial-gradient(ellipse at 80% 20%, #e0dcd5, transparent 60%), linear-gradient(135deg, #a8b5bb, #7c8c9d)",
 };
-export function defaultOverlayColour(theme: "dark" | "light") {
-  return theme === "light" ? "#f5f6f2" : "#111720";
-}
 
-export function overlayForTheme(
-  theme: "dark" | "light",
-  current: OverlayMode,
-): OverlayMode {
-  if (current === "custom") return current;
-  const gradient = current.includes("gradient");
-  return theme === "dark"
-    ? gradient
-      ? "dark-gradient"
-      : "dark-solid"
-    : gradient
-      ? "light-gradient"
-      : "light-solid";
-}
-/** Fixed wash of Colours hex over theme `--bg` (not a full-bleed solid fill). */
 export const SOLID_TINT_PERCENT = 28;
-
-/** Paint for wallpaper kind solid: tint theme page background with the chip colour. */
 export function solidBackgroundPaint(colour: string): string {
   const hex =
     typeof colour === "string" && /^#[a-fA-F0-9]{6}$/.test(colour)
       ? colour.toLowerCase()
-      : defaultBackground.colour;
+      : "#a2cbbb";
   return `color-mix(in srgb, ${hex} ${SOLID_TINT_PERCENT}%, var(--bg))`;
 }
 
-/**
- * Deduplicate My images preserving date-added order (newest first).
- * Only prepend active `image` when it is missing (legacy orphan); never reshuffle on select.
- */
-export function normaliseBackgroundImages(
-  image: string,
-  images: unknown,
-): string[] {
-  const fromList = Array.isArray(images)
-    ? images.filter((v): v is string => imageReference(v) && !!v)
+export function mediaRefEqual(a: MediaRef, b: MediaRef): boolean {
+  if (a.source !== b.source) return false;
+  if (a.source === "asset" && b.source === "asset")
+    return a.assetId === b.assetId;
+  if (a.source === "builtin" && b.source === "builtin")
+    return a.builtinId === b.builtinId;
+  if (a.source === "url" && b.source === "url") return a.url === b.url;
+  return false;
+}
+
+export function mediaSrc(ref: MediaRef): string {
+  switch (ref.source) {
+    case "asset":
+      return `/media/assets/${ref.assetId}`;
+    case "builtin":
+      return `/media/builtin/${encodeURIComponent(ref.builtinId)}`;
+    case "url":
+      return ref.url;
+  }
+}
+
+export function normaliseBackground(raw: unknown): Background {
+  if (!raw || typeof raw !== "object") return { ...defaultBackground };
+  const r = raw as Partial<Background>;
+  const wallpaper = normaliseWallpaper(r.wallpaper);
+  const library = Array.isArray(r.library)
+    ? r.library.filter(isMediaRef).slice(0, maxLibraryEntries)
     : [];
-  const seen = new Set<string>();
-  const unique: string[] = [];
-  for (const entry of fromList) {
-    if (seen.has(entry)) continue;
-    seen.add(entry);
-    unique.push(entry);
-    if (unique.length >= maxBackgroundImages) break;
-  }
-  const active = imageReference(image) && image ? image : "";
-  if (active && !seen.has(active)) {
-    unique.unshift(active);
-    if (unique.length > maxBackgroundImages) unique.length = maxBackgroundImages;
-  }
-  return unique;
-}
-
-/** Prepend a new upload; drop the oldest when the library is full. */
-export function prependBackgroundImage(
-  library: string[],
-  next: string,
-): string[] {
-  if (!imageReference(next) || !next) return library;
-  return [next, ...library.filter((v) => v !== next)].slice(
-    0,
-    maxBackgroundImages,
-  );
-}
-
-export function migrateBackground(
-  raw: Omit<Partial<Background>, "kind"> & {
-    dimming?: number;
-    kind?: LegacyBackgroundKind;
-  },
-  theme: "dark" | "light",
-): Background {
-  const base = { ...defaultBackground, ...raw };
-  const legacyKind = (raw.kind ?? base.kind) as LegacyBackgroundKind;
-  const image = typeof base.image === "string" ? base.image : "";
-  const images = normaliseBackgroundImages(image, raw.images ?? base.images);
-  const colour =
-    typeof raw.colour === "string" && /^#[a-fA-F0-9]{6}$/.test(raw.colour)
-      ? raw.colour.toLowerCase()
-      : defaultBackground.colour;
-  let kind: BackgroundKind = ["none", "solid", "gradient", "image", "dynamic"].includes(
-    legacyKind,
-  )
-    ? (legacyKind as BackgroundKind)
-    : "none";
-  let dynamicId = typeof raw.dynamicId === "string" ? raw.dynamicId : base.dynamicId;
-  let dynamicParams =
-    raw.dynamicParams && typeof raw.dynamicParams === "object"
-      ? { ...raw.dynamicParams }
-      : base.dynamicParams
-        ? { ...base.dynamicParams }
-        : undefined;
-  if (legacyKind === "waves" || legacyKind === "aurora") {
-    kind = "dynamic";
-    dynamicId = legacyKind;
-    const n = Number.isFinite(base.intensity)
-      ? Math.min(100, Math.max(0, Math.round(base.intensity)))
-      : 40;
-    dynamicParams = { speed: n, strength: n };
-    if (legacyKind === "waves") dynamicParams.palette = base.preset;
-  }
-  if (kind === "dynamic") {
-    dynamicId = typeof dynamicId === "string" ? dynamicId : "";
-    // Retired pack: drop quietly so old configs still open.
-    if (dynamicId === "diagonals") {
-      kind = "none";
-      dynamicId = undefined;
-      dynamicParams = undefined;
-    } else {
-      const pack = DYNAMIC_ID_RE.test(dynamicId)
-        ? getDynamicPack(dynamicId)
-        : undefined;
-      dynamicParams = pack
-        ? validateDynamicParams(pack, dynamicParams ?? {})
-        : (dynamicParams ?? {});
-    }
-  } else {
-    dynamicId = undefined;
-    dynamicParams = undefined;
-  }
-  const motionStyle = resolveMotionStyle(
-    raw as Partial<Background>,
-    kind,
-    !!base.motion,
-  );
-  const motion = motionStyle !== "none";
-  const core = {
-    kind,
-    preset: base.preset,
-    colour,
-    image,
-    images,
-    position: base.position,
-    motion,
-    motionStyle,
-    intensity: base.intensity,
-    dynamicId,
-    dynamicParams,
+  const photoMotion: PhotoMotion = {
+    style:
+      r.photoMotion?.style && motionStyles.includes(r.photoMotion.style)
+        ? r.photoMotion.style
+        : "none",
+    intensity:
+      typeof r.photoMotion?.intensity === "number" &&
+      Number.isInteger(r.photoMotion.intensity)
+        ? Math.min(100, Math.max(0, r.photoMotion.intensity))
+        : 40,
   };
-  if (
-    raw.overlay &&
-    overlayModes.includes(raw.overlay) &&
-    typeof raw.overlayOpacity === "number" &&
-    typeof raw.overlayColour === "string"
-  ) {
-    return {
-      ...core,
-      overlay: raw.overlay,
-      overlayOpacity: raw.overlayOpacity,
-      overlayColour: raw.overlayColour,
+  const themeOverlayOpacity =
+    typeof r.themeOverlayOpacity === "number" &&
+    Number.isInteger(r.themeOverlayOpacity)
+      ? Math.min(80, Math.max(0, r.themeOverlayOpacity))
+      : 25;
+  const out: Background = {
+    wallpaper,
+    library,
+    photoMotion,
+    themeOverlayOpacity,
+  };
+  if (r.effect && typeof r.effect === "object" && effectIds.includes(r.effect.id as EffectId)) {
+    out.effect = {
+      id: r.effect.id as EffectId,
+      params:
+        r.effect.params && typeof r.effect.params === "object"
+          ? { ...r.effect.params }
+          : {},
     };
   }
-  const dimming =
-    typeof raw.dimming === "number" && Number.isInteger(raw.dimming)
-      ? raw.dimming
-      : defaultBackground.overlayOpacity;
-  return {
-    ...core,
-    overlay: theme === "light" ? "light-solid" : "dark-solid",
-    overlayOpacity: dimming,
-    overlayColour: defaultOverlayColour(theme),
-  };
-}
-const rgb = (hex: string) =>
-  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-export function overlayBackground(b: Background): string {
-  const a = b.overlayOpacity / 100;
-  let paint = `rgba(0,0,0,${a})`;
-  if (b.overlay === "custom") {
-    const [r, g, bl] = rgb(b.overlayColour);
-    paint = `rgba(${r},${g},${bl},${a})`;
-  } else if (b.overlay.startsWith("light")) {
-    paint = `rgba(255,255,255,${a})`;
+  if (
+    r.tint &&
+    typeof r.tint.colour === "string" &&
+    /^#[a-fA-F0-9]{6}$/.test(r.tint.colour) &&
+    typeof r.tint.opacity === "number" &&
+    Number.isInteger(r.tint.opacity) &&
+    r.tint.opacity >= 0 &&
+    r.tint.opacity <= 80
+  ) {
+    out.tint = { colour: r.tint.colour.toLowerCase(), opacity: r.tint.opacity };
   }
-  return b.overlay.includes("gradient")
-    ? `linear-gradient(to bottom, ${paint}, transparent)`
-    : paint;
+  return out;
 }
-export function imageReference(s: unknown): s is string {
-  if (typeof s !== "string") return false;
-  if (!s) return true;
-  if (s.startsWith("data:")) {
-    const m = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/]+={0,2})$/.exec(s);
-    if (
-      !m ||
-      m[2].length > Math.ceil((2 * 1024 * 1024) / 3) * 4 ||
-      m[2].length % 4 !== 0
-    )
-      return false;
-    try {
-      const b = atob(m[2]);
-      return (
-        b.length <= 2 * 1024 * 1024 &&
-        (m[1] === "png"
-          ? b.startsWith("\x89PNG\r\n\x1a\n")
-          : b.startsWith("\xff\xd8\xff"))
-      );
-    } catch {
-      return false;
+
+function normaliseWallpaper(raw: unknown): Wallpaper {
+  if (!raw || typeof raw !== "object") return { kind: "none" };
+  const w = raw as Wallpaper;
+  switch (w.kind) {
+    case "solid":
+      return {
+        kind: "solid",
+        colour:
+          typeof (w as { colour?: string }).colour === "string" &&
+          /^#[a-fA-F0-9]{6}$/.test((w as { colour: string }).colour)
+            ? (w as { colour: string }).colour.toLowerCase()
+            : "#a2cbbb",
+      };
+    case "gradient": {
+      const preset = (w as { preset?: string }).preset;
+      if (preset && preset in gradients)
+        return { kind: "gradient", preset: preset as keyof typeof gradients };
+      return { kind: "gradient", preset: "dusk" };
     }
+    case "image": {
+      const media = (w as { media?: MediaRef }).media;
+      if (!isMediaRef(media)) return { kind: "none" };
+      const position = (w as { position?: string }).position;
+      return {
+        kind: "image",
+        media,
+        position:
+          position === "top" || position === "bottom" || position === "center"
+            ? position
+            : "center",
+      };
+    }
+    case "video": {
+      const media = (w as { media?: MediaRef }).media;
+      if (!isMediaRef(media) || media.source === "url") return { kind: "none" };
+      const position = (w as { position?: string }).position;
+      const playback = (w as { playback?: string }).playback;
+      return {
+        kind: "video",
+        media,
+        position:
+          position === "top" || position === "bottom" || position === "center"
+            ? position
+            : "center",
+        playback: playback === "static" ? "static" : "loop",
+      };
+    }
+    default:
+      return { kind: "none" };
   }
+}
+
+export function isMediaRef(v: unknown): v is MediaRef {
+  if (!v || typeof v !== "object") return false;
+  const r = v as MediaRef;
+  if (r.source === "asset")
+    return typeof r.assetId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(r.assetId);
+  if (r.source === "builtin")
+    return (
+      typeof r.builtinId === "string" &&
+      r.builtinId.includes("@v") &&
+      r.builtinId.length <= 128 &&
+      !r.builtinId.includes("..")
+    );
+  if (r.source === "url") return remoteImageURL(r.url);
+  return false;
+}
+
+export function remoteImageURL(s: unknown): s is string {
+  if (typeof s !== "string" || !s || s.length > 2048) return false;
   try {
     const u = new URL(s);
     return (
       (u.protocol === "http:" || u.protocol === "https:") &&
       !u.username &&
-      !u.password &&
-      s.length <= 2048
+      !u.password
     );
   } catch {
     return false;
   }
 }
+
+/** Header/logo paths: empty, remote URL, or same-origin media asset path. */
+export function logoReference(s: unknown): s is string {
+  if (typeof s !== "string") return false;
+  if (!s) return true;
+  if (s.startsWith("/media/assets/") || s.startsWith("/media/staging/")) {
+    const id = s.split("/").pop() ?? "";
+    return /^[A-Za-z0-9_-]{1,128}$/.test(id);
+  }
+  return remoteImageURL(s);
+}
+
+export function themeOverlayPaint(
+  theme: "dark" | "light",
+  opacity: number,
+  paletteBackground?: string,
+): string {
+  const a = Math.min(80, Math.max(0, opacity)) / 100;
+  if (a <= 0) return "transparent";
+  if (theme === "light") return `rgba(255,255,255,${a})`;
+  const hex =
+    typeof paletteBackground === "string" &&
+    /^#[a-fA-F0-9]{6}$/.test(paletteBackground)
+      ? paletteBackground
+      : palettes.dark.background;
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+export function creativeTintPaint(tint: CreativeTint): string {
+  const [r, g, b] = [1, 3, 5].map((i) =>
+    parseInt(tint.colour.slice(i, i + 2), 16),
+  );
+  return `rgba(${r},${g},${b},${tint.opacity / 100})`;
+}
+
+export function prependLibrary(library: MediaRef[], next: MediaRef): MediaRef[] {
+  if (!isMediaRef(next)) return library;
+  const rest = library.filter((v) => !mediaRefEqual(v, next));
+  if (rest.length >= maxLibraryEntries && !library.some((v) => mediaRefEqual(v, next)))
+    throw Error(`Media library is full (maximum ${maxLibraryEntries} items).`);
+  return [next, ...rest].slice(0, maxLibraryEntries);
+}
+
+const rgb = (hex: string) =>
+  [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const luminance = (hex: string) =>
   rgb(hex)
     .map((n) => {
@@ -507,57 +499,40 @@ function fields(value: unknown, allowed: string[]) {
 }
 export function validateVisuals(a: AppearanceOptions) {
   if (a.background !== undefined) {
-    a.background = migrateBackground(
-      a.background as Background & { dimming?: number },
-      a.theme,
-    );
+    a.background = normaliseBackground(a.background);
     fields(a.background, [
-      "kind",
-      "preset",
-      "colour",
-      "image",
-      "images",
-      "overlay",
-      "overlayOpacity",
-      "overlayColour",
-      "position",
-      "motion",
-      "motionStyle",
-      "intensity",
-      "dynamicId",
-      "dynamicParams",
+      "wallpaper",
+      "library",
+      "photoMotion",
+      "effect",
+      "tint",
+      "themeOverlayOpacity",
     ]);
     const b = a.background;
     if (
-      !["none", "solid", "gradient", "image", "dynamic"].includes(b.kind) ||
-      !Object.hasOwn(gradients, b.preset) ||
-      !imageReference(b.image) ||
-      !Array.isArray(b.images) ||
-      b.images.length > maxBackgroundImages ||
-      b.images.some((entry) => !imageReference(entry) || !entry) ||
-      (b.kind === "image" && !b.image) ||
-      (b.kind === "image" && b.image && !b.images.includes(b.image)) ||
-      !/^#[a-fA-F0-9]{6}$/.test(b.colour) ||
-      !overlayModes.includes(b.overlay) ||
-      !within(b.overlayOpacity, 0, 80) ||
-      !/^#[a-fA-F0-9]{6}$/.test(b.overlayColour) ||
-      !within(b.intensity, 0, 100) ||
-      !["center", "top", "bottom"].includes(b.position) ||
-      !motionStyles.includes(b.motionStyle) ||
-      typeof b.motion !== "boolean" ||
-      b.motion !== (b.motionStyle !== "none")
+      !within(b.themeOverlayOpacity, 0, 80) ||
+      !motionStyles.includes(b.photoMotion.style) ||
+      !within(b.photoMotion.intensity, 0, 100) ||
+      !Array.isArray(b.library) ||
+      b.library.length > maxLibraryEntries ||
+      b.library.some((e) => !isMediaRef(e))
     )
-      throw Error("Invalid background settings or image.");
-    if (b.kind === "dynamic") {
-      if (typeof b.dynamicId !== "string" || !DYNAMIC_ID_RE.test(b.dynamicId))
-        throw Error("Invalid background settings or image.");
-      const pack = getDynamicPack(b.dynamicId);
-      if (!pack) throw Error("Invalid background settings or image.");
-      b.dynamicParams = validateDynamicParams(pack, b.dynamicParams);
-    } else {
-      delete b.dynamicId;
-      delete b.dynamicParams;
-    }
+      throw Error("Invalid background settings.");
+    const w = b.wallpaper;
+    if (
+      (w.kind === "image" || w.kind === "video") &&
+      w.media.source !== "builtin" &&
+      !b.library.some((e) => mediaRefEqual(e, w.media))
+    )
+      throw Error("Active wallpaper must be present in the media library.");
+    if (b.effect && !effectIds.includes(b.effect.id))
+      throw Error("Invalid background effect.");
+    if (
+      b.tint &&
+      (!/^#[a-fA-F0-9]{6}$/.test(b.tint.colour) ||
+        !within(b.tint.opacity, 0, 80))
+    )
+      throw Error("Invalid creative tint.");
   }
   if (a.glass !== undefined) {
     a.glass = normaliseGlass(a.glass);
@@ -597,10 +572,8 @@ export function validateVisuals(a: AppearanceOptions) {
       );
   }
 }
-/** Clear glass wash: theme tone only, never the solid surface paint. */
 export function glassFill(theme: "dark" | "light", opacity: number) {
   const t = Math.min(1, Math.max(0, opacity / 100));
-  // 0% = clear wash (testing); higher values add theme-toned frost.
   return theme === "light"
     ? `rgba(255,255,255,${(t * 0.72).toFixed(3)})`
     : `rgba(255,255,255,${(t * 0.32).toFixed(3)})`;
@@ -627,12 +600,10 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
         : "#ffffff",
     "--glass-blur": `${g.blur}px`,
     "--surface-fill": g.mode === "glass" ? clear : p.surface,
-    // Base frost when displacing so the filter warps backdrop, not the AA edge.
     "--surface-filter":
       g.mode === "glass"
         ? `blur(${g.displacement > 0 ? Math.max(g.blur, 6) : g.blur}px) saturate(${glassSaturationCss(g.saturation)}%)`
         : "none",
-    // Outer depth only — inset bevels read as embossed metal, not liquid glass.
     "--surface-depth":
       g.mode === "glass"
         ? a.theme === "light"
@@ -654,4 +625,19 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
     color: p.text,
     colorScheme: a.theme,
   } as CSSProperties;
+}
+
+export function wallpaperLabel(b: Background): string {
+  switch (b.wallpaper.kind) {
+    case "none":
+      return "None";
+    case "solid":
+      return "Colour";
+    case "gradient":
+      return b.wallpaper.preset[0].toUpperCase() + b.wallpaper.preset.slice(1);
+    case "image":
+      return "Photo";
+    case "video":
+      return "Video";
+  }
 }

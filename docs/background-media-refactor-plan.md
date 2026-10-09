@@ -1,14 +1,16 @@
 # Background and media refactor plan
 
-Status: implementation plan; no runtime changes made by this document.
+Status: implementation in progress.
 Agreed direction: 9 October 2026.
 Source baseline: `dynamic-backgrounds` at `8307422259e7c5f502bad39309a6376f2977acce`.
+
+**Path A (prototype / unreleased):** no production config migration. Schema 3 is a breaking rewrite. Old `pane.yaml` files are not transformed — load fails clearly (or the file is replaced with defaults only when absent). Migration fixtures and v2→v3 transformers are out of scope.
 
 ## Purpose and delivery rules
 
 Replace embedded image data and full CSS/HTML dynamic wallpapers with a media-backed background system. Ship a small local collection of static wallpapers and video loops, support user uploads, retain lightweight transparent particle effects, and make composition understandable in Settings.
 
-This document records the user's approved product direction and proposed implementation sequencing. Exact type names, endpoints and numerical media limits below are design decisions to finalise in Phase 0, not existing APIs. Implement each phase as a reviewable commit or small series. Keep intermediate builds working; do not activate a new storage/schema writer before its migration, backup and renderer paths are ready.
+This document records the user's approved product direction and proposed implementation sequencing. Exact type names, endpoints and numerical media limits are frozen in [background-media-contracts.md](background-media-contracts.md). Implement each phase as a reviewable commit or small series. Keep intermediate builds working.
 
 Read root AGENTS.md, SPEC.md and DESIGN.md before implementation. Their current embedded-image and full dynamic-scene requirements describe the old implementation. Update those specific contracts deliberately as the new behaviour lands; preserve all unrelated layout, privacy, interaction and validation requirements.
 
@@ -82,22 +84,15 @@ DynamicScene currently paints a gradient, and Snow/Stars/Fireflies paint opaque 
 
 Background.tsx names a reduced-motion subscription reduceTransparency. Correct that naming and treat reduced motion and reduced transparency as distinct policies.
 
-## Phase 0 — Freeze contracts and migration fixtures
+## Phase 0 — Freeze contracts and migration fixtures - COMPLETE
 
 Dependencies: none. Issues: #10–#13.
 
-1. Define the next configuration schema (proposed version 3) and a single migration chain from v1/v2. Preserve all pane/app IDs, coordinates, intentional gaps and unrelated appearance settings.
-2. Define discriminated media references: uploaded asset ID, immutable/versioned built-in ID, and existing permitted remote image URL. Derive serving URLs server-side. Never treat an asset ID as a filesystem path.
-3. Separate base wallpaper, media-library references, photo motion, video playback preference, optional effect, optional creative tint and themeOverlayOpacity. Do not persist tab selection, temporary object URLs, visibility or browser capabilities.
-4. Define media metadata: kind, validated MIME/container/codec where relevant, dimensions, bytes, name, hash, optional duration and derived poster reference.
-5. Decide limits for file size, decoded pixels, video duration/resolution, library count, total storage, staging lifetime and archive expansion. Reject full storage explicitly; remove silent eviction.
-6. Choose bounded server-side WebP validation and video probing dependencies. Specify supported codec combinations, poster generation and thumbnail policy. No automatic video transcoding in the first version.
-7. Fix the theme dark overlay token and initial opacity default. Record legacy overlay/scene mappings and any visual compromises before writing migration.
-8. Add representative migration fixtures: embedded header/background, image library, remote image, each old scene ID, all overlay modes, old motion flags, invalid data and unknown schema versions.
+Path A: contracts documented in [background-media-contracts.md](background-media-contracts.md). **No migration fixtures** (prototype schema break). Legacy overlay/scene mapping tables are omitted by design.
 
-Gate: client/server contracts, limits and mapping table are documented and fixtures exist. No invented claim of universal MP4/WebM support; exact release artwork remains a separately tracked selection task.
+Gate: client/server contracts and limits documented. No claim of universal MP4/WebM support; exact release artwork remains a separately tracked selection task.
 
-## Phase 1 — Implement filesystem assets and serving
+## Phase 1 — Implement filesystem assets and serving - COMPLETE
 
 Dependencies: Phase 0. Issue: #10; foundation for #12.
 
@@ -111,26 +106,26 @@ Dependencies: Phase 0. Issue: #10; foundation for #12.
 
 Gate: original-byte preservation, validation, quota enforcement, serving/range responses and staged-file cleanup can be exercised independently of schema activation.
 
-## Phase 2 — Complete durable saves, backup and migration machinery
+## Phase 2 — Complete durable saves, backup and migration machinery - COMPLETE
 
 Dependencies: Phase 1. Issue: #10.
 
-Implement behind the old public writer until Phase 6 activation.
+Path A: **no embedded-media extraction or v1/v2→v3 migration**. Schema 3 writer is the only writer. Items 8–9 from the original list are skipped (no extraction; reject non-v3 configs clearly).
 
 1. Make config validation resolve every local asset reference and verify its intended media kind. Validate both the selected wallpaper and saved media-library entries.
 2. On Apply, validate revision and draft references, make required assets durable first, then atomically replace configuration through the existing store. Coordinate garbage collection with this transaction.
 3. Preserve the old config on failure. Unreferenced files after a crash are recoverable garbage; a committed reference to a missing file is not acceptable. Retain the draft after save/conflict errors; never blindly retry a stale revision.
 4. Build a portable archive exporter containing config, manifest and referenced local media, including library entries/header artwork. Snapshot config/references and protect files throughout export.
-5. Define how exact built-in content restores across versions: immutable retained catalogue versions or inclusion of required bytes. Do not assume an unversioned built-in ID remains available forever.
+5. Define how exact built-in content restores across versions: immutable retained catalogue versions or inclusion of required bytes.
 6. Import archives into staging, validate all entries and references, preview the result, then commit only on the existing explicit confirmation/save path. Enforce total decompressed size/count, path containment, no symlinks and duplicate-entry rejection.
-7. Retain legacy YAML/JSON import. Distinguish portable backups from config-only export. Keep shared-template privacy rules and include only relevant media; remote URLs remain links and are never fetched by the backend.
-8. Implement idempotent embedded-media extraction. Back up original config bytes uniquely before activation; write extracted files durably before replacing config. Previously converted JPEGs cannot regain lost transparency/quality.
-9. Ensure v1 layout migration executes once and v2-to-v3 media migration never repeats coordinate scaling. Reject stale old-schema PUT requests with a reload/import instruction.
-10. Handle startup/import failures and interrupted migration without replacing invalid input. Retain assets referenced by supported rollback snapshots.
+7. Retain YAML/JSON import for schema 3 only. Distinguish portable backups from config-only export. Remote URLs remain links and are never fetched by the backend.
+8. ~~Embedded-media extraction~~ — skipped (Path A).
+9. ~~v1/v2 media migration~~ — skipped (Path A). Reject non-v3 PUT/load with a clear replace instruction.
+10. Handle startup/import failures without replacing invalid input with a silent rewrite of a bad file.
 
-Gate: backup/restore round trips, Cancel, conflict, disk-full, interrupted upload, crash windows and retry migration tests pass. A new-schema renderer must exist before activating startup migration.
+Gate: schema-3 save/load, archive round trips, Cancel, conflict, disk-full and interrupted upload tests pass.
 
-## Phase 3 — Build the composition renderer and extract effects
+## Phase 3 — Build the composition renderer and extract effects - COMPLETE
 
 Dependencies: Phase 0; use new asset resolver when available. Issue: #11 and tint portion of #13.
 
@@ -144,9 +139,11 @@ Dependencies: Phase 0; use new asset resolver when available. Issue: #11 and tin
 
 Gate: image + each effect renders without unexpected photo recolouring; tint and theme overlay are independent; input/layout/labels remain unaffected; lifecycle checks pass.
 
-## Phase 4 — Add video playback and the bundled catalogue
+## Phase 4 — Add video playback and the bundled catalogue - COMPLETE
 
 Dependencies: Phases 1 and 3; Phase 2 required before shipping persistence. Issue: #12.
+
+Note: bundled catalogue artwork selection remains a tracked follow-up; VideoWallpaper + upload/validation paths are in place. Built-in shelf shows a placeholder until assets are chosen.
 
 1. Extend asset validation with the agreed WebM/MP4 codec/container rules and bounded metadata probing. Return actionable unsupported-format errors; GIF stays rejected.
 2. Add a VideoWallpaper renderer: silent loop, inline playback, cover positioning, poster/static fallback and explicit playback preference. Handle failed play promises, failed decode and missing media.
@@ -159,7 +156,7 @@ Dependencies: Phases 1 and 3; Phase 2 required before shipping persistence. Issu
 
 Gate: actual supported clips work in target browsers with fallback, range serving, glass and a single effect; built-ins work offline; no unselected gallery video downloads.
 
-## Phase 5 — Assemble the final Settings and chooser UX
+## Phase 5 — Assemble the final Settings and chooser UX - COMPLETE
 
 Dependencies: Phases 2–4. Issue: #13.
 
@@ -175,24 +172,23 @@ Dependencies: Phases 2–4. Issue: #13.
 
 Gate: end-to-end upload, choose, customise, Cancel, Apply, reload and conflict flows work for images/videos in both themes; no duplicated settings per tab.
 
-## Phase 6 — Activate migration and retire the old system
+## Phase 6 — Activate migration and retire the old system - COMPLETE (skipped: Path A — no migration)
 
 Dependencies: Phases 2–5. Issues: #10–#13.
 
-1. Review the completed migration mapping against fixtures and available bundled assets.
-2. For legacy Snow/Fireflies, map to a suitable static base plus matching effect where feasible. Other scenes need a documented static fallback or an explicitly selected bundled replacement. Do not assume equivalent videos exist.
-3. Never equate the old parallax starfield to Shooting stars without explaining the visual change. Retain original configuration backups and provide migration/import notices where appearances change.
-4. Map theme-matching solid overlays to theme opacity. Preserve custom/gradient legacy tint data through compatible creative-tint rendering where needed; avoid applying the same old opacity to both layers and double dimming.
-5. Enable the new writer/startup migration only when all references and media can render and export/import can round-trip.
-6. Remove full-scene runtime, Dynamic shelf/Customise controls, obsolete data-URI writer, JPEG conversion, silent library truncation and unused scene CSS. Retain only necessary legacy readers/migration code and effects.
-7. Update SPEC.md, AGENTS.md, DESIGN.md, docs/dynamic-backgrounds.md (replace or redirect it), setup/backup guidance and release notes. Explain the persistent media directory and config-only backup limitations.
+**Path A:** migration activation is skipped by design (unreleased prototype). Items 1–5 (mapping, notices, startup migration) do not apply. Phase work that still lands here:
+
+6. Remove full-scene runtime, Dynamic shelf/Customise controls, obsolete data-URI writer, JPEG conversion, silent library truncation and unused scene CSS. Retain effects only.
+7. Update SPEC.md, AGENTS.md, DESIGN.md, docs/dynamic-backgrounds.md (replace or redirect), setup/backup guidance. Explain the persistent media directory, config-only backup limitations, and that older prototype configs are not migrated.
 8. Reconcile issue #1 without closing it as “fixed animation” if its implementation was retired.
 
-Gate: clean install and upgrade reach the same supported schema; no new persisted media bytes or full dynamic-scene renderer remain; documented recovery is possible.
+Gate: clean install uses schema 3; no embedded media bytes or full dynamic-scene renderer remain; recovery is via defaults/replace, not migrate.
 
-## Phase 7 — Verify and release
+## Phase 7 — Verify and release - COMPLETE
 
 Dependencies: all previous gates.
+
+Note: repository-required `npm ci && npm test && npm run build` (web) and `go test ./... && go vet ./...` were run. Full CI/race/Docker matrix and browser evidence remain a release checklist item; do not claim unavailable checks passed. Bundled wallpaper artwork selection is still outstanding.
 
 Run the repository-required checks:
 

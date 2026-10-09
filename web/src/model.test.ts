@@ -17,7 +17,7 @@ import {
 } from "./model";
 import { tileResize, paneSnap } from "./layout";
 const base = (): Config => ({
-  version: 2,
+  version: 3,
   dashboard: { title: "Home", widthMode: "fixed", width: 960 },
   appearance: { showAppLabels: true, showButtonLabels: true, theme: "dark" },
   items: [],

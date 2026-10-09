@@ -277,7 +277,7 @@ export function PaneEditor({
               });
               download("pane-template.yaml", {
                 type: "pane-layout",
-                version: 2,
+                version: 3,
                 pane: p,
                 width: config.dashboard.width,
               });

@@ -10,9 +10,8 @@ import {
   contrast,
   defaultBackground,
   defaultGlass,
-  migrateBackground,
+  normaliseBackground,
   normaliseGlass,
-  overlayForTheme,
   accentPresets,
   parseIntegerInput,
   paletteForThemeChange,
@@ -97,7 +96,7 @@ export default function AppearanceEditor({
   onPreviewAdjust?: (active: boolean) => void;
 }) {
   const a = draft.appearance,
-    b = migrateBackground(a.background ?? defaultBackground, a.theme),
+    b = normaliseBackground(a.background ?? defaultBackground),
     g = normaliseGlass(a.glass ?? defaultGlass),
     p = a.palette ?? palettes[a.theme];
   const header = (update: Partial<Config["dashboard"]>) =>
@@ -119,23 +118,21 @@ export default function AppearanceEditor({
       };
     });
   const background = (update: Partial<BackgroundConfig>) =>
-    change((prev) => ({
-      ...prev,
-      appearance: {
-        ...prev.appearance,
-        background: {
-          ...(prev.appearance.background ?? defaultBackground),
-          ...update,
+    change((prev) => {
+      const cur = normaliseBackground(
+        prev.appearance.background ?? defaultBackground,
+      );
+      return {
+        ...prev,
+        appearance: {
+          ...prev.appearance,
+          background: normaliseBackground({ ...cur, ...update }),
         },
-      },
-    }));
+      };
+    });
   const setTheme = (theme: "dark" | "light") =>
     change((prev) => {
       const appearance = prev.appearance;
-      const migrated = migrateBackground(
-        appearance.background ?? defaultBackground,
-        appearance.theme,
-      );
       return {
         ...prev,
         appearance: {
@@ -146,10 +143,9 @@ export default function AppearanceEditor({
             theme,
             appearance.palette,
           ),
-          background: {
-            ...migrated,
-            overlay: overlayForTheme(theme, migrated.overlay),
-          },
+          background: normaliseBackground(
+            appearance.background ?? defaultBackground,
+          ),
         },
       };
     });

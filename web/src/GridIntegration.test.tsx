@@ -25,7 +25,7 @@ it("measures the real grid after asynchronous config loading and locks narrow la
       async () =>
         new Response(
           JSON.stringify({
-            version: 2,
+            version: 3,
             dashboard: { title: "Home", widthMode: "fixed", width: 960 },
             appearance: {
               showAppLabels: true,

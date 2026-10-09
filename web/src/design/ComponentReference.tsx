@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
   Button, Checkbox, ColourField, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
-  Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
+  Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Tabs, TabsContent, TabsList, TabsTrigger, Text, TextField, useConfirmation,
 } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -74,6 +74,16 @@ export default function ComponentReference() {
           <span>Example save failed. Your changes are still available.</span>
           <div className="ui-actions"><Button>Retry save</Button></div>
         </Notice>
+      </Section>
+      <Section title="Tabs" description="Centred Radix tabs for mutually exclusive panes such as Static / Animated wallpaper shelves.">
+        <Tabs defaultValue="static">
+          <TabsList aria-label="Example wallpaper type">
+            <TabsTrigger value="static">Static</TabsTrigger>
+            <TabsTrigger value="animated">Animated</TabsTrigger>
+          </TabsList>
+          <TabsContent value="static"><Text variant="support">Static shelf example.</Text></TabsContent>
+          <TabsContent value="animated"><Text variant="support">Animated shelf example.</Text></TabsContent>
+        </Tabs>
       </Section>
       <Section title="Fields and validation">
         <div className="reference-grid">

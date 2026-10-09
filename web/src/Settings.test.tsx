@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import Settings from "./Settings";
 import { Config } from "./model";
 const config = (): Config => ({
-  version: 2,
+  version: 3,
   dashboard: { title: "Akira", widthMode: "fixed", width: 960 },
   appearance: { theme: "dark", showAppLabels: true, showButtonLabels: true },
   items: [],
@@ -131,96 +131,37 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("group", { name: "Accent" })).toBeTruthy();
     expect(container.querySelector(".ui-settings-group")).toBeTruthy();
     page("Background");
-    expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.getByRole("button", { name: "Change wallpaper" })).toBeTruthy();
     expect(screen.getByText("Currently set")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Show all Gradients/i })).toBeNull();
+    expect(screen.getByText("Theme overlay")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Add effect/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Add tint/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains("ui-dialog-bottom")).toBe(true);
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(
+      screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains(
+        "ui-dialog-bottom",
+      ),
+    ).toBe(true);
+    expect(screen.getByRole("tablist", { name: "Wallpaper type" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Static" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Animated" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "My images" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Dynamic" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Scroll .+ left/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "Mint" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Custom colour" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "My media" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.getByText("None")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    expect(
-      screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
-    ).toBe("false");
-    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.getByText("Mint")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    expect(screen.getByRole("button", { name: "Show all My images" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show all Gradients" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show all Dynamic" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Scroll Gradients/ })).toBeNull();
-    expect(document.querySelector(".background-library-grid")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Forest" }));
-    expect(
-      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
-    expect(screen.getByText("Forest")).toBeTruthy();
-    expect(screen.queryByRole("switch", { name: "Motion effects" })).toBeNull();
-    expect(screen.getByRole("switch", { name: "Wallpaper overlay" })).toBeTruthy();
-    const overlayCustomize = screen.getByRole("button", {
-      name: "Customize overlay",
-    });
-    expect(overlayCustomize.hasAttribute("disabled")).toBe(false);
-    fireEvent.click(overlayCustomize);
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Overlay settings" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    expect(screen.getByText("Colour")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
-    expect(screen.getByText("Forest")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "ocean" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "Wallpaper overlay" })).toBeNull();
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
