@@ -130,11 +130,11 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | `Notice` | `info`, `success` or `error`; optional `banner` for message plus inline actions |
 | `Section` | Heading and optional description with consistent spacing; choose `h2` or `h3` |
 | `SettingsGroup` | Inset grouped surface under a Section; holds SettingsRow, SwitchRow, Range or Disclosure rows |
-| `SettingsRow` | Label (optional hint) left, control right inside a SettingsGroup; omit label for a full-width control |
+| `SettingsRow` | Label (optional hint or Customize `action`) left, control right inside a SettingsGroup; omit label for a full-width control |
 | `Modal` | Radix Dialog with required title and close handler; optional `placement` (`center` / `bottom`), `backdrop` (`dim` / `none`), and `headerClose` (`close` / `back`); caller owns discard policy |
 | `ScrollArea` | Radix scrollport with themed scrollbar; use for horizontal strips and overflow panes instead of a raw overflow div |
 | `Popover`, `PopoverHead`, `ImagePopoverActions`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling. `Popover` sizes are `compact` (default, colour chips) and `image` (upload pickers). Colour pickers live-paint while open and commit the draft after the drag settles (`ColourField` / `useDeferredColour`); image pickers snapshot and restore on cancel — caller-owned, not merged. `PopoverHead` is the shared title + quiet close; `ImagePopoverActions` is the Cancel/OK footer for image pickers. |
-| `ColourField`, `ColourPopoverFields`, `useDeferredColour` | Shared colour controls. Prefer these over a raw `type="color"` input so Settings previews do not thrash on every drag tick. |
+| `ColourField`, `ColourPopoverFields`, `useDeferredColour` | Shared colour controls (DiceUI/Radix-style saturation–brightness area, hue slider and hex field). Prefer these over a raw `type="color"` input so Settings previews do not thrash on every drag tick. |
 | `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure` | Radix controls with Pane keyboard, focus and theme treatment |
 | `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
 

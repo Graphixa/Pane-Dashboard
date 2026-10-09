@@ -6,6 +6,7 @@ import {
   ColourPopoverFields,
   IconButton,
   Modal,
+  Notice,
   Popover,
   PopoverHead,
   Range,
@@ -19,7 +20,6 @@ import {
   TabsList,
   TabsTrigger,
   Text,
-  useConfirmation,
   useDeferredColour,
 } from "./design/components";
 import { prepareUpload } from "./ImageField";
@@ -43,7 +43,69 @@ import {
   type MotionStyle,
   type Wallpaper,
 } from "./appearance";
-import { getEffectPack, listEffectPacks } from "./effects/registry";
+import { getEffectPack } from "./effects/registry";
+
+type MediaKind = "image" | "video";
+
+/** Resolve image vs video for library tiles (HEAD Content-Type; seed from wallpaper/upload). */
+function useMediaKinds(library: MediaRef[], wallpaper: Wallpaper) {
+  const [kinds, setKinds] = useState<Map<string, MediaKind>>(() => new Map());
+
+  const remember = (ref: MediaRef, kind: MediaKind) => {
+    const key = mediaSrc(ref);
+    setKinds((prev) => {
+      if (prev.get(key) === kind) return prev;
+      const next = new Map(prev);
+      next.set(key, kind);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (wallpaper.kind === "image") remember(wallpaper.media, "image");
+    if (wallpaper.kind === "video") remember(wallpaper.media, "video");
+    // wallpaper identity only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallpaper]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const missing = library.filter((ref) => !kinds.has(mediaSrc(ref)));
+    if (!missing.length) return;
+    void (async () => {
+      const found = new Map<string, MediaKind>();
+      await Promise.all(
+        missing.map(async (ref) => {
+          const key = mediaSrc(ref);
+          if (ref.source === "url") {
+            found.set(key, "image");
+            return;
+          }
+          try {
+            const res = await fetch(key, { method: "HEAD" });
+            const ct = (res.headers.get("content-type") || "").toLowerCase();
+            found.set(key, ct.startsWith("video/") ? "video" : "image");
+          } catch {
+            found.set(key, "image");
+          }
+        }),
+      );
+      if (cancelled || !found.size) return;
+      setKinds((prev) => {
+        const next = new Map(prev);
+        found.forEach((kind, key) => next.set(key, kind));
+        return next;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // kinds read for skip; library drives re-probe of new entries
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [library]);
+
+  return { kinds, remember };
+}
 
 type BackgroundUpdate = (update: Partial<Background>) => void;
 
@@ -269,16 +331,46 @@ function StillTile({
   );
 }
 
+function VideoThumb({ src }: { src: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    v.muted = true;
+    if (reduce) {
+      v.pause();
+      return;
+    }
+    const play = v.play();
+    if (play && typeof play.catch === "function") play.catch(() => {});
+  }, [src]);
+  return (
+    <video
+      ref={ref}
+      className="background-swatch-paint background-swatch-video"
+      src={src}
+      muted
+      playsInline
+      loop
+      preload="metadata"
+      aria-hidden="true"
+    />
+  );
+}
+
 function MediaTile({
   label,
   pressed,
   src,
+  kind = "image",
   onSelect,
   onRemove,
 }: {
   label: string;
   pressed: boolean;
-  src?: string;
+  src: string;
+  kind?: MediaKind;
   onSelect: () => void;
   onRemove?: () => void;
 }) {
@@ -294,15 +386,13 @@ function MediaTile({
         onClick={onSelect}
       >
         <div className="ui-aspect-ratio background-swatch-frame">
-          {src ? (
+          {kind === "video" ? (
+            <VideoThumb src={src} />
+          ) : (
             <span
               className="background-swatch-paint background-current-image"
               style={{ backgroundImage: `url(${src})` }}
             />
-          ) : (
-            <span className="background-swatch-paint" style={{ background: "var(--panel-high)" }}>
-              <span className="swatch-dynamic-label">Video</span>
-            </span>
           )}
         </div>
       </Button>
@@ -374,12 +464,17 @@ export default function BackgroundSettings({
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
 }) {
-  const { confirm, confirmation } = useConfirmation();
   const [chooserOpen, setChooserOpen] = useState(false);
   const [tab, setTab] = useState<"static" | "animated">("static");
+  const [sheetError, setSheetError] = useState("");
+  const [pendingRemove, setPendingRemove] = useState<MediaRef | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
   const [effectOpen, setEffectOpen] = useState(false);
   const [tintOpen, setTintOpen] = useState(false);
+  const { kinds: mediaKinds, remember: rememberMediaKind } = useMediaKinds(
+    b.library,
+    b.wallpaper,
+  );
   const snapshot = useRef<Background | null>(null);
   const lastMotion = useRef<MotionStyle>(
     b.photoMotion.style !== "none" ? b.photoMotion.style : "ken-burns",
@@ -405,15 +500,21 @@ export default function BackgroundSettings({
     snapshot.current = structuredClone(b);
     const kind = b.wallpaper.kind;
     setTab(kind === "video" ? "animated" : "static");
+    setSheetError("");
+    setPendingRemove(null);
     setChooserOpen(true);
   };
   const discardChooser = () => {
     if (snapshot.current) background(snapshot.current);
     snapshot.current = null;
+    setSheetError("");
+    setPendingRemove(null);
     setChooserOpen(false);
   };
   const commitChooser = () => {
     snapshot.current = null;
+    setSheetError("");
+    setPendingRemove(null);
     setChooserOpen(false);
   };
 
@@ -432,14 +533,11 @@ export default function BackgroundSettings({
     try {
       library = prependLibrary(b.library, ref);
     } catch (err) {
-      void confirm({
-        title: "Library full",
-        description: (err as Error).message,
-        cancelLabel: "OK",
-        actionLabel: "OK",
-      });
+      // Inline in the sheet: nested AlertDialog over Choose wallpaper cannot receive clicks.
+      setSheetError((err as Error).message);
       return;
     }
+    setSheetError("");
     if (kind === "image") {
       setWallpaper({ kind: "image", media: ref, position: "center" }, library);
     } else {
@@ -451,42 +549,39 @@ export default function BackgroundSettings({
   };
 
   const upload = async (file: File) => {
+    setSheetError("");
+    setPendingRemove(null);
     onBusy(true);
     try {
       const path = await prepareUpload(file, "background");
       const ref = assetRefFromPath(path);
       if (!ref) throw Error("Invalid media response.");
-      const kind = file.type.startsWith("video/") ? "video" : "image";
+      const kind: MediaKind = file.type.startsWith("video/") ? "video" : "image";
+      rememberMediaKind(ref, kind);
       selectMedia(ref, kind);
       setTab(kind === "video" ? "animated" : "static");
     } catch (err) {
-      await confirm({
-        title: "Upload failed",
-        description: (err as Error).message,
-        cancelLabel: "OK",
-        actionLabel: "OK",
-      });
+      setSheetError((err as Error).message);
     } finally {
       onBusy(false);
     }
   };
 
-  const removeLibraryRef = async (ref: MediaRef, index: number) => {
-    const ok = await confirm({
-      title: "Remove media?",
-      description: "Remove this item from My media? This cannot be undone from here.",
-      cancelLabel: "Keep",
-      actionLabel: "Remove",
-      actionVariant: "danger",
-    });
-    if (!ok) return;
+  const requestRemoveLibraryRef = (ref: MediaRef) => {
+    setSheetError("");
+    setPendingRemove(ref);
+  };
+
+  const confirmRemoveLibraryRef = () => {
+    const ref = pendingRemove;
+    if (!ref) return;
+    setPendingRemove(null);
     const next = b.library.filter((x) => !mediaRefEqual(x, ref));
     const active =
       (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
       mediaRefEqual(b.wallpaper.media, ref);
     if (active) background({ library: next, wallpaper: { kind: "none" } });
     else background({ library: next });
-    void index;
   };
 
   const solidSelected =
@@ -501,10 +596,23 @@ export default function BackgroundSettings({
     b.wallpaper.kind === "image" && mediaRefEqual(b.wallpaper.media, ref);
   const isActiveVideo = (ref: MediaRef) =>
     b.wallpaper.kind === "video" && mediaRefEqual(b.wallpaper.media, ref);
+  const mediaKindOf = (ref: MediaRef): MediaKind | undefined =>
+    mediaKinds.get(mediaSrc(ref));
+  const imageLibrary = b.library.filter((ref) => {
+    const kind = mediaKindOf(ref);
+    if (kind === "image") return true;
+    if (kind === "video") return false;
+    return isActiveImage(ref);
+  });
+  const videoLibrary = b.library.filter((ref) => {
+    const kind = mediaKindOf(ref);
+    if (kind === "video") return true;
+    if (kind === "image") return false;
+    return isActiveVideo(ref);
+  });
 
   return (
     <>
-      {confirmation}
       <SettingsGroup className="background-current-group">
         <SettingsRow>
           <div className="background-current">
@@ -526,13 +634,10 @@ export default function BackgroundSettings({
             </div>
           </div>
         </SettingsRow>
-      </SettingsGroup>
-
-      {(b.wallpaper.kind === "image" || b.wallpaper.kind === "video") && (
-        <SettingsGroup>
-          <SettingsRow label="Image position">
+        {(b.wallpaper.kind === "image" || b.wallpaper.kind === "video") && (
+          <SettingsRow label="Position">
             <Select
-              aria-label="Image position"
+              aria-label="Position"
               value={b.wallpaper.position}
               onValueChange={(position) => {
                 if (b.wallpaper.kind !== "image" && b.wallpaper.kind !== "video")
@@ -550,28 +655,28 @@ export default function BackgroundSettings({
               <SelectOption value="bottom">Bottom</SelectOption>
             </Select>
           </SettingsRow>
-          {b.wallpaper.kind === "video" && (
-            <SettingsRow label="Playback">
-              <Select
-                aria-label="Video playback"
-                value={b.wallpaper.playback}
-                onValueChange={(playback) => {
-                  if (b.wallpaper.kind !== "video") return;
-                  background({
-                    wallpaper: {
-                      ...b.wallpaper,
-                      playback: playback === "static" ? "static" : "loop",
-                    },
-                  });
-                }}
-              >
-                <SelectOption value="loop">Loop</SelectOption>
-                <SelectOption value="static">Static poster</SelectOption>
-              </Select>
-            </SettingsRow>
-          )}
-        </SettingsGroup>
-      )}
+        )}
+        {b.wallpaper.kind === "video" && (
+          <SettingsRow label="Playback">
+            <Select
+              aria-label="Playback"
+              value={b.wallpaper.playback}
+              onValueChange={(playback) => {
+                if (b.wallpaper.kind !== "video") return;
+                background({
+                  wallpaper: {
+                    ...b.wallpaper,
+                    playback: playback === "static" ? "static" : "loop",
+                  },
+                });
+              }}
+            >
+              <SelectOption value="loop">Loop</SelectOption>
+              <SelectOption value="static">Static poster</SelectOption>
+            </Select>
+          </SettingsRow>
+        )}
+      </SettingsGroup>
 
       <SettingsGroup>
         {b.wallpaper.kind === "image" && (
@@ -624,33 +729,50 @@ export default function BackgroundSettings({
         )}
 
         <SettingsRow
-          label={b.effect ? effectLabels[b.effect.id] : "Add effect"}
-          hint={b.effect ? "Transparent particle effect" : undefined}
+          label="Screen Effects"
+          action={
+            b.effect ? (
+              <Button
+                type="button"
+                variant="quiet"
+                className="background-effect-customize"
+                aria-label="Customize screen effects"
+                onClick={() => setEffectOpen(true)}
+              >
+                Customize
+              </Button>
+            ) : undefined
+          }
         >
-          {!b.effect ? (
-            <Button
-              type="button"
-              onClick={() => {
-                const pack = listEffectPacks()[0];
-                const params: Record<string, string | number | boolean> = {};
-                for (const c of pack.controls) params[c.key] = c.default;
-                background({
-                  effect: lastEffect.current ?? { id: pack.id, params },
-                });
-              }}
-            >
-              <Plus size={16} aria-hidden /> Add effect
-            </Button>
-          ) : (
-            <RowActions>
-              <Button type="button" onClick={() => setEffectOpen(true)}>
-                Customise
-              </Button>
-              <Button type="button" onClick={() => background({ effect: undefined })}>
-                Remove
-              </Button>
-            </RowActions>
-          )}
+          <Select
+            aria-label="Screen Effects"
+            value={b.effect?.id ?? "none"}
+            onValueChange={(id) => {
+              if (id === "none") {
+                background({ effect: undefined });
+                setEffectOpen(false);
+                return;
+              }
+              const pack = getEffectPack(id);
+              if (!pack) return;
+              const prev =
+                lastEffect.current?.id === id ? lastEffect.current : undefined;
+              const params: Record<string, string | number | boolean> = {
+                ...(prev?.params ?? {}),
+              };
+              for (const c of pack.controls) {
+                if (params[c.key] === undefined) params[c.key] = c.default;
+              }
+              background({ effect: { id: id as EffectId, params } });
+            }}
+          >
+            <SelectOption value="none">None</SelectOption>
+            {effectIds.map((id) => (
+              <SelectOption key={id} value={id}>
+                {effectLabels[id]}
+              </SelectOption>
+            ))}
+          </Select>
         </SettingsRow>
 
         <SettingsRow label={b.tint ? "Tint" : "Add tint"}>
@@ -699,10 +821,32 @@ export default function BackgroundSettings({
           className="background-library-dialog"
           close={discardChooser}
         >
+          {sheetError && (
+            <Notice tone="error" className="background-library-sheet-notice">
+              {sheetError}
+            </Notice>
+          )}
+          {pendingRemove && (
+            <Notice tone="error" banner className="background-library-sheet-notice">
+              <span>Remove this item from My media? This cannot be undone from here.</span>
+              <div className="ui-actions">
+                <Button type="button" onClick={() => setPendingRemove(null)}>
+                  Keep
+                </Button>
+                <Button type="button" variant="danger" onClick={confirmRemoveLibraryRef}>
+                  Remove
+                </Button>
+              </div>
+            </Notice>
+          )}
           <Tabs
             className="background-library-tabs"
             value={tab}
-            onValueChange={(v) => setTab(v as "static" | "animated")}
+            onValueChange={(v) => {
+              setTab(v as "static" | "animated");
+              setSheetError("");
+              setPendingRemove(null);
+            }}
           >
             <TabsList aria-label="Wallpaper type">
               <TabsTrigger value="static">Static</TabsTrigger>
@@ -738,14 +882,15 @@ export default function BackgroundSettings({
                       accept="image/png,image/jpeg,image/webp"
                       onFile={(f) => void upload(f)}
                     />
-                    {b.library.map((ref, index) => (
+                    {imageLibrary.map((ref, index) => (
                       <MediaTile
                         key={mediaSrc(ref)}
                         label={`My media ${index + 1}`}
                         pressed={isActiveImage(ref)}
                         src={mediaSrc(ref)}
+                        kind="image"
                         onSelect={() => selectMedia(ref, "image")}
-                        onRemove={() => void removeLibraryRef(ref, index)}
+                        onRemove={() => requestRemoveLibraryRef(ref)}
                       />
                     ))}
                     <StillTile
@@ -788,18 +933,21 @@ export default function BackgroundSettings({
                       accept="video/webm,video/mp4"
                       onFile={(f) => void upload(f)}
                     />
-                    {b.library.map((ref, index) => (
+                    {videoLibrary.map((ref, index) => (
                       <MediaTile
                         key={`v-${mediaSrc(ref)}`}
                         label={`Video ${index + 1}`}
                         pressed={isActiveVideo(ref)}
+                        src={mediaSrc(ref)}
+                        kind="video"
                         onSelect={() => selectMedia(ref, "video")}
+                        onRemove={() => requestRemoveLibraryRef(ref)}
                       />
                     ))}
                   </WallpaperShelf>
-                  <Text as="p" variant="support">
-                    Built-in video loops will appear here once catalogue artwork is
-                    selected.
+                  <Text as="p" variant="support" className="background-library-note">
+                    Upload a muted loop to use as an animated wallpaper. Built-in
+                    catalogue clips will appear here when available.
                   </Text>
                 </div>
               </ScrollArea>
@@ -865,36 +1013,13 @@ export default function BackgroundSettings({
       {effectOpen && b.effect && (
         <Modal
           nested
-          title="Effect"
+          title="Screen Effects"
           placement="bottom"
           backdrop="none"
           className="background-adjust-dialog"
           close={() => setEffectOpen(false)}
         >
           <SettingsGroup>
-            <SettingsRow label="Effect">
-              <Select
-                aria-label="Effect"
-                value={b.effect.id}
-                onValueChange={(id) => {
-                  const pack = getEffectPack(id);
-                  if (!pack) return;
-                  const params: Record<string, string | number | boolean> = {
-                    ...(b.effect?.params ?? {}),
-                  };
-                  for (const c of pack.controls) {
-                    if (params[c.key] === undefined) params[c.key] = c.default;
-                  }
-                  background({ effect: { id: id as EffectId, params } });
-                }}
-              >
-                {effectIds.map((id) => (
-                  <SelectOption key={id} value={id}>
-                    {effectLabels[id]}
-                  </SelectOption>
-                ))}
-              </Select>
-            </SettingsRow>
             {getEffectPack(b.effect.id)?.controls.map((c) =>
               c.type === "colour" ? (
                 <ColourField

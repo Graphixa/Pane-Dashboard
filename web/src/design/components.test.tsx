@@ -66,6 +66,36 @@ it("shows delete confirmation with cancel and delete actions, not discard copy",
   await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
 });
 
+function AcknowledgeExample({ onResult }: { onResult: (value: boolean) => void }) {
+  const { confirm, confirmation } = useConfirmation();
+  return <>
+    {confirmation}
+    <Button onClick={async () => onResult(await confirm({
+      title: "Upload failed",
+      description: "Choose a video up to 40 MiB.",
+      actionLabel: "OK",
+    }))}>Fail</Button>
+  </>;
+}
+
+it("shows a single OK for dismiss-only alerts and restores focus on dismiss", async () => {
+  const onResult = vi.fn();
+  render(<AcknowledgeExample onResult={onResult} />);
+  const trigger = screen.getByRole("button", { name: "Fail" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog.textContent).toContain("Upload failed");
+  expect(dialog.textContent).toContain("Choose a video up to 40 MiB.");
+  expect(screen.getAllByRole("button", { name: "OK" })).toHaveLength(1);
+  expect(dialog.classList.contains("ui-confirm")).toBe(true);
+  expect(document.querySelector(".ui-confirm-backdrop")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "OK" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(document.activeElement).toBe(trigger);
+});
+
 it("associates SwitchRow labels and optional hints with the switch control", () => {
   const change = vi.fn();
   render(<SwitchRow label="Show app labels" hint="Names beneath icons." checked={false} onCheckedChange={change} />);

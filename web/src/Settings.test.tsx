@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
 import { Config } from "./model";
 const config = (): Config => ({
@@ -134,7 +134,10 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("button", { name: "Change wallpaper" })).toBeTruthy();
     expect(screen.getByText("Currently set")).toBeTruthy();
     expect(screen.getByText("Theme overlay")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Add effect/i })).toBeTruthy();
+    const screenEffects = screen.getByRole("combobox", { name: "Screen Effects" });
+    expect(screenEffects).toBeTruthy();
+    expect(screenEffects.textContent).toMatch(/None/i);
+    expect(screen.queryByRole("button", { name: /Customize screen effects/i })).toBeNull();
     expect(screen.getByRole("button", { name: /Add tint/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
@@ -150,10 +153,20 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "My media" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
+    const dialog = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    expect(
+      dialog.querySelectorAll(".background-library-tab-panel[data-state='inactive']").length,
+    ).toBeGreaterThan(0);
+    for (const panel of dialog.querySelectorAll(
+      ".background-library-tab-panel[data-state='inactive']",
+    )) {
+      expect(getComputedStyle(panel).display).toBe("none");
+    }
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    expect(dialog.querySelector(".swatch-dynamic-label")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
@@ -282,6 +295,24 @@ describe("settings navigation and draft safety", () => {
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
+  });
+  it("shows oversized wallpaper upload errors inline in Choose wallpaper, not as a nested alert", async () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    const input = within(chooser).getByLabelText("Upload image") as HTMLInputElement;
+    const file = new File(["x"], "big.webp", { type: "image/webp" });
+    Object.defineProperty(file, "size", { value: 13 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        "Choose an image up to 12 MiB.",
+      );
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(chooser.querySelector(".background-library-sheet-notice")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "OK" })).toBeNull();
   });
   it("drags from the Settings title bar without starting from Close", () => {
     const { container } = setup();

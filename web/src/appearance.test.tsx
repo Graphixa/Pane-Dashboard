@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
   defaultBackground,
@@ -83,7 +83,7 @@ describe("schema 3 background media", () => {
     expect(() => validate(c)).not.toThrow();
   });
 
-  it("renders composition layers without dynamic scenes", () => {
+  it("renders composition layers without dynamic scenes", async () => {
     const ref: MediaRef = {
       source: "url",
       url: "https://example.com/wall.png",
@@ -101,7 +101,15 @@ describe("schema 3 background media", () => {
     );
     expect(container.querySelector(".scene-photo-host")).toBeTruthy();
     expect(container.querySelector(".scene-tint")).toBeTruthy();
-    expect(container.querySelector(".scene-effect")).toBeTruthy();
+    const effect = container.querySelector(".scene-effect");
+    expect(effect).toBeTruthy();
+    expect(effect?.getAttribute("data-effect-id")).toBe("fireflies");
+    await waitFor(() => {
+      expect(effect?.querySelector(".fly")).toBeTruthy();
+    });
+    expect(document.getElementById("pane-effect-style-fireflies")?.textContent).toContain(
+      "pane-fx-fireflies-fly-drift",
+    );
     expect(container.querySelector(".scene-theme-overlay")).toBeTruthy();
     expect(container.querySelector(".scene-dynamic")).toBeNull();
     expect(mediaSrc(ref)).toBe("https://example.com/wall.png");

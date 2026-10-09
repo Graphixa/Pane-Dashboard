@@ -11,6 +11,9 @@
 }
 .ui-tabs-trigger[data-state="active"] { background: var(--panel); color: var(--text); font-weight: var(--weight-semibold); }
 .ui-tabs-content { min-width: 0; outline: none; }
+/* Author display must not override the hidden attribute — inactive panels would still flex. */
+.ui-tabs-content[hidden],
+.ui-tabs-content[data-state="inactive"] { display: none; }
 
 /* The single Pane control system. Feature CSS may arrange controls, not redefine tokens. */
 :where(.ui-button, .ui-input, .ui-select, .ui-switch, .ui-checkbox, .ui-disclosure-trigger, .ui-menu-item) {
@@ -374,7 +377,13 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
   visibility: hidden;
   pointer-events: none;
 }
-.ui-confirm { z-index: var(--layer-confirm); max-width: 480px; }
+/* pointer-events: body is none while a Dialog is open; confirm portals outside Dialog.Content. */
+.ui-dialog-backdrop.ui-confirm-backdrop,
+.ui-confirm {
+  z-index: var(--layer-alert);
+  pointer-events: auto;
+}
+.ui-confirm { max-width: 480px; }
 .ui-confirm-description { margin: var(--space-4) 0 var(--space-5); }
 .ui-popover { width: min(240px, calc(100vw - 24px)); padding: var(--space-3); max-height: var(--radix-popover-content-available-height); overflow-y: auto; }
 .ui-popover-image { width: min(380px, calc(100vw - 24px)); }

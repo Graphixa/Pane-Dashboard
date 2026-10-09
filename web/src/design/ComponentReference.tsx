@@ -101,7 +101,7 @@ export default function ComponentReference() {
           <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
           <ColourField
             label="Accent colour"
-            hint="Live preview while dragging; draft commits after the drag settles."
+            hint="Area and hue live-paint while dragging; draft commits after the drag settles."
             colour={sampleColour}
             onColour={setSampleColour}
           />

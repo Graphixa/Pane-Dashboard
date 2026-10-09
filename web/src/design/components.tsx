@@ -92,17 +92,19 @@ export function SettingsGroup({ children, className }: { children: ReactNode; cl
 }
 
 /** Label left, control right inside a SettingsGroup. Omit label for a full-width control row. */
-export function SettingsRow({ label, hint, children, className }: {
+export function SettingsRow({ label, hint, action, children, className }: {
   label?: string;
   hint?: string;
+  /** Optional control under the label (e.g. Customize); replaces hint when set. */
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
-  const hasCopy = Boolean(label || hint);
+  const hasCopy = Boolean(label || hint || action);
   return <div className={classes("ui-settings-row", hasCopy ? undefined : "ui-settings-row-fill", className)}>
     {hasCopy && <div className="ui-settings-row-copy">
       {label && <span className="ui-settings-row-label">{label}</span>}
-      {hint && <p className="ui-settings-row-hint">{hint}</p>}
+      {action ?? (hint ? <p className="ui-settings-row-hint">{hint}</p> : null)}
     </div>}
     <div className="ui-settings-row-control">{children}</div>
   </div>;
@@ -114,6 +116,8 @@ export type { ConfirmRequest } from "./overlays";
 export {
   ColourField,
   ColourPopoverFields,
+  hexToHsv,
+  hsvToHex,
   parseHexInput,
   useDeferredColour,
 } from "./colour";

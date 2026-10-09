@@ -73,7 +73,7 @@ function ModalContent({
 export function Popover({trigger, open, onOpenChange, children, label, size = 'compact'}: {trigger: ReactElement; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode; label: string; size?: 'compact' | 'image'}) {
   const surface = useSurface();
   return <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}><PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
-    <PopoverPrimitive.Portal><PopoverPrimitive.Content {...surface} aria-label={label} className={`ui-popover ui-popover-${size} ui-overlay-surface`} sideOffset={8} align="start" collisionPadding={12} updatePositionStrategy="always" onEscapeKeyDown={e => e.stopPropagation()}>{children}</PopoverPrimitive.Content></PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal><PopoverPrimitive.Content {...surface} aria-label={label} className={`ui-popover ui-popover-${size} ui-overlay-surface`} sideOffset={8} align="start" collisionPadding={12} avoidCollisions sticky="partial" onEscapeKeyDown={e => e.stopPropagation()}>{children}</PopoverPrimitive.Content></PopoverPrimitive.Portal>
   </PopoverPrimitive.Root>;
 }
 
@@ -102,11 +102,12 @@ export function DropdownMenu({trigger, items, open, onOpenChange}: {trigger: Rea
     {items.map(item => <Menu.Item key={item.label} disabled={item.disabled} onSelect={item.onSelect} className="ui-menu-item">{item.icon}{item.label}</Menu.Item>)}
   </Menu.Content></Menu.Portal></Menu.Root>;
 }
-/** Caller-owned copy for discard, delete and replace confirmations. */
+/** Caller-owned copy for discard, delete, replace, and dismiss-only alerts. */
 export type ConfirmRequest = {
   title: string;
   description: string;
-  cancelLabel: string;
+  /** Omit for a single dismiss action (acknowledge / error alert). */
+  cancelLabel?: string;
   actionLabel: string;
   actionVariant?: "danger" | "primary" | "secondary";
 };
@@ -134,14 +135,16 @@ function ConfirmationDialog({request, finish, opener}: {
   opener: React.RefObject<HTMLElement | null>;
 }) {
   const surface = useSurface();
+  const dismissOnly = request !== null && request.cancelLabel === undefined;
+  const actionVariant = request?.actionVariant ?? (dismissOnly ? "primary" : "danger");
   return <AlertDialog.Root open={request !== null} onOpenChange={open => {if (!open) finish(false);}}><AlertDialog.Portal>
-    <AlertDialog.Overlay className="ui-dialog-backdrop" />
+    <AlertDialog.Overlay className="ui-dialog-backdrop ui-confirm-backdrop" />
     <AlertDialog.Content {...surface} className="ui-dialog ui-confirm ui-overlay-surface" onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}>
       <AlertDialog.Title asChild><Text as="h2" variant="title">{request?.title}</Text></AlertDialog.Title>
       <AlertDialog.Description className="ui-confirm-description">{request?.description}</AlertDialog.Description>
       <div className="ui-actions">
-        <AlertDialog.Cancel asChild><Button onClick={() => finish(false)}>{request?.cancelLabel}</Button></AlertDialog.Cancel>
-        <AlertDialog.Action asChild><Button variant={request?.actionVariant ?? "danger"} onClick={() => finish(true)}>{request?.actionLabel}</Button></AlertDialog.Action>
+        {!dismissOnly && <AlertDialog.Cancel asChild><Button onClick={() => finish(false)}>{request?.cancelLabel}</Button></AlertDialog.Cancel>}
+        <AlertDialog.Action asChild><Button variant={actionVariant} onClick={() => finish(true)}>{request?.actionLabel}</Button></AlertDialog.Action>
       </div>
     </AlertDialog.Content>
   </AlertDialog.Portal></AlertDialog.Root>;

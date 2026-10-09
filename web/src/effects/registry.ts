@@ -27,12 +27,13 @@ export type EffectPack = {
   controls: EffectControl[];
 };
 
-const cssModules = import.meta.glob<string>("./*.{css}", {
+// Use .pack.txt (not .css) so Vite/Vitest do not mock raw stylesheet imports to "".
+const cssModules = import.meta.glob<string>("./*.pack.txt", {
   eager: true,
   query: "?raw",
   import: "default",
 });
-const htmlModules = import.meta.glob<string>("./*.{html}", {
+const htmlModules = import.meta.glob<string>("./*.html", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -43,32 +44,30 @@ function loadRaw(map: Record<string, string>, name: string): string {
   return hit?.[1] ?? "";
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Prefix keyframe names only — never rewrite var()/calc() tokens in animation values. */
 function scopeCss(id: EffectId, css: string): string {
+  const names: string[] = [];
   let out = css.replace(
     /@keyframes\s+([a-zA-Z_][\w-]*)/g,
-    (_m, name: string) => `@keyframes pane-fx-${id}-${name}`,
-  );
-  out = out.replace(
-    /(animation(?:-name)?\s*:\s*)([^;}+]+)/g,
-    (_m, prefix: string, value: string) => {
-      const next = value.replace(
-        /\b([a-zA-Z_][\w-]*)\b/g,
-        (token) =>
-          /^(linear|ease|ease-in|ease-out|ease-in-out|infinite|alternate|forwards|backwards|both|none|normal|reverse|paused|running|ms|s|\d)/.test(
-            token,
-          ) || token.includes("(")
-            ? token
-            : `pane-fx-${id}-${token}`,
-      );
-      return prefix + next;
+    (_m, name: string) => {
+      names.push(name);
+      return `@keyframes pane-fx-${id}-${name}`;
     },
   );
+  for (const name of names) {
+    const re = new RegExp(`(?<![\\w-])${escapeRegExp(name)}(?![\\w-])`, "g");
+    out = out.replace(re, `pane-fx-${id}-${name}`);
+  }
   return `@scope (.scene-effect[data-effect-id="${id}"]) {\n${out}\n}`;
 }
 
-const snowCss = loadRaw(cssModules, "snow.css");
-const firefliesCss = loadRaw(cssModules, "fireflies.css");
-const shootingCss = loadRaw(cssModules, "shooting-stars.css");
+const snowCss = loadRaw(cssModules, "snow.pack.txt");
+const firefliesCss = loadRaw(cssModules, "fireflies.pack.txt");
+const shootingCss = loadRaw(cssModules, "shooting-stars.pack.txt");
 
 export const effectPacks: Record<EffectId, EffectPack> = {
   snow: {
