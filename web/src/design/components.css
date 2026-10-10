@@ -111,7 +111,7 @@
 .ui-text-label { font-weight: var(--weight-semibold); }
 .ui-text.ui-text-support { font-size: var(--type-support); color: var(--muted); }
 .ui-text.ui-text-caption { font-size: var(--type-caption); color: var(--muted); }
-.ui-text.settings-page-title { margin-bottom: var(--space-6); }
+.ui-text.settings-page-title { margin: 0; }
 .ui-section { min-width: 0; }
 .ui-section > .ui-text-support { margin-top: var(--space-2); }
 .ui-section-content { display: grid; gap: var(--space-4); margin-top: var(--space-4); }

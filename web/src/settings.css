@@ -27,13 +27,22 @@
   background: color-mix(in srgb, var(--bg) 45%, transparent);
 }
 .settings-content {
+  position: relative;
   overflow-y: auto;
   min-width: 0;
   padding: 30px 32px 40px;
   scrollbar-gutter: stable;
 }
 .settings-page-title {
-  margin: 0 0 var(--space-6);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .settings-section {
   padding: 0;

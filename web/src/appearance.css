@@ -360,14 +360,12 @@
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+.background-settings-stack {
+  display: grid;
+  gap: var(--space-4);
+}
 .background-current-group {
   margin-bottom: 0;
-}
-.background-row-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  justify-content: flex-end;
 }
 .background-theme-overlay-hint {
   margin: var(--space-4) 0 0;
@@ -427,6 +425,25 @@
   flex: 1 1 auto;
   min-width: 0;
   padding-top: 2px;
+}
+.background-current-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 180px;
+  margin-left: auto;
+  padding-top: 2px;
+}
+.background-current-control {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: stretch;
+}
+.background-current-control-label {
+  color: var(--muted);
 }
 .background-current-eyebrow {
   color: var(--muted);

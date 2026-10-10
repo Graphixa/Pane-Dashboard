@@ -137,8 +137,15 @@ describe("settings navigation and draft safety", () => {
     const screenEffects = screen.getByRole("combobox", { name: "Screen Effects" });
     expect(screenEffects).toBeTruthy();
     expect(screenEffects.textContent).toMatch(/None/i);
-    expect(screen.queryByRole("button", { name: /Customize screen effects/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /Add tint/i })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /Customise screen effects/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.getByRole("switch", { name: "Tint" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /Customise tint/i }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /Add tint/i })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
     expect(
@@ -146,22 +153,15 @@ describe("settings navigation and draft safety", () => {
         "ui-dialog-bottom",
       ),
     ).toBe(true);
-    expect(screen.getByRole("tablist", { name: "Wallpaper type" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Static" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Animated" })).toBeTruthy();
+    expect(screen.queryByRole("tablist", { name: "Wallpaper type" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Static" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Animated" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "My media" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Videos" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
     const dialog = screen.getByRole("dialog", { name: "Choose wallpaper" });
-    expect(
-      dialog.querySelectorAll(".background-library-tab-panel[data-state='inactive']").length,
-    ).toBeGreaterThan(0);
-    for (const panel of dialog.querySelectorAll(
-      ".background-library-tab-panel[data-state='inactive']",
-    )) {
-      expect(getComputedStyle(panel).display).toBe("none");
-    }
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),

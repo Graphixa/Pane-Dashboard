@@ -15,10 +15,7 @@ import {
   SelectOption,
   SettingsGroup,
   SettingsRow,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  Switch,
   Text,
   useDeferredColour,
 } from "./design/components";
@@ -447,10 +444,6 @@ function UploadTile({
   );
 }
 
-function RowActions({ children }: { children: ReactNode }) {
-  return <div className="background-row-actions">{children}</div>;
-}
-
 export default function BackgroundSettings({
   settings: b,
   theme,
@@ -465,7 +458,6 @@ export default function BackgroundSettings({
   onPreviewAdjust?: (active: boolean) => void;
 }) {
   const [chooserOpen, setChooserOpen] = useState(false);
-  const [tab, setTab] = useState<"static" | "animated">("static");
   const [sheetError, setSheetError] = useState("");
   const [pendingRemove, setPendingRemove] = useState<MediaRef | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
@@ -498,8 +490,6 @@ export default function BackgroundSettings({
 
   const openChooser = () => {
     snapshot.current = structuredClone(b);
-    const kind = b.wallpaper.kind;
-    setTab(kind === "video" ? "animated" : "static");
     setSheetError("");
     setPendingRemove(null);
     setChooserOpen(true);
@@ -529,13 +519,16 @@ export default function BackgroundSettings({
     setWallpaper({ kind: "gradient", preset });
   };
   const selectMedia = (ref: MediaRef, kind: "image" | "video") => {
+    const known = b.library.some((entry) => mediaRefEqual(entry, ref));
     let library = b.library;
-    try {
-      library = prependLibrary(b.library, ref);
-    } catch (err) {
-      // Inline in the sheet: nested AlertDialog over Choose wallpaper cannot receive clicks.
-      setSheetError((err as Error).message);
-      return;
+    if (!known) {
+      try {
+        library = prependLibrary(b.library, ref);
+      } catch (err) {
+        // Inline in the sheet: nested AlertDialog over Choose wallpaper cannot receive clicks.
+        setSheetError((err as Error).message);
+        return;
+      }
     }
     setSheetError("");
     if (kind === "image") {
@@ -559,7 +552,6 @@ export default function BackgroundSettings({
       const kind: MediaKind = file.type.startsWith("video/") ? "video" : "image";
       rememberMediaKind(ref, kind);
       selectMedia(ref, kind);
-      setTab(kind === "video" ? "animated" : "static");
     } catch (err) {
       setSheetError((err as Error).message);
     } finally {
@@ -611,8 +603,13 @@ export default function BackgroundSettings({
     return isActiveVideo(ref);
   });
 
+  const mediaWallpaper =
+    b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
+      ? b.wallpaper
+      : null;
+
   return (
-    <>
+    <div className="background-settings-stack">
       <SettingsGroup className="background-current-group">
         <SettingsRow>
           <div className="background-current">
@@ -632,116 +629,156 @@ export default function BackgroundSettings({
                 Change wallpaper
               </Button>
             </div>
+            {mediaWallpaper && (
+              <div className="background-current-controls">
+                <div className="background-current-control">
+                  <Text as="span" variant="support" className="background-current-control-label">
+                    Position
+                  </Text>
+                  <Select
+                    aria-label="Position"
+                    value={mediaWallpaper.position}
+                    onValueChange={(position) => {
+                      if (
+                        b.wallpaper.kind !== "image" &&
+                        b.wallpaper.kind !== "video"
+                      )
+                        return;
+                      background({
+                        wallpaper: {
+                          ...b.wallpaper,
+                          position: position as "center" | "top" | "bottom",
+                        },
+                      });
+                    }}
+                  >
+                    <SelectOption value="center">Centre</SelectOption>
+                    <SelectOption value="top">Top</SelectOption>
+                    <SelectOption value="bottom">Bottom</SelectOption>
+                  </Select>
+                </div>
+                {b.wallpaper.kind === "video" && (
+                  <div className="background-current-control">
+                    <Text as="span" variant="support" className="background-current-control-label">
+                      Playback
+                    </Text>
+                    <Select
+                      aria-label="Playback"
+                      value={b.wallpaper.playback}
+                      onValueChange={(playback) => {
+                        if (b.wallpaper.kind !== "video") return;
+                        background({
+                          wallpaper: {
+                            ...b.wallpaper,
+                            playback: playback === "static" ? "static" : "loop",
+                          },
+                        });
+                      }}
+                    >
+                      <SelectOption value="loop">Loop</SelectOption>
+                      <SelectOption value="static">Static poster</SelectOption>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </SettingsRow>
-        {(b.wallpaper.kind === "image" || b.wallpaper.kind === "video") && (
-          <SettingsRow label="Position">
-            <Select
-              aria-label="Position"
-              value={b.wallpaper.position}
-              onValueChange={(position) => {
-                if (b.wallpaper.kind !== "image" && b.wallpaper.kind !== "video")
-                  return;
-                background({
-                  wallpaper: {
-                    ...b.wallpaper,
-                    position: position as "center" | "top" | "bottom",
-                  },
-                });
-              }}
-            >
-              <SelectOption value="center">Centre</SelectOption>
-              <SelectOption value="top">Top</SelectOption>
-              <SelectOption value="bottom">Bottom</SelectOption>
-            </Select>
-          </SettingsRow>
-        )}
-        {b.wallpaper.kind === "video" && (
-          <SettingsRow label="Playback">
-            <Select
-              aria-label="Playback"
-              value={b.wallpaper.playback}
-              onValueChange={(playback) => {
-                if (b.wallpaper.kind !== "video") return;
-                background({
-                  wallpaper: {
-                    ...b.wallpaper,
-                    playback: playback === "static" ? "static" : "loop",
-                  },
-                });
-              }}
-            >
-              <SelectOption value="loop">Loop</SelectOption>
-              <SelectOption value="static">Static poster</SelectOption>
-            </Select>
-          </SettingsRow>
-        )}
       </SettingsGroup>
 
       <SettingsGroup>
+        <SettingsRow
+          label="Tint"
+          action={
+            <Button
+              type="button"
+              variant="quiet"
+              className="background-effect-customize"
+              disabled={!b.tint}
+              aria-label="Customise tint"
+              onClick={() => setTintOpen(true)}
+            >
+              Customise
+            </Button>
+          }
+        >
+          <Switch
+            aria-label="Tint"
+            checked={Boolean(b.tint)}
+            onCheckedChange={(on) => {
+              if (on) {
+                background({
+                  tint: lastTint.current ?? { colour: "#a2cbbb", opacity: 25 },
+                });
+                return;
+              }
+              setTintOpen(false);
+              background({ tint: undefined });
+            }}
+          />
+        </SettingsRow>
+
         {b.wallpaper.kind === "image" && (
           <SettingsRow
-            label={b.photoMotion.style === "none" ? "Add motion" : "Motion"}
-            hint={
-              b.photoMotion.style === "none"
-                ? undefined
-                : motionStyleLabels[b.photoMotion.style]
-            }
-          >
-            {b.photoMotion.style === "none" ? (
+            label={b.photoMotion.style === "none" ? "Add Motion" : "Motion"}
+            action={
               <Button
                 type="button"
-                onClick={() =>
+                variant="quiet"
+                className="background-effect-customize"
+                disabled={b.photoMotion.style === "none"}
+                aria-label="Customise motion"
+                onClick={() => setMotionOpen(true)}
+              >
+                Customise
+              </Button>
+            }
+          >
+            <Select
+              aria-label="Add Motion"
+              value={b.photoMotion.style}
+              onValueChange={(style) => {
+                const next = style as MotionStyle;
+                if (next === "none") {
+                  setMotionOpen(false);
                   background({
                     photoMotion: {
-                      style:
-                        lastMotion.current === "none"
-                          ? "ken-burns"
-                          : lastMotion.current,
-                      intensity: b.photoMotion.intensity || 40,
+                      style: "none",
+                      intensity: b.photoMotion.intensity,
                     },
-                  })
+                  });
+                  return;
                 }
-              >
-                <Plus size={16} aria-hidden /> Add motion
-              </Button>
-            ) : (
-              <RowActions>
-                <Button type="button" onClick={() => setMotionOpen(true)}>
-                  Customise
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() =>
-                    background({
-                      photoMotion: {
-                        style: "none",
-                        intensity: b.photoMotion.intensity,
-                      },
-                    })
-                  }
-                >
-                  Remove
-                </Button>
-              </RowActions>
-            )}
+                background({
+                  photoMotion: {
+                    style: next,
+                    intensity: b.photoMotion.intensity || 40,
+                  },
+                });
+              }}
+            >
+              {motionStyles.map((id) => (
+                <SelectOption key={id} value={id}>
+                  {motionStyleLabels[id]}
+                </SelectOption>
+              ))}
+            </Select>
           </SettingsRow>
         )}
 
         <SettingsRow
           label="Screen Effects"
           action={
-            b.effect ? (
-              <Button
-                type="button"
-                variant="quiet"
-                className="background-effect-customize"
-                aria-label="Customize screen effects"
-                onClick={() => setEffectOpen(true)}
-              >
-                Customize
-              </Button>
-            ) : undefined
+            <Button
+              type="button"
+              variant="quiet"
+              className="background-effect-customize"
+              disabled={!b.effect}
+              aria-label="Customise screen effects"
+              onClick={() => setEffectOpen(true)}
+            >
+              Customise
+            </Button>
           }
         >
           <Select
@@ -773,30 +810,6 @@ export default function BackgroundSettings({
               </SelectOption>
             ))}
           </Select>
-        </SettingsRow>
-
-        <SettingsRow label={b.tint ? "Tint" : "Add tint"}>
-          {!b.tint ? (
-            <Button
-              type="button"
-              onClick={() =>
-                background({
-                  tint: lastTint.current ?? { colour: "#a2cbbb", opacity: 25 },
-                })
-              }
-            >
-              <Plus size={16} aria-hidden /> Add tint
-            </Button>
-          ) : (
-            <RowActions>
-              <Button type="button" onClick={() => setTintOpen(true)}>
-                Customise
-              </Button>
-              <Button type="button" onClick={() => background({ tint: undefined })}>
-                Remove
-              </Button>
-            </RowActions>
-          )}
         </SettingsRow>
 
         <Text as="p" variant="support" className="background-theme-overlay-hint">
@@ -839,120 +852,95 @@ export default function BackgroundSettings({
               </div>
             </Notice>
           )}
-          <Tabs
-            className="background-library-tabs"
-            value={tab}
-            onValueChange={(v) => {
-              setTab(v as "static" | "animated");
-              setSheetError("");
-              setPendingRemove(null);
-            }}
+          <ScrollArea
+            className="background-library-body-scroll"
+            type="auto"
+            aria-label="Wallpapers"
           >
-            <TabsList aria-label="Wallpaper type">
-              <TabsTrigger value="static">Static</TabsTrigger>
-              <TabsTrigger value="animated">Animated</TabsTrigger>
-            </TabsList>
-            <TabsContent value="static" className="background-library-tab-panel">
-              <ScrollArea
-                className="background-library-body-scroll"
-                type="auto"
-                aria-label="Static wallpapers"
-              >
-                <div className="background-library-shelves">
-                  <WallpaperShelf heading="Colours" label="Colours" compact>
-                    <WallpaperCustomColour
-                      colour={customColour}
-                      pressed={b.wallpaper.kind === "solid" && !presetMatch}
-                      onColour={selectColour}
-                    />
-                    {accentPresets[theme].map((p) => (
-                      <WallpaperColourChip
-                        key={p.colour}
-                        name={p.name}
-                        colour={p.colour}
-                        pressed={solidSelected === p.colour.toLowerCase()}
-                        onSelect={() => selectColour(p.colour)}
-                      />
-                    ))}
-                  </WallpaperShelf>
+            <div className="background-library-shelves">
+              <WallpaperShelf heading="Colours" label="Colours" compact>
+                <WallpaperCustomColour
+                  colour={customColour}
+                  pressed={b.wallpaper.kind === "solid" && !presetMatch}
+                  onColour={selectColour}
+                />
+                {accentPresets[theme].map((p) => (
+                  <WallpaperColourChip
+                    key={p.colour}
+                    name={p.name}
+                    colour={p.colour}
+                    pressed={solidSelected === p.colour.toLowerCase()}
+                    onSelect={() => selectColour(p.colour)}
+                  />
+                ))}
+              </WallpaperShelf>
 
-                  <WallpaperShelf heading="My media" label="My media">
-                    <UploadTile
-                      label="Upload image"
-                      accept="image/png,image/jpeg,image/webp"
-                      onFile={(f) => void upload(f)}
-                    />
-                    {imageLibrary.map((ref, index) => (
-                      <MediaTile
-                        key={mediaSrc(ref)}
-                        label={`My media ${index + 1}`}
-                        pressed={isActiveImage(ref)}
-                        src={mediaSrc(ref)}
-                        kind="image"
-                        onSelect={() => selectMedia(ref, "image")}
-                        onRemove={() => requestRemoveLibraryRef(ref)}
-                      />
-                    ))}
+              <WallpaperShelf heading="My media" label="My media">
+                <UploadTile
+                  label="Upload image"
+                  accept="image/png,image/jpeg,image/webp"
+                  onFile={(f) => void upload(f)}
+                />
+                {imageLibrary.map((ref, index) => (
+                  <MediaTile
+                    key={mediaSrc(ref)}
+                    label={`My media ${index + 1}`}
+                    pressed={isActiveImage(ref)}
+                    src={mediaSrc(ref)}
+                    kind="image"
+                    onSelect={() => selectMedia(ref, "image")}
+                    onRemove={() => requestRemoveLibraryRef(ref)}
+                  />
+                ))}
+                <StillTile
+                  label="None"
+                  pressed={b.wallpaper.kind === "none"}
+                  paint="var(--bg)"
+                  onSelect={() => setWallpaper({ kind: "none" })}
+                />
+              </WallpaperShelf>
+
+              <WallpaperShelf heading="Gradients" label="Gradients">
+                {(Object.keys(gradients) as (keyof typeof gradients)[]).map(
+                  (id) => (
                     <StillTile
-                      label="None"
-                      pressed={b.wallpaper.kind === "none"}
-                      paint="var(--bg)"
-                      onSelect={() => setWallpaper({ kind: "none" })}
+                      key={id}
+                      label={titleCase(id)}
+                      pressed={
+                        b.wallpaper.kind === "gradient" &&
+                        b.wallpaper.preset === id
+                      }
+                      paint={gradients[id]}
+                      onSelect={() => selectGradient(id)}
                     />
-                  </WallpaperShelf>
+                  ),
+                )}
+              </WallpaperShelf>
 
-                  <WallpaperShelf heading="Gradients" label="Gradients">
-                    {(Object.keys(gradients) as (keyof typeof gradients)[]).map(
-                      (id) => (
-                        <StillTile
-                          key={id}
-                          label={titleCase(id)}
-                          pressed={
-                            b.wallpaper.kind === "gradient" &&
-                            b.wallpaper.preset === id
-                          }
-                          paint={gradients[id]}
-                          onSelect={() => selectGradient(id)}
-                        />
-                      ),
-                    )}
-                  </WallpaperShelf>
-                </div>
-              </ScrollArea>
-            </TabsContent>
-            <TabsContent value="animated" className="background-library-tab-panel">
-              <ScrollArea
-                className="background-library-body-scroll"
-                type="auto"
-                aria-label="Animated wallpapers"
-              >
-                <div className="background-library-shelves">
-                  <WallpaperShelf heading="Videos" label="Videos">
-                    <UploadTile
-                      label="Upload video"
-                      accept="video/webm,video/mp4"
-                      onFile={(f) => void upload(f)}
-                    />
-                    {videoLibrary.map((ref, index) => (
-                      <MediaTile
-                        key={`v-${mediaSrc(ref)}`}
-                        label={`Video ${index + 1}`}
-                        pressed={isActiveVideo(ref)}
-                        src={mediaSrc(ref)}
-                        kind="video"
-                        onSelect={() => selectMedia(ref, "video")}
-                        onRemove={() => requestRemoveLibraryRef(ref)}
-                      />
-                    ))}
-                  </WallpaperShelf>
-                  <Text as="p" variant="support" className="background-library-note">
-                    Upload a muted loop to use as an animated wallpaper. Built-in
-                    catalogue clips will appear here when available.
-                  </Text>
-                </div>
-              </ScrollArea>
-            </TabsContent>
-          </Tabs>
+              <WallpaperShelf heading="Videos" label="Videos">
+                <UploadTile
+                  label="Upload video"
+                  accept="video/webm,video/mp4"
+                  onFile={(f) => void upload(f)}
+                />
+                {videoLibrary.map((ref, index) => (
+                  <MediaTile
+                    key={`v-${mediaSrc(ref)}`}
+                    label={`Video ${index + 1}`}
+                    pressed={isActiveVideo(ref)}
+                    src={mediaSrc(ref)}
+                    kind="video"
+                    onSelect={() => selectMedia(ref, "video")}
+                    onRemove={() => requestRemoveLibraryRef(ref)}
+                  />
+                ))}
+              </WallpaperShelf>
+              <Text as="p" variant="support" className="background-library-note">
+                Upload a muted loop to use as an animated wallpaper. Built-in
+                catalogue clips will appear here when available.
+              </Text>
+            </div>
+          </ScrollArea>
           <div className="ui-actions background-library-actions">
             <Button type="button" variant="primary" onClick={commitChooser}>
               Done
@@ -1093,7 +1081,7 @@ export default function BackgroundSettings({
           </div>
         </Modal>
       )}
-    </>
+    </div>
   );
 }
 
