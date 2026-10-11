@@ -362,14 +362,31 @@
 }
 .background-settings-stack {
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
+}
+.background-settings-stack > .ui-section {
+  margin-top: 0;
+}
+.background-settings-stack > .ui-section.settings-section + .ui-section.settings-section {
+  margin-top: var(--space-2);
+  padding-top: var(--space-5);
 }
 .background-current-group {
   margin-bottom: 0;
 }
+.background-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
 .background-theme-overlay-hint {
-  margin: var(--space-4) 0 0;
+  margin: 0;
+  padding: var(--space-4) 0 0;
   color: var(--muted);
+}
+.ui-settings-group > .background-theme-overlay-hint + .ui-range {
+  padding-top: var(--space-2);
 }
 .background-library-dialog .background-library-tabs {
   flex: 1 1 0;
@@ -539,10 +556,25 @@
   margin-top: var(--space-4);
   padding-top: var(--space-1);
   flex: 0 0 auto;
+  display: grid;
+  gap: var(--space-2);
+}
+.background-library-actions-note {
+  margin: 0;
+  color: var(--muted);
 }
 .background-library-note {
   margin: 0;
   color: var(--muted);
+}
+.background-swatch-check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+  pointer-events: none;
 }
 .background-shelf {
   display: grid;
@@ -738,11 +770,22 @@
   color: var(--muted);
   box-shadow: inset 0 0 0 1px var(--line);
 }
-/* Flush accent ring. Replaces the hairline so selection is a single stroke. */
+/* Selected / picking: accent ring. Focus: outer text-contrast ring (not colour alone). */
 .wallpaper-colour-chip[aria-pressed="true"] .wallpaper-colour-chip-paint,
-.wallpaper-colour-chip-picking .wallpaper-colour-chip-paint,
-.wallpaper-colour-chip:focus-visible .wallpaper-colour-chip-paint {
+.wallpaper-colour-chip-picking .wallpaper-colour-chip-paint {
   box-shadow: 0 0 0 var(--focus-width) var(--accent);
+}
+.wallpaper-colour-chip:focus-visible .wallpaper-colour-chip-paint {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-colour-chip[aria-pressed="true"]:focus-visible .wallpaper-colour-chip-paint,
+.wallpaper-colour-chip-picking:focus-visible .wallpaper-colour-chip-paint {
+  box-shadow:
+    0 0 0 var(--focus-width) var(--accent),
+    0 0 0 calc(var(--focus-width) + 2px) var(--panel),
+    0 0 0 calc(var(--focus-width) + 2px + var(--focus-width)) var(--text);
 }
 .background-swatch {
   display: flex;
@@ -767,6 +810,22 @@
   border-width: 2px;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.background-swatch:focus-visible {
+  outline: none;
+}
+.background-swatch:focus-visible .background-swatch-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.background-swatch[aria-pressed="true"]:focus-visible .background-swatch-frame {
+  border-width: 2px;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 0 3px var(--panel),
+    0 0 0 calc(3px + var(--focus-width)) var(--text);
 }
 .background-swatch-video {
   display: block;

@@ -55,14 +55,73 @@ export function Checkbox({id, disabled, className = '', onCheckedChange, ...prop
   const label = useContext(LabelContext), groupDisabled = useContext(DisabledContext);
   return <CheckboxPrimitive.Root {...props} id={id ?? label} disabled={disabled || groupDisabled} onCheckedChange={v => onCheckedChange?.(v === true)} className={`ui-checkbox ${className}`}><CheckboxPrimitive.Indicator><Check size={14} aria-hidden="true" /></CheckboxPrimitive.Indicator></CheckboxPrimitive.Root>;
 }
-export function Range({label, value, min, max, unit = '', change, disabled}: {label: string; value: number; min: number; max: number; unit?: string; change: (value: number) => void; disabled?: boolean}) {
+export function Range({
+  label,
+  value,
+  min,
+  max,
+  unit = '',
+  change,
+  disabled,
+  layout = "stacked",
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  change: (value: number) => void;
+  disabled?: boolean;
+  /** stacked: label+value above full-width track. inline: label | track | value for multi-slider sheets. */
+  layout?: "stacked" | "inline";
+}) {
   const groupDisabled = useContext(DisabledContext), id = useId();
-  return <div className="ui-range"><div className="ui-range-label"><span id={id}>{label}</span><output>{value}{unit}</output></div>
-    <SliderPrimitive.Root min={min} max={max} step={1} value={[value]} onValueChange={v => change(v[0])} disabled={disabled || groupDisabled} className="ui-slider">
-      <SliderPrimitive.Track className="ui-slider-track"><SliderPrimitive.Range className="ui-slider-range" /></SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className="ui-slider-thumb" aria-labelledby={id} aria-valuetext={`${value}${unit}`} />
+  const slider = (
+    <SliderPrimitive.Root
+      min={min}
+      max={max}
+      step={1}
+      value={[value]}
+      onValueChange={(v) => change(v[0])}
+      disabled={disabled || groupDisabled}
+      className="ui-slider"
+    >
+      <SliderPrimitive.Track className="ui-slider-track">
+        <SliderPrimitive.Range className="ui-slider-range" />
+      </SliderPrimitive.Track>
+      <SliderPrimitive.Thumb
+        className="ui-slider-thumb"
+        aria-labelledby={id}
+        aria-valuetext={`${value}${unit}`}
+      />
     </SliderPrimitive.Root>
-  </div>;
+  );
+  if (layout === "inline") {
+    return (
+      <div className="ui-range ui-range-inline">
+        <span id={id} className="ui-range-label-text">
+          {label}
+        </span>
+        {slider}
+        <output className="ui-range-value">
+          {value}
+          {unit}
+        </output>
+      </div>
+    );
+  }
+  return (
+    <div className="ui-range">
+      <div className="ui-range-label">
+        <span id={id}>{label}</span>
+        <output>
+          {value}
+          {unit}
+        </output>
+      </div>
+      {slider}
+    </div>
+  );
 }
 export function Disclosure({title, children, defaultOpen = false}: {title: string; children: ReactNode; defaultOpen?: boolean}) {
   const disabled = useContext(DisabledContext);

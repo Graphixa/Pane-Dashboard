@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
   Button, Checkbox, ColourField, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
-  Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Tabs, TabsContent, TabsList, TabsTrigger, Text, TextField, useConfirmation,
+  Range, ScrollArea, Section, Select, SelectField, SettingsGroup, SettingsRow, SwitchRow, Tabs, TabsContent, TabsList, TabsTrigger, Text, TextField, useConfirmation,
 } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -21,6 +21,8 @@ export default function ComponentReference() {
   const [paneSize, setPaneSize] = useState(18);
   const [labels, setLabels] = useState(true);
   const [blur, setBlur] = useState(16);
+  const [opacity, setOpacity] = useState(40);
+  const [openLinks, setOpenLinks] = useState("new");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,10 +97,15 @@ export default function ComponentReference() {
         <Notice tone="success">Example settings are ready.</Notice>
         <Notice tone="error">Example save failed. Your changes are still available.</Notice>
       </Section>
-      <Section title="Settings groups" description="Inset SettingsGroup surfaces under section headings. Label left, control right; omit the label for full-width controls.">
+      <Section title="Settings groups" description="Inset SettingsGroup surfaces under section headings. Comparable rows share stable label and control columns; omit the label for full-width controls. Narrow viewports stack the control under the label.">
         <SettingsGroup>
           <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
-          <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+          <SettingsRow label="Open links" hint="Where app tiles open.">
+            <Select aria-label="Open links" value={openLinks} onValueChange={setOpenLinks}>
+              <SelectOption value="new">In a new tab</SelectOption>
+              <SelectOption value="same">In this tab</SelectOption>
+            </Select>
+          </SettingsRow>
           <ColourField
             label="Accent colour"
             hint="Area and hue live-paint while dragging; draft commits after the drag settles."
@@ -110,10 +117,16 @@ export default function ComponentReference() {
           </SettingsRow>
         </SettingsGroup>
       </Section>
-      <Section title="Switches, ranges and disclosure" description="Settings-style rows keep the label left and control right.">
+      <Section title="Ranges" description="Stacked Range puts label and value above a full-width track (Readability). Inline Range aligns label, track and value for multi-slider sheets.">
+        <SettingsGroup>
+          <Range label="Theme overlay" value={opacity} min={0} max={80} unit="%" change={setOpacity} />
+          <Range layout="inline" label="Opacity" value={opacity} min={0} max={100} unit="%" change={setOpacity} />
+          <Range layout="inline" label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+        </SettingsGroup>
+      </Section>
+      <Section title="Switches and disclosure" description="Settings-style rows keep the label left and control right.">
         <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
         <label className="ui-label check"><Checkbox checked={checked} onCheckedChange={setChecked} /> Open in a new tab</label>
-        <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
         <Disclosure title="Fine tuning">
           <Text variant="support">Disclosure content uses the same spacing as sections.</Text>
         </Disclosure>

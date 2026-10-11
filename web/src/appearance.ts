@@ -627,7 +627,15 @@ export function appearanceStyle(a: AppearanceOptions): CSSProperties {
   } as CSSProperties;
 }
 
-export function wallpaperLabel(b: Background): string {
+/** Strip a media filename extension for compact UI labels. */
+export function mediaDisplayName(name: string, fallback: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return fallback;
+  const base = trimmed.replace(/\.[A-Za-z0-9]{1,8}$/, "");
+  return base || trimmed || fallback;
+}
+
+export function wallpaperLabel(b: Background, mediaName?: string): string {
   switch (b.wallpaper.kind) {
     case "none":
       return "None";
@@ -636,8 +644,8 @@ export function wallpaperLabel(b: Background): string {
     case "gradient":
       return b.wallpaper.preset[0].toUpperCase() + b.wallpaper.preset.slice(1);
     case "image":
-      return "Photo";
+      return mediaName ? mediaDisplayName(mediaName, "Photo") : "Photo";
     case "video":
-      return "Video";
+      return mediaName ? mediaDisplayName(mediaName, "Video") : "Video";
   }
 }

@@ -22,6 +22,9 @@ func registerMediaRoutes(mux *http.ServeMux, media *MediaStore) {
 	mux.HandleFunc("POST /api/media/commit", func(w http.ResponseWriter, r *http.Request) {
 		handleMediaCommit(w, r, media)
 	})
+	mux.HandleFunc("GET /api/media/meta/{id}", func(w http.ResponseWriter, r *http.Request) {
+		handleMediaMeta(w, r, media)
+	})
 	mux.HandleFunc("GET /media/assets/{id}", func(w http.ResponseWriter, r *http.Request) {
 		serveMedia(w, r, media, false)
 	})
@@ -34,6 +37,21 @@ func registerMediaRoutes(mux *http.ServeMux, media *MediaStore) {
 	mux.HandleFunc("HEAD /media/staging/{id}", func(w http.ResponseWriter, r *http.Request) {
 		serveMedia(w, r, media, true)
 	})
+}
+
+func handleMediaMeta(w http.ResponseWriter, r *http.Request, media *MediaStore) {
+	id := r.PathValue("id")
+	if !validMediaID(id) {
+		apiError(w, 400, "Invalid media reference.")
+		return
+	}
+	meta, err := media.GetMeta(id)
+	if err != nil {
+		status, msg := mediaErrorStatus(err)
+		apiError(w, status, msg)
+		return
+	}
+	respond(w, 200, meta)
 }
 
 func handleMediaCommit(w http.ResponseWriter, r *http.Request, media *MediaStore) {

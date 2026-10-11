@@ -104,6 +104,20 @@ func TestMediaCommitAndServeRange(t *testing.T) {
 	if w.Body.Len() != 0 {
 		t.Fatal("HEAD should not write body")
 	}
+
+	metaReq := httptest.NewRequest("GET", "/api/media/meta/"+meta.ID, nil)
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, metaReq)
+	if w.Code != 200 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	var got MediaMeta
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ID != meta.ID || got.Name != "a.png" {
+		t.Fatalf("meta %#v", got)
+	}
 }
 
 func TestMediaUploadEndpointDoesNotTouchConfig(t *testing.T) {

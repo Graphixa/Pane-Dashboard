@@ -133,19 +133,22 @@ describe("settings navigation and draft safety", () => {
     page("Background");
     expect(screen.getByRole("button", { name: "Change wallpaper" })).toBeTruthy();
     expect(screen.getByText("Currently set")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Enhancements" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Readability" })).toBeTruthy();
     expect(screen.getByText("Theme overlay")).toBeTruthy();
+    expect(screen.getByText("Motion applies to photo wallpapers only.")).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Tint" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /Customise tint/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
     const screenEffects = screen.getByRole("combobox", { name: "Screen Effects" });
-    expect(screenEffects).toBeTruthy();
     expect(screenEffects.textContent).toMatch(/None/i);
     expect(
       (screen.getByRole("button", { name: /Customise screen effects/i }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-    expect(screen.getByRole("switch", { name: "Tint" })).toBeTruthy();
-    expect(
-      (screen.getByRole("button", { name: /Customise tint/i }) as HTMLButtonElement).disabled,
-    ).toBe(true);
-    expect(screen.queryByRole("button", { name: /Add tint/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Add$/i })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
     expect(
@@ -154,25 +157,26 @@ describe("settings navigation and draft safety", () => {
       ),
     ).toBe(true);
     expect(screen.queryByRole("tablist", { name: "Wallpaper type" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "Static" })).toBeNull();
-    expect(screen.queryByRole("tab", { name: "Animated" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "My media" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Videos" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
+    expect(screen.getByText(/Confirms this wallpaper in the Settings draft/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use wallpaper" })).toBeTruthy();
     const dialog = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    expect(dialog.querySelectorAll("video[loop]").length).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
     expect(dialog.querySelector(".swatch-dynamic-label")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "Wallpaper overlay" })).toBeNull();
     expect(

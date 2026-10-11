@@ -359,6 +359,7 @@ export default function AppearanceEditor({
           >
             <SettingsGroup>
               <Range
+                layout="inline"
                 label="Opacity"
                 value={g.opacity}
                 min={0}
@@ -367,6 +368,7 @@ export default function AppearanceEditor({
                 change={(opacity) => setGlass({ opacity })}
               />
               <Range
+                layout="inline"
                 label="Blur"
                 value={g.blur}
                 min={0}
@@ -375,6 +377,7 @@ export default function AppearanceEditor({
                 change={(blur) => setGlass({ blur })}
               />
               <Range
+                layout="inline"
                 label="Saturation"
                 value={g.saturation}
                 min={0}
@@ -383,6 +386,7 @@ export default function AppearanceEditor({
                 change={(saturation) => setGlass({ saturation })}
               />
               <Range
+                layout="inline"
                 label="Displacement"
                 value={g.displacement}
                 min={0}
@@ -391,6 +395,7 @@ export default function AppearanceEditor({
                 change={(displacement) => setGlass({ displacement })}
               />
               <Range
+                layout="inline"
                 label="Chromatic aberration"
                 value={g.aberration}
                 min={0}

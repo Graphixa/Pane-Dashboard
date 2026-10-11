@@ -49,8 +49,14 @@ export async function stageMediaUpload(file: File): Promise<StagedMedia> {
   };
 }
 
-/** Commit staged upload into a durable asset; returns serving path. */
-export async function commitStagedMedia(sessionId: string): Promise<string> {
+export type CommittedMedia = {
+  path: string;
+  name: string;
+  kind: "image" | "video";
+};
+
+/** Commit staged upload into a durable asset; returns path plus stored display name. */
+export async function commitStagedMedia(sessionId: string): Promise<CommittedMedia> {
   const res = await fetch("/api/media/commit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -59,14 +65,22 @@ export async function commitStagedMedia(sessionId: string): Promise<string> {
   const body = await res.json();
   if (!res.ok) throw Error(body.error || "Could not save media.");
   if (!body.assetId) throw Error("Invalid commit response.");
-  return `/media/assets/${body.assetId}`;
+  const kind: "image" | "video" =
+    body.meta?.kind === "video" ? "video" : "image";
+  return {
+    path: `/media/assets/${body.assetId}`,
+    name: typeof body.meta?.name === "string" && body.meta.name
+      ? body.meta.name
+      : "upload",
+    kind,
+  };
 }
 
 /** Upload and immediately commit so draft config holds durable asset paths. */
 export async function prepareUpload(
   file: File,
   _kind: "icon" | "logo" | "background",
-): Promise<string> {
+): Promise<CommittedMedia> {
   const staged = await stageMediaUpload(file);
   return commitStagedMedia(staged.sessionId);
 }
@@ -109,8 +123,8 @@ export default function ImageField({
     setBusy(true);
     onBusy(true);
     try {
-      const url = await prepareUpload(file, kind);
-      if (alive.current) change(url);
+      const committed = await prepareUpload(file, kind);
+      if (alive.current) change(committed.path);
     } catch (err) {
       if (alive.current) setError((err as Error).message);
     } finally {

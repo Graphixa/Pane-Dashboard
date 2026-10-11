@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Button, IconButton, Notice, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
+import { Button, IconButton, Notice, Range, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -104,6 +104,20 @@ it("associates SwitchRow labels and optional hints with the switch control", () 
   expect(document.getElementById(control.getAttribute("aria-describedby")!)?.textContent).toBe("Names beneath icons.");
   fireEvent.click(control);
   expect(change).toHaveBeenCalledWith(true);
+});
+
+it("renders stacked and inline Range layouts with accessible slider names", () => {
+  const change = vi.fn();
+  const { container, rerender } = render(
+    <Range label="Blur" value={12} min={0} max={24} unit="px" change={change} />,
+  );
+  expect(screen.getByRole("slider", { name: "Blur" })).toBeTruthy();
+  expect(container.querySelector(".ui-range-inline")).toBeNull();
+  rerender(
+    <Range layout="inline" label="Opacity" value={40} min={0} max={100} unit="%" change={change} />,
+  );
+  expect(screen.getByRole("slider", { name: "Opacity" })).toBeTruthy();
+  expect(container.querySelector(".ui-range-inline")).toBeTruthy();
 });
 
 it("renders Notice banners with alert semantics for errors", () => {
