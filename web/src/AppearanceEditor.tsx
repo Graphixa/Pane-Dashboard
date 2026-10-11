@@ -355,11 +355,10 @@ export default function AppearanceEditor({
         {g.mode === "glass" && (
           <Section level="h3" className="settings-section"
             title="Fine tuning"
-            description="Tune frost and refraction. Displacement needs frost to bend what is behind the pane — below 6 px is raised automatically when displacement is on."
+            description="Adjust the transparency, blur and refraction of glass panes."
           >
             <SettingsGroup>
               <Range
-                layout="inline"
                 label="Opacity"
                 value={g.opacity}
                 min={0}
@@ -368,7 +367,6 @@ export default function AppearanceEditor({
                 change={(opacity) => setGlass({ opacity })}
               />
               <Range
-                layout="inline"
                 label="Blur"
                 value={g.blur}
                 min={0}
@@ -377,7 +375,6 @@ export default function AppearanceEditor({
                 change={(blur) => setGlass({ blur })}
               />
               <Range
-                layout="inline"
                 label="Saturation"
                 value={g.saturation}
                 min={0}
@@ -386,7 +383,6 @@ export default function AppearanceEditor({
                 change={(saturation) => setGlass({ saturation })}
               />
               <Range
-                layout="inline"
                 label="Displacement"
                 value={g.displacement}
                 min={0}
@@ -395,7 +391,6 @@ export default function AppearanceEditor({
                 change={(displacement) => setGlass({ displacement })}
               />
               <Range
-                layout="inline"
                 label="Chromatic aberration"
                 value={g.aberration}
                 min={0}

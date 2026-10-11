@@ -1107,7 +1107,6 @@ export default function BackgroundSettings({
               </Select>
             </SettingsRow>
             <Range
-              layout="inline"
               label="Intensity"
               min={0}
               max={100}
@@ -1181,7 +1180,6 @@ export default function BackgroundSettings({
               ) : (
                 <Range
                   key={c.key}
-                  layout="inline"
                   label={c.label}
                   min={c.min}
                   max={c.max}
@@ -1222,7 +1220,6 @@ export default function BackgroundSettings({
               onColour={(colour) => background({ tint: { ...b.tint!, colour } })}
             />
             <Range
-              layout="inline"
               label="Opacity"
               min={0}
               max={80}

@@ -117,11 +117,11 @@ export default function ComponentReference() {
           </SettingsRow>
         </SettingsGroup>
       </Section>
-      <Section title="Ranges" description="Stacked Range puts label and value above a full-width track (Readability). Inline Range aligns label, track and value for multi-slider sheets.">
+      <Section title="Ranges" description="Range always stacks label and value above a full-width track. Consecutive Ranges in a group share track width with no internal divider.">
         <SettingsGroup>
           <Range label="Theme overlay" value={opacity} min={0} max={80} unit="%" change={setOpacity} />
-          <Range layout="inline" label="Opacity" value={opacity} min={0} max={100} unit="%" change={setOpacity} />
-          <Range layout="inline" label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+          <Range label="Opacity" value={opacity} min={0} max={100} unit="%" change={setOpacity} />
+          <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
         </SettingsGroup>
       </Section>
       <Section title="Switches and disclosure" description="Settings-style rows keep the label left and control right.">

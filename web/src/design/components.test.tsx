@@ -106,39 +106,35 @@ it("associates SwitchRow labels and optional hints with the switch control", () 
   expect(change).toHaveBeenCalledWith(true);
 });
 
-it("renders stacked and inline Range layouts with accessible slider names", () => {
+it("renders stacked Range with label, value and accessible slider name", () => {
   const change = vi.fn();
-  const { container, rerender } = render(
+  const { container } = render(
     <Range label="Blur" value={12} min={0} max={24} unit="px" change={change} />,
   );
   expect(screen.getByRole("slider", { name: "Blur" })).toBeTruthy();
   expect(container.querySelector(".ui-range-inline")).toBeNull();
-  rerender(
-    <Range layout="inline" label="Opacity" value={40} min={0} max={100} unit="%" change={change} />,
-  );
-  expect(screen.getByRole("slider", { name: "Opacity" })).toBeTruthy();
-  expect(container.querySelector(".ui-range-inline")).toBeTruthy();
+  expect(container.querySelector(".ui-range-label")?.textContent).toContain("Blur");
+  expect(container.querySelector(".ui-range-label output")?.textContent).toBe("12px");
 });
 
-it("keeps SettingsGroup rows on a shared label track without a fixed 160px Range column", () => {
+it("stacks multiple Ranges in a SettingsGroup without an inline layout", () => {
   const change = vi.fn();
   const { container } = render(
     <SettingsGroup>
       <SettingsRow label="Effect"><span>Snow</span></SettingsRow>
       <SwitchRow label="Tint" checked onCheckedChange={() => {}} />
-      <Range layout="inline" label="Speed" value={50} min={0} max={100} unit="%" change={change} />
-      <Range layout="inline" label="Chromatic aberration" value={2} min={0} max={10} unit="px" change={change} />
+      <Range label="Speed" value={50} min={0} max={100} unit="%" change={change} />
+      <Range label="Chromatic aberration" value={2} min={0} max={10} unit="px" change={change} />
     </SettingsGroup>,
   );
-  const group = container.querySelector(".ui-settings-group");
-  const inline = container.querySelectorAll(".ui-range-inline");
-  expect(group).toBeTruthy();
-  expect(inline).toHaveLength(2);
-  for (const row of inline) {
-    expect((row as HTMLElement).getAttribute("style") ?? "").not.toMatch(/160px/);
-    expect(row.querySelector(".ui-range-label-text")).toBeTruthy();
-    expect(row.querySelector(".ui-range-value")).toBeTruthy();
+  const ranges = container.querySelectorAll(".ui-settings-group > .ui-range");
+  expect(ranges).toHaveLength(2);
+  expect(container.querySelector(".ui-range-inline")).toBeNull();
+  for (const row of ranges) {
+    expect(row.querySelector(".ui-range-label")).toBeTruthy();
+    expect(row.querySelector(".ui-slider")).toBeTruthy();
   }
+  expect(screen.getByRole("slider", { name: "Speed" })).toBeTruthy();
   expect(screen.getByRole("slider", { name: "Chromatic aberration" })).toBeTruthy();
 });
 
