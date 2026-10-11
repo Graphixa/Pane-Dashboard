@@ -97,7 +97,7 @@ export default function ComponentReference() {
         <Notice tone="success">Example settings are ready.</Notice>
         <Notice tone="error">Example save failed. Your changes are still available.</Notice>
       </Section>
-      <Section title="Settings groups" description="Inset SettingsGroup surfaces under section headings. Comparable rows share stable label and control columns; omit the label for full-width controls. Narrow viewports stack the control under the label.">
+      <Section title="Settings groups" tip="Product Settings put help in a (?) tip beside the heading or label. This reference page still uses visible descriptions for longer guidance." description="Inset SettingsGroup surfaces under section headings. Comparable rows share stable label and control columns; omit the label for full-width controls. Narrow viewports stack the control under the label. Row and field hints use HelpTip.">
         <SettingsGroup>
           <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
           <SettingsRow label="Open links" hint="Where app tiles open.">
@@ -113,13 +113,13 @@ export default function ComponentReference() {
             onColour={setSampleColour}
           />
           <SettingsRow>
-            <TextField label="Dashboard name" value={name} onChange={e => setName(e.target.value)} />
+            <TextField label="Dashboard name" hint="Use a short, recognisable name." value={name} onChange={e => setName(e.target.value)} />
           </SettingsRow>
         </SettingsGroup>
       </Section>
-      <Section title="Ranges" description="Range always stacks label and value above a full-width track. Consecutive Ranges in a group share track width with no internal divider.">
+      <Section title="Ranges" description="Range always stacks label and value above a full-width track. Consecutive Ranges in a group share track width with no internal divider. Optional tip sits beside the label.">
         <SettingsGroup>
-          <Range label="Theme overlay" value={opacity} min={0} max={80} unit="%" change={setOpacity} />
+          <Range label="Theme overlay" tip="Lightens or darkens the background to suit your theme." value={opacity} min={0} max={80} unit="%" change={setOpacity} />
           <Range label="Opacity" value={opacity} min={0} max={100} unit="%" change={setOpacity} />
           <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
         </SettingsGroup>
@@ -200,9 +200,18 @@ export default function ComponentReference() {
           <div className="ui-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
         </Section>
       </Modal>}
-      {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}>
-        <Text variant="support">Bottom placement with no dimmed backdrop for live preview adjusters.</Text>
-        <div className="ui-actions"><Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button></div>
+      {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}
+        footer={<Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button>}>
+        <Text variant="support">Bottom placement with no dimmed backdrop for live preview adjusters. Optional footer pins Done while the body scrolls.</Text>
+        <SettingsGroup density="compact">
+          <SettingsRow label="Style">
+            <Select aria-label="Example style" defaultValue="a">
+              <SelectOption value="a">Option A</SelectOption>
+              <SelectOption value="b">Option B</SelectOption>
+            </Select>
+          </SettingsRow>
+          <Range label="Intensity" value={40} min={0} max={100} unit="%" change={() => {}} />
+        </SettingsGroup>
       </Modal>}
     </main>
   </ThemeSurface>;

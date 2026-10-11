@@ -211,7 +211,7 @@ export default function Settings({
                 level="h3"
                 className="settings-section"
                 title="Export"
-                description={
+                tip={
                   dirty
                     ? "Apply or discard pending changes before downloading."
                     : "Downloads use your saved dashboard."
@@ -250,7 +250,7 @@ export default function Settings({
                 level="h3"
                 className="settings-section"
                 title="Import"
-                description={
+                tip={
                   dirty
                     ? "Apply your settings first, or cancel and reopen Settings before importing."
                     : undefined

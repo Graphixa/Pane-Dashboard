@@ -1,10 +1,13 @@
 import { Input, Select, useDisabled } from "./controls";
+import { HelpTip } from "./help";
 import {
   ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode,
   forwardRef, useId,
 } from "react";
 
 const classes = (...values: (string | undefined)[]) => values.filter(Boolean).join(" ");
+
+export { HelpTip } from "./help";
 
 export type TextRole = "title" | "section" | "label" | "body" | "support" | "caption";
 type TextTag = "h1" | "h2" | "h3" | "h4" | "p" | "span";
@@ -41,9 +44,12 @@ export function Field({ label, hint, error, id, describedBy, children }:
   const description = classes(describedBy, hint ? `${controlId}-hint` : undefined,
     error ? `${controlId}-error` : undefined) || undefined;
   return <div className="ui-field">
-    <label className="ui-field-label" htmlFor={controlId}>{label}</label>
+    <div className="ui-field-heading">
+      <label className="ui-field-label" htmlFor={controlId}>{label}</label>
+      {hint && <HelpTip subject={label}>{hint}</HelpTip>}
+    </div>
+    {hint && <span id={`${controlId}-hint`} className="ui-visually-hidden">{hint}</span>}
     {children({ id: controlId, "aria-describedby": description, "aria-invalid": error ? true : undefined })}
-    {hint && <p className="ui-field-hint" id={`${controlId}-hint`}>{hint}</p>}
     {error && <p className="ui-field-error" id={`${controlId}-error`} role="alert">{error}</p>}
   </div>;
 }
@@ -76,26 +82,34 @@ export function Notice({ tone = "info", banner = false, className, children, ...
   </div>;
 }
 
-export function Section({ title, description, children, className = "", level = "h2" }:
-  { title: string; description?: string; children: ReactNode; className?: string; level?: "h2" | "h3" }) {
+export function Section({ title, description, tip, children, className = "", level = "h2" }:
+  { title: string; description?: string; tip?: string; children: ReactNode; className?: string; level?: "h2" | "h3" }) {
   const id = useId();
   return <section className={`ui-section ${className}`} aria-labelledby={id}>
-    <Text as={level} variant="section" id={id}>{title}</Text>
+    <div className="ui-section-heading">
+      <Text as={level} variant="section" id={id}>{title}</Text>
+      {tip && <HelpTip subject={title}>{tip}</HelpTip>}
+    </div>
     {description && <Text variant="support">{description}</Text>}
     <div className="ui-section-content">{children}</div>
   </section>;
 }
 
 /** Inset settings surface under a Section heading (Apple-style grouped rows). */
-export function SettingsGroup({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={classes("ui-settings-group", className)}>{children}</div>;
+export function SettingsGroup({ children, className, density = "default" }: {
+  children: ReactNode;
+  className?: string;
+  /** `compact` tightens row padding for preview-adjust sheets (~8–12 px). */
+  density?: "default" | "compact";
+}) {
+  return <div className={classes("ui-settings-group", density === "compact" ? "ui-settings-group-compact" : undefined, className)}>{children}</div>;
 }
 
 /** Label left, control right inside a SettingsGroup. Omit label for a full-width control row. */
 export function SettingsRow({ label, hint, action, children, className }: {
   label?: string;
   hint?: string;
-  /** Optional control under the label (e.g. Customize); replaces hint when set. */
+  /** Optional control under the label (e.g. Customise). */
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -103,8 +117,12 @@ export function SettingsRow({ label, hint, action, children, className }: {
   const hasCopy = Boolean(label || hint || action);
   return <div className={classes("ui-settings-row", hasCopy ? undefined : "ui-settings-row-fill", className)}>
     {hasCopy && <div className="ui-settings-row-copy">
-      {label && <span className="ui-settings-row-label">{label}</span>}
-      {action ?? (hint ? <p className="ui-settings-row-hint">{hint}</p> : null)}
+      {(label || hint) && <div className="ui-settings-row-heading">
+        {label && <span className="ui-settings-row-label">{label}</span>}
+        {hint && label && <HelpTip subject={label}>{hint}</HelpTip>}
+        {hint && !label && <HelpTip subject="This control">{hint}</HelpTip>}
+      </div>}
+      {action}
     </div>}
     <div className="ui-settings-row-control">{children}</div>
   </div>;

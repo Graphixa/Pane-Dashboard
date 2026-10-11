@@ -64,6 +64,8 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(screen.getByRole("option", {name: "Oxanium"}));
     page("Import & backup");
     expect(screen.queryByText("Confirm import")).toBeNull();
+    expect(screen.getByRole("button", { name: "About Import" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "About Import" }));
     expect(screen.getByText(/Apply your settings first/)).toBeTruthy();
     expect(
       (
@@ -215,6 +217,21 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
     expect(screen.queryByText("Ocean")).toBeNull();
+  });
+  it("opens Tint adjust sheet with fixed header/footer and scrollable body", () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("switch", { name: "Tint" }));
+    fireEvent.click(screen.getByRole("button", { name: /Customise tint/i }));
+    const sheet = screen.getByRole("dialog", { name: "Tint" });
+    expect(sheet.classList.contains("ui-dialog-sheet")).toBe(true);
+    expect(sheet.classList.contains("background-adjust-dialog")).toBe(true);
+    expect(sheet.querySelector(".ui-dialog-body .ui-settings-group-compact")).toBeTruthy();
+    expect(within(sheet).getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(within(sheet).getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(within(sheet).getByRole("slider", { name: "Opacity" })).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog", { name: "Tint" })).toBeNull();
   });
   it("keeps labels in Panes and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
     const { apply } = setup();

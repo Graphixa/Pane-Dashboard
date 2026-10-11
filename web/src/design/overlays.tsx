@@ -20,6 +20,11 @@ export function Modal(props: {
   backdrop?: 'dim' | 'none';
   /** Title-bar dismiss control: Close (X) or Back (chevron). Both call `close`. */
   headerClose?: 'close' | 'back';
+  /**
+   * When set, uses a three-region sheet layout: fixed title, scrollable body (`children`),
+   * and fixed footer. Prefer for preview-adjust bottom sheets so Done stays visible.
+   */
+  footer?: ReactNode;
 }) {
   return <SurfaceProvider style={props.style} theme={props.theme}><ModalContent {...props} /></SurfaceProvider>;
 }
@@ -33,6 +38,7 @@ function ModalContent({
   placement = 'center',
   backdrop = 'dim',
   headerClose = 'close',
+  footer,
 }: Parameters<typeof Modal>[0]) {
   const surface = useSurface();
   const opener = useRef<HTMLElement | null>(null), content = useRef<HTMLDivElement>(null);
@@ -48,12 +54,13 @@ function ModalContent({
   const end = (e: PointerEvent<HTMLDivElement>) => { drag.current = null; if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId); };
   const nest = nested ? ' ui-dialog-nested' : '';
   const place = placement === 'bottom' ? ' ui-dialog-bottom' : '';
+  const sheet = footer != null ? ' ui-dialog-sheet' : '';
   const contentStyle = placement === 'bottom'
     ? {...surface.style}
     : {...surface.style, transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`};
   return <Dialog.Root open onOpenChange={open => {if (!open) close();}}><Dialog.Portal>
     {backdrop === 'dim' && <Dialog.Overlay className={`ui-dialog-backdrop${nest}`} />}
-    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface${nest}${place} ${className}`} style={contentStyle}
+    <Dialog.Content {...surface} ref={content} aria-describedby={undefined} className={`ui-dialog ui-overlay-surface${nest}${place}${sheet} ${className}`} style={contentStyle}
       onOpenAutoFocus={() => {opener.current = document.activeElement as HTMLElement;}}
       onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}
       onInteractOutside={e => e.preventDefault()}
@@ -66,7 +73,10 @@ function ModalContent({
         {headerClose === 'back'
           ? <IconButton variant="quiet" label="Back" onClick={close}><ChevronLeft size={20} aria-hidden="true" /></IconButton>
           : <IconButton variant="quiet" label="Close" onClick={close}><X size={20} aria-hidden="true" /></IconButton>}
-      </div>{children}
+      </div>
+      {footer != null
+        ? <><div className="ui-dialog-body">{children}</div><div className="ui-dialog-footer">{footer}</div></>
+        : children}
     </Dialog.Content>
   </Dialog.Portal></Dialog.Root>;
 }

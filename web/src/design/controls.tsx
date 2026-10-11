@@ -7,6 +7,7 @@ import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { Check, ChevronDown } from 'lucide-react';
+import { HelpTip } from './help';
 import { useSurface } from './surface';
 
 const DisabledContext = createContext(false);
@@ -63,6 +64,7 @@ export function Range({
   unit = '',
   change,
   disabled,
+  tip,
 }: {
   label: string;
   value: number;
@@ -71,12 +73,16 @@ export function Range({
   unit?: string;
   change: (value: number) => void;
   disabled?: boolean;
+  tip?: string;
 }) {
   const groupDisabled = useContext(DisabledContext), id = useId();
   return (
     <div className="ui-range">
       <div className="ui-range-label">
-        <span id={id}>{label}</span>
+        <span className="ui-range-label-main">
+          <span id={id}>{label}</span>
+          {tip && <HelpTip subject={label}>{tip}</HelpTip>}
+        </span>
         <output>
           {value}
           {unit}
@@ -172,7 +178,7 @@ export function TabsContent({ value, className = '', children }: { value: string
 export function SwitchRow({label, hint, action, checked, onCheckedChange, disabled, id}: {
   label: string;
   hint?: string;
-  /** Optional control under the label (e.g. Customize); replaces hint when set. */
+  /** Optional control under the label (e.g. Customise). */
   action?: ReactNode;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -181,11 +187,15 @@ export function SwitchRow({label, hint, action, checked, onCheckedChange, disabl
 }) {
   const generated = useId();
   const controlId = id ?? generated;
-  const hintId = !action && hint ? `${controlId}-hint` : undefined;
+  const hintId = hint ? `${controlId}-hint` : undefined;
   return <div className="ui-switch-row">
     <div className="ui-switch-row-copy">
-      <label className="ui-switch-row-label" htmlFor={controlId}>{label}</label>
-      {action ?? (hint ? <p className="ui-switch-row-hint" id={hintId}>{hint}</p> : null)}
+      <div className="ui-switch-row-heading">
+        <label className="ui-switch-row-label" htmlFor={controlId}>{label}</label>
+        {hint && <HelpTip subject={label}>{hint}</HelpTip>}
+      </div>
+      {hint && <span id={hintId} className="ui-visually-hidden">{hint}</span>}
+      {action}
     </div>
     <Switch id={controlId} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} aria-describedby={hintId} />
   </div>;

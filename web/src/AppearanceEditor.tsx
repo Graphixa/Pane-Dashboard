@@ -158,7 +158,7 @@ export default function AppearanceEditor({
       <>
         <Section level="h3" className="settings-section"
           title="Dashboard"
-          description="Also used for the browser tab and accessible name."
+          tip="Also used for the browser tab and accessible name."
         >
           <SettingsGroup>
             <SettingsRow>
@@ -173,7 +173,7 @@ export default function AppearanceEditor({
         </Section>
         <Section level="h3" className="settings-section"
           title="Logo"
-          description="How your name and artwork appear in the header."
+          tip="How your name and artwork appear in the header."
         >
           <SettingsGroup>
             <SettingsRow>
@@ -266,7 +266,7 @@ export default function AppearanceEditor({
         </Section>
         <Section level="h3" className="settings-section"
           title="Workspace"
-          description="Tiles keep their size. Narrow screens use a read-only layout."
+          tip="Tiles keep their size. Narrow screens use a read-only layout."
         >
           <SettingsGroup>
             <SettingsRow label="Dashboard width">
@@ -329,7 +329,7 @@ export default function AppearanceEditor({
       <>
         <Section level="h3" className="settings-section"
           title="Pane finish"
-          description={
+          tip={
             g.mode === "glass"
               ? "Clear panes with edge refraction where supported; text and icons stay opaque. Try low opacity and blur around 16–20 px."
               : "Opaque surfaces for a clear, uniform look."
@@ -355,7 +355,7 @@ export default function AppearanceEditor({
         {g.mode === "glass" && (
           <Section level="h3" className="settings-section"
             title="Fine tuning"
-            description="Adjust the transparency, blur and refraction of glass panes."
+            tip="Adjust the transparency, blur and refraction of glass panes."
           >
             <SettingsGroup>
               <Range
@@ -401,7 +401,7 @@ export default function AppearanceEditor({
             </SettingsGroup>
           </Section>
         )}
-        <Section level="h3" className="settings-section" title="Labels" description="Show names beneath app icons.">
+        <Section level="h3" className="settings-section" title="Labels" tip="Show names beneath app icons.">
           <SettingsGroup>
             <SwitchRow
               label="Show app labels"
@@ -428,7 +428,7 @@ export default function AppearanceEditor({
     <>
       <Section level="h3" className="settings-section"
         title="Theme"
-        description="Changing theme resets custom colours."
+        tip="Changing theme resets custom colours."
       >
         <div
           className="theme-choices choice-row"
@@ -457,7 +457,7 @@ export default function AppearanceEditor({
       </Section>
       <Section level="h3" className="settings-section"
         title="Colours"
-        description="Accent is used for buttons, selections and focus."
+        tip="Accent is used for buttons, selections and focus. Text contrast is checked before saving. Check glass over images."
       >
         <SettingsGroup>
           <SettingsRow label="Accent">
@@ -506,9 +506,6 @@ export default function AppearanceEditor({
                 </Label>
               ))}
             </div>
-            <p className="hint">
-              Text contrast is checked before saving. Check glass over images.
-            </p>
           </Disclosure>
           {badContrast && (
             <SettingsRow>
@@ -531,7 +528,7 @@ export default function AppearanceEditor({
       </Section>
       <Section level="h3" className="settings-section"
         title="Typography"
-        description="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
+        tip="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
       >
         <SettingsGroup>
           <SettingsRow label="Font">

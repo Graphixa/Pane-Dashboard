@@ -929,11 +929,9 @@ export default function BackgroundSettings({
 
       <Section title="Readability" level="h3" className="settings-section">
         <SettingsGroup>
-          <Text as="p" variant="support" className="background-theme-overlay-hint">
-            Lightens or darkens the background to suit your theme.
-          </Text>
           <Range
             label="Theme overlay"
+            tip="Lightens or darkens the background to suit your theme."
             min={0}
             max={80}
             unit="%"
@@ -1084,8 +1082,13 @@ export default function BackgroundSettings({
           backdrop="none"
           className="background-adjust-dialog"
           close={() => setMotionOpen(false)}
+          footer={
+            <Button variant="primary" onClick={() => setMotionOpen(false)}>
+              Done
+            </Button>
+          }
         >
-          <SettingsGroup>
+          <SettingsGroup density="compact">
             <SettingsRow label="Style">
               <Select
                 aria-label="Motion style"
@@ -1117,11 +1120,6 @@ export default function BackgroundSettings({
               }
             />
           </SettingsGroup>
-          <div className="ui-actions">
-            <Button variant="primary" onClick={() => setMotionOpen(false)}>
-              Done
-            </Button>
-          </div>
         </Modal>
       )}
 
@@ -1133,8 +1131,13 @@ export default function BackgroundSettings({
           backdrop="none"
           className="background-adjust-dialog"
           close={() => setEffectOpen(false)}
+          footer={
+            <Button variant="primary" onClick={() => setEffectOpen(false)}>
+              Done
+            </Button>
+          }
         >
-          <SettingsGroup>
+          <SettingsGroup density="compact">
             <SettingsRow label="Effect">
               <Select
                 aria-label="Screen effect"
@@ -1196,11 +1199,6 @@ export default function BackgroundSettings({
               ),
             )}
           </SettingsGroup>
-          <div className="ui-actions">
-            <Button variant="primary" onClick={() => setEffectOpen(false)}>
-              Done
-            </Button>
-          </div>
         </Modal>
       )}
 
@@ -1212,8 +1210,13 @@ export default function BackgroundSettings({
           backdrop="none"
           className="background-adjust-dialog"
           close={() => setTintOpen(false)}
+          footer={
+            <Button variant="primary" onClick={() => setTintOpen(false)}>
+              Done
+            </Button>
+          }
         >
-          <SettingsGroup>
+          <SettingsGroup density="compact">
             <ColourField
               label="Colour"
               colour={b.tint.colour}
@@ -1228,11 +1231,6 @@ export default function BackgroundSettings({
               change={(opacity) => background({ tint: { ...b.tint!, opacity } })}
             />
           </SettingsGroup>
-          <div className="ui-actions">
-            <Button variant="primary" onClick={() => setTintOpen(false)}>
-              Done
-            </Button>
-          </div>
         </Modal>
       )}
     </div>
