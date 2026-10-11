@@ -453,7 +453,6 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
 }
 .ui-dialog.settings-dialog { display: flex; flex-direction: column; padding: 0; width: min(1060px, calc(100vw - 32px)); overflow: hidden; }
 /* Hide Settings chrome while Choose wallpaper / Motion / Overlay preview-adjust is open (non-lightbox). */
-.ui-dialog-backdrop:has(+ .settings-dialog--preview-adjust),
 .ui-dialog.settings-dialog--preview-adjust {
   visibility: hidden;
   pointer-events: none;

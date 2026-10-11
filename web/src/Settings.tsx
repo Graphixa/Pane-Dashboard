@@ -150,6 +150,7 @@ export default function Settings({
     <Modal
       title="Settings"
       close={requestClose}
+      backdrop="none"
       className={`settings-dialog${previewAdjust ? " settings-dialog--preview-adjust" : ""}`}
       style={appearanceStyle(draft.appearance)}
       theme={draft.appearance.theme}

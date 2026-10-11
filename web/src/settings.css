@@ -8,6 +8,10 @@
 .ui-dialog.settings-dialog {
   display: flex;
   flex-direction: column;
+  /* Soft elevation without a dimmed lightbox so dashboard colours stay true. */
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 12%),
+    0 24px 64px rgb(0 0 0 / 22%);
 }
 .settings-dialog > .modal-title {
   padding: 20px 24px;

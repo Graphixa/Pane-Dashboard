@@ -809,6 +809,52 @@ export default function BackgroundSettings({
           </SettingsRow>
 
           <SettingsRow
+            label="Screen Effects"
+            action={
+              <Button
+                type="button"
+                variant="quiet"
+                className="background-effect-customize"
+                disabled={!b.effect}
+                aria-label="Customise screen effects"
+                onClick={() => setEffectOpen(true)}
+              >
+                Customise
+              </Button>
+            }
+          >
+            <Select
+              aria-label="Screen Effects"
+              value={b.effect?.id ?? "none"}
+              onValueChange={(id) => {
+                if (id === "none") {
+                  background({ effect: undefined });
+                  setEffectOpen(false);
+                  return;
+                }
+                const pack = getEffectPack(id);
+                if (!pack) return;
+                const prev =
+                  lastEffect.current?.id === id ? lastEffect.current : undefined;
+                const params: Record<string, string | number | boolean> = {
+                  ...(prev?.params ?? {}),
+                };
+                for (const c of pack.controls) {
+                  if (params[c.key] === undefined) params[c.key] = c.default;
+                }
+                background({ effect: { id: id as EffectId, params } });
+              }}
+            >
+              <SelectOption value="none">None</SelectOption>
+              {effectIds.map((id) => (
+                <SelectOption key={id} value={id}>
+                  {effectLabels[id]}
+                </SelectOption>
+              ))}
+            </Select>
+          </SettingsRow>
+
+          <SettingsRow
             label="Add Motion"
             action={
               <span
@@ -877,52 +923,6 @@ export default function BackgroundSettings({
                 ))}
               </Select>
             </span>
-          </SettingsRow>
-
-          <SettingsRow
-            label="Screen Effects"
-            action={
-              <Button
-                type="button"
-                variant="quiet"
-                className="background-effect-customize"
-                disabled={!b.effect}
-                aria-label="Customise screen effects"
-                onClick={() => setEffectOpen(true)}
-              >
-                Customise
-              </Button>
-            }
-          >
-            <Select
-              aria-label="Screen Effects"
-              value={b.effect?.id ?? "none"}
-              onValueChange={(id) => {
-                if (id === "none") {
-                  background({ effect: undefined });
-                  setEffectOpen(false);
-                  return;
-                }
-                const pack = getEffectPack(id);
-                if (!pack) return;
-                const prev =
-                  lastEffect.current?.id === id ? lastEffect.current : undefined;
-                const params: Record<string, string | number | boolean> = {
-                  ...(prev?.params ?? {}),
-                };
-                for (const c of pack.controls) {
-                  if (params[c.key] === undefined) params[c.key] = c.default;
-                }
-                background({ effect: { id: id as EffectId, params } });
-              }}
-            >
-              <SelectOption value="none">None</SelectOption>
-              {effectIds.map((id) => (
-                <SelectOption key={id} value={id}>
-                  {effectLabels[id]}
-                </SelectOption>
-              ))}
-            </Select>
           </SettingsRow>
         </SettingsGroup>
       </Section>
