@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import {
   Button,
@@ -547,6 +547,10 @@ export default function BackgroundSettings({
   );
   const lastEffect = useRef<Effect | undefined>(b.effect);
   const lastTint = useRef(b.tint);
+  const motionHelpId = useId();
+  const motionUnavailable = b.wallpaper.kind !== "image";
+  const motionUnavailableHelp =
+    "Not available for live or video wallpapers.";
 
   useEffect(() => {
     if (b.photoMotion.style !== "none") lastMotion.current = b.photoMotion.style;
@@ -771,16 +775,7 @@ export default function BackgroundSettings({
         </SettingsRow>
       </SettingsGroup>
 
-      <Section
-        title="Enhancements"
-        level="h3"
-        className="settings-section"
-        description={
-          b.wallpaper.kind === "image"
-            ? undefined
-            : "Motion applies to photo wallpapers only."
-        }
-      >
+      <Section title="Enhancements" level="h3" className="settings-section">
         <SettingsGroup>
           <SettingsRow
             label="Tint"
@@ -813,26 +808,49 @@ export default function BackgroundSettings({
             />
           </SettingsRow>
 
-          {b.wallpaper.kind === "image" && (
-            <SettingsRow
-              label="Add Motion"
-              action={
+          <SettingsRow
+            label="Add Motion"
+            action={
+              <span
+                className="background-motion-tip"
+                title={motionUnavailable ? motionUnavailableHelp : undefined}
+              >
                 <Button
                   type="button"
                   variant="quiet"
                   className="background-effect-customize"
-                  disabled={b.photoMotion.style === "none"}
+                  disabled={
+                    motionUnavailable || b.photoMotion.style === "none"
+                  }
                   aria-label="Customise motion"
+                  aria-describedby={
+                    motionUnavailable ? motionHelpId : undefined
+                  }
                   onClick={() => setMotionOpen(true)}
                 >
                   Customise
                 </Button>
-              }
+              </span>
+            }
+          >
+            <span
+              className="background-motion-tip"
+              title={motionUnavailable ? motionUnavailableHelp : undefined}
             >
+              {motionUnavailable && (
+                <span id={motionHelpId} className="background-visually-hidden">
+                  {motionUnavailableHelp}
+                </span>
+              )}
               <Select
                 aria-label="Add Motion"
+                aria-describedby={
+                  motionUnavailable ? motionHelpId : undefined
+                }
+                disabled={motionUnavailable}
                 value={b.photoMotion.style}
                 onValueChange={(style) => {
+                  if (motionUnavailable) return;
                   const next = style as MotionStyle;
                   if (next === "none") {
                     setMotionOpen(false);
@@ -858,8 +876,8 @@ export default function BackgroundSettings({
                   </SelectOption>
                 ))}
               </Select>
-            </SettingsRow>
-          )}
+            </span>
+          </SettingsRow>
 
           <SettingsRow
             label="Screen Effects"

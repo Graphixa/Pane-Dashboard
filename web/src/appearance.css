@@ -478,6 +478,30 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+.background-motion-tip {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+.ui-settings-row-control > .background-motion-tip {
+  width: 100%;
+  justify-content: flex-end;
+}
+.ui-settings-row-control > .background-motion-tip .ui-select {
+  width: 100%;
+  max-width: 220px;
+}
+.background-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .background-effect-customize {
   justify-self: start;
   min-height: auto;

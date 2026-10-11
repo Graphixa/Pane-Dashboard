@@ -136,12 +136,21 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("heading", { name: "Enhancements" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Readability" })).toBeTruthy();
     expect(screen.getByText("Theme overlay")).toBeTruthy();
-    expect(screen.getByText("Motion applies to photo wallpapers only.")).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Tint" })).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: /Customise tint/i }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
+    const addMotion = screen.getByRole("combobox", { name: "Add Motion" });
+    expect(addMotion).toBeTruthy();
+    expect((addMotion as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: /Customise motion/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      screen.getByText("Not available for live or video wallpapers."),
+    ).toBeTruthy();
     const screenEffects = screen.getByRole("combobox", { name: "Screen Effects" });
     expect(screenEffects.textContent).toMatch(/None/i);
     expect(
