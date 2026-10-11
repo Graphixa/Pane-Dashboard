@@ -472,6 +472,29 @@
 .background-current-change {
   margin-top: var(--space-3);
 }
+@media (max-width: 520px) {
+  .background-current {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .background-current-preview {
+    width: min(180px, 100%);
+    flex: 0 0 auto;
+  }
+  .background-current-meta {
+    padding-top: 0;
+  }
+  .background-current-controls {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+    padding-top: 0;
+  }
+  .background-current-controls .ui-select {
+    max-width: none;
+    width: 100%;
+  }
+}
 .background-current-image {
   background-color: var(--bg);
   background-size: cover;

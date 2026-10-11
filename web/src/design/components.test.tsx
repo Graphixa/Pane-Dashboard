@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Button, IconButton, Notice, Range, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
+import { Button, IconButton, Notice, Range, SelectField, SelectOption, SettingsGroup, SettingsRow, SwitchRow, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -118,6 +118,28 @@ it("renders stacked and inline Range layouts with accessible slider names", () =
   );
   expect(screen.getByRole("slider", { name: "Opacity" })).toBeTruthy();
   expect(container.querySelector(".ui-range-inline")).toBeTruthy();
+});
+
+it("keeps SettingsGroup rows on a shared label track without a fixed 160px Range column", () => {
+  const change = vi.fn();
+  const { container } = render(
+    <SettingsGroup>
+      <SettingsRow label="Effect"><span>Snow</span></SettingsRow>
+      <SwitchRow label="Tint" checked onCheckedChange={() => {}} />
+      <Range layout="inline" label="Speed" value={50} min={0} max={100} unit="%" change={change} />
+      <Range layout="inline" label="Chromatic aberration" value={2} min={0} max={10} unit="px" change={change} />
+    </SettingsGroup>,
+  );
+  const group = container.querySelector(".ui-settings-group");
+  const inline = container.querySelectorAll(".ui-range-inline");
+  expect(group).toBeTruthy();
+  expect(inline).toHaveLength(2);
+  for (const row of inline) {
+    expect((row as HTMLElement).getAttribute("style") ?? "").not.toMatch(/160px/);
+    expect(row.querySelector(".ui-range-label-text")).toBeTruthy();
+    expect(row.querySelector(".ui-range-value")).toBeTruthy();
+  }
+  expect(screen.getByRole("slider", { name: "Chromatic aberration" })).toBeTruthy();
 });
 
 it("renders Notice banners with alert semantics for errors", () => {

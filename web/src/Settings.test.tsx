@@ -192,6 +192,30 @@ describe("settings navigation and draft safety", () => {
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
   });
+  it("restores wallpaper draft when Choose wallpaper is closed without Use wallpaper", () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
+    expect(screen.getByText("Colour")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    fireEvent.click(within(chooser).getByRole("button", { name: "Ocean" }));
+    fireEvent.click(within(chooser).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    expect(screen.getByText("Colour")).toBeTruthy();
+    expect(screen.queryByText("Ocean")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const again = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    fireEvent.click(within(again).getByRole("button", { name: "Ocean" }));
+    fireEvent.keyDown(again, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    expect(screen.getByText("Colour")).toBeTruthy();
+    expect(screen.queryByText("Ocean")).toBeNull();
+  });
   it("keeps labels in Panes and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
     const { apply } = setup();
     page("Panes");
