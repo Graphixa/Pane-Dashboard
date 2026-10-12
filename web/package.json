@@ -4,6 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "catalogue": "node scripts/generate-wallpaper-catalogue.mjs",
+    "predev": "node scripts/generate-wallpaper-catalogue.mjs",
+    "pretest": "node scripts/generate-wallpaper-catalogue.mjs",
+    "prebuild": "node scripts/generate-wallpaper-catalogue.mjs",
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",

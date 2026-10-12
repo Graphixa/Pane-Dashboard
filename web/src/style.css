@@ -522,8 +522,19 @@ body {
 .modal-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: var(--space-2);
   margin-bottom: 18px;
+}
+.modal-title > .ui-text-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.modal-title-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 .modal-title-draggable {
   cursor: grab;

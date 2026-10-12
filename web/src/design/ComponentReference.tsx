@@ -15,6 +15,7 @@ export default function ComponentReference() {
   const [compact, setCompact] = useState(false);
   const [modal, setModal] = useState(false);
   const [bottomModal, setBottomModal] = useState(false);
+  const [categoryModal, setCategoryModal] = useState(false);
   const [name, setName] = useState("Home services");
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(false);
@@ -63,6 +64,7 @@ export default function ComponentReference() {
           <Button variant="primary" onClick={() => setCount(count + 1)}>Apply example</Button>
           <Button onClick={() => setModal(true)}>Open dialog</Button>
           <Button onClick={() => setBottomModal(true)}>Open bottom sheet</Button>
+          <Button onClick={() => setCategoryModal(true)}>Open category sheet</Button>
           <Button variant="quiet" onClick={() => setCount(0)}>Reset example</Button>
           <Button variant="danger" onClick={() => setCount(0)}>Clear example</Button>
           <Button variant="surface" className="ui-settings-nav" type="button"><Settings2 size={18} aria-hidden="true" /><span>Settings nav</span></Button>
@@ -199,6 +201,11 @@ export default function ComponentReference() {
           <TextField label="Example name" defaultValue="Pane" autoFocus />
           <div className="ui-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
         </Section>
+      </Modal>}
+      {categoryModal && <Modal title="Nature" close={() => setCategoryModal(false)} onBack={() => setCategoryModal(false)}
+        headerActions={<Button variant="quiet">Add media</Button>} placement="bottom" backdrop="none" style={style}
+        footer={<div className="background-library-actions"><Text as="p" variant="support">Apply in Settings to save.</Text><Button variant="primary" onClick={() => setCategoryModal(false)}>Use wallpaper</Button></div>}>
+        <Text as="p" variant="body">Back keeps the sheet open; Close dismisses. Used by Choose wallpaper category grids.</Text>
       </Modal>}
       {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}
         footer={<Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button>}>

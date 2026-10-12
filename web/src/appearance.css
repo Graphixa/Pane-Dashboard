@@ -536,22 +536,29 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  /* Fold at half the Gradients card: Colours and My images stay fully in view.
-     Show all uses this same sheet. 565px is that fold at the 720px sheet width. */
-  height: min(565px, calc(100dvh - 32px));
-  max-height: min(565px, calc(100dvh - 32px));
+  /* Browse + category grids: fill viewport without a shelf-specific fold. */
+  height: min(70dvh, 720px);
+  max-height: min(70dvh, 720px);
+  padding: var(--library-pad);
   overflow: hidden; /* clip sheet chrome only; body scrolls inside */
 }
 .background-library-dialog > .modal-title {
   flex: 0 0 auto;
   margin-bottom: var(--space-3);
 }
-.background-library-dialog > .background-library-sheet-notice {
+.background-library-dialog .background-library-sheet-notice {
   flex: 0 0 auto;
   margin: 0 0 var(--space-3);
 }
+.background-library-scroll-host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
 .background-library-body-scroll {
-  /* Size from the sheet, not content height — keeps Dynamic reachable via scroll. */
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
@@ -588,15 +595,19 @@
   min-width: 0;
 }
 .background-library-actions {
-  margin-top: var(--space-4);
-  padding-top: var(--space-1);
-  flex: 0 0 auto;
-  display: grid;
-  gap: var(--space-2);
+  width: 100%;
+  min-height: 64px;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
 }
 .background-library-actions-note {
   margin: 0;
   color: var(--muted);
+  flex: 1 1 12rem;
 }
 .background-library-note {
   margin: 0;
@@ -1039,6 +1050,255 @@
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--bg);
+}
+/* Choose wallpaper — Browse / category grid (#17) */
+.wallpaper-browse {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-3));
+}
+.wallpaper-browse-section {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.wallpaper-browse-section-body {
+  overflow: visible;
+}
+.wallpaper-browse-heading {
+  margin: 0;
+}
+.wallpaper-colour-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  /* Room for selection/focus rings (box-shadow does not expand layout). */
+  padding-block: 8px;
+  padding-inline: 4px;
+  overflow: visible;
+}
+.wallpaper-recent-track {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--space-3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-block: 4px;
+  padding-inline: 2px;
+  scroll-snap-type: x proximity;
+}
+.wallpaper-recent-track > .wallpaper-tile-wrap {
+  flex: 0 0 min(168px, 42vw);
+  width: min(168px, 42vw);
+  scroll-snap-align: start;
+}
+.wallpaper-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.wallpaper-category-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-surface);
+  overflow: hidden;
+  background: var(--panel-high);
+  color: var(--text);
+}
+.wallpaper-category-cover {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+.wallpaper-category-cover-empty {
+  background: color-mix(in srgb, var(--panel-high) 80%, var(--line));
+}
+.wallpaper-category-tint {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #080c13 64%, transparent);
+  pointer-events: none;
+}
+[data-theme="light"] .wallpaper-category-tint {
+  background: color-mix(in srgb, #f4f6f8 64%, transparent);
+}
+.wallpaper-category-name {
+  position: absolute;
+  inset: auto var(--space-3) var(--space-3) var(--space-3);
+  margin: 0;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  z-index: 1;
+}
+[data-theme="light"] .wallpaper-category-name {
+  text-shadow: 0 1px 2px rgb(255 255 255 / 45%);
+}
+.wallpaper-category-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-3));
+}
+.wallpaper-tile-wrap {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+}
+.wallpaper-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  overflow: visible;
+}
+.ui-aspect-ratio.wallpaper-tile-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-surface);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+  overflow: hidden;
+}
+.wallpaper-tile-paint {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wallpaper-tile-image {
+  background-size: cover;
+  background-position: center;
+}
+.wallpaper-tile-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg) 70%, #000 30%);
+}
+.wallpaper-tile-selected .wallpaper-tile-frame,
+.wallpaper-tile[aria-pressed="true"] .wallpaper-tile-frame {
+  border-width: 2px;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.wallpaper-tile:focus-visible {
+  outline: none;
+}
+.wallpaper-tile:focus-visible .wallpaper-tile-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-tile-selected:focus-visible .wallpaper-tile-frame,
+.wallpaper-tile[aria-pressed="true"]:focus-visible .wallpaper-tile-frame {
+  box-shadow:
+    0 0 0 var(--focus-width) var(--accent),
+    0 0 0 calc(var(--focus-width) + 2px) var(--panel),
+    0 0 0 calc(var(--focus-width) + 2px + var(--focus-width)) var(--text);
+}
+.wallpaper-tile-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  pointer-events: none;
+}
+.wallpaper-tile-video-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  background: color-mix(in srgb, #080c13 72%, transparent);
+  color: #fff;
+  pointer-events: none;
+}
+.wallpaper-tile-video-badge svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.wallpaper-tile-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: var(--border-width) solid var(--line);
+  background: color-mix(in srgb, var(--panel-high) 92%, black 8%);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 45%);
+  opacity: 0;
+  pointer-events: none;
+}
+.wallpaper-tile-wrap:hover .wallpaper-tile-remove,
+.wallpaper-tile-wrap:focus-within .wallpaper-tile-remove,
+.wallpaper-tile-wrap:has(.wallpaper-tile[aria-pressed="true"]) .wallpaper-tile-remove,
+.wallpaper-tile-wrap .wallpaper-tile-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.wallpaper-empty-media {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  padding: var(--space-4) 0;
+  max-width: 36rem;
+}
+@media (max-width: 720px) {
+  .wallpaper-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .wallpaper-category-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 @media (max-width: 600px) {
   .brand-logo {

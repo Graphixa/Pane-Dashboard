@@ -158,7 +158,7 @@ Gate: actual supported clips work in target browsers with fallback, range servin
 
 ## Phase 5 — Assemble the final Settings and chooser UX - COMPLETE
 
-Dependencies: Phases 2–4. Issue: #13.
+Dependencies: Phases 2–4. Issue: #13. **Chooser shelves superseded by #17** (Browse → category grid, unified Add media, build-time catalogue, Recently used).
 
 1. Refactor BackgroundSettings.tsx into cohesive sections without changing the shared design-system entry point. Add a shared Radix-backed tabs primitive/reference example if one is not already exposed.
 2. Build centred Static/Animated chooser tabs, filtered shelves and Show all views. Preserve the bottom-docked non-lightbox live-preview behaviour, usable scrolling, keyboard focus and the compact Current band.

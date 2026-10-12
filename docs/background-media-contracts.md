@@ -31,6 +31,34 @@ Serving URLs (derived server-side):
 
 Never treat an asset ID as a filesystem path. Reject `..`, separators and absolute paths in IDs.
 
+### Bundled wallpaper catalogue (build time)
+
+Source tree (repository root, flat categories only):
+
+```text
+wallpapers/
+  nature/
+    category.json       # optional name, order, cover, titles, licence
+    forest.png
+    waterfall.png
+  space/
+    nebula.png
+```
+
+`npm run catalogue` (`web/scripts/generate-wallpaper-catalogue.mjs`) generates:
+
+| Output | Role |
+| --- | --- |
+| `builtin/catalogue.json` + `builtin/media/{id}` | Embedded by the Go server (`//go:embed`) |
+| `web/public/media/builtin/*` | Vite static copies for local browse |
+| `web/src/generated/wallpaperCatalogue.ts` | UI category/item metadata |
+
+- Each supported folder becomes one category; My media and Gradients are virtual (not folders).
+- Item IDs are stable `name@vN` (default `v1`); optional `category.json` cover/titles/order; folder placeholders humanise when metadata is absent.
+- Empty bundled folders are omitted from the catalogue (hidden in the chooser). Poster sidecars (`*.poster.png`) are served but not selectable wallpapers.
+- Nested folders and unsupported extensions fail the generator. Duplicate IDs fail the generator.
+- Thumbnails/posters load for browsing; selecting a video loads bytes on demand via the built-in URL.
+
 ## Composition object (`appearance.background`)
 
 ```ts

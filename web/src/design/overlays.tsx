@@ -18,8 +18,16 @@ export function Modal(props: {
   nested?: boolean;
   placement?: 'center' | 'bottom';
   backdrop?: 'dim' | 'none';
-  /** Title-bar dismiss control: Close (X) or Back (chevron). Both call `close`. */
-  headerClose?: 'close' | 'back';
+  /**
+   * Title-bar trailing dismiss: Close (X). When `onBack` is set, a Back control
+   * is also shown leading the title. Use `headerClose: 'none'` to hide Close
+   * (rare; prefer keeping Close for nested sheets).
+   */
+  headerClose?: 'close' | 'none';
+  /** Leading back control; does not close the dialog. */
+  onBack?: () => void;
+  /** Extra header actions (e.g. Add media) before Close. */
+  headerActions?: ReactNode;
   /**
    * When set, uses a three-region sheet layout: fixed title, scrollable body (`children`),
    * and fixed footer. Prefer for preview-adjust bottom sheets so Done stays visible.
@@ -38,6 +46,8 @@ function ModalContent({
   placement = 'center',
   backdrop = 'dim',
   headerClose = 'close',
+  onBack,
+  headerActions,
   footer,
 }: Parameters<typeof Modal>[0]) {
   const surface = useSurface();
@@ -65,14 +75,18 @@ function ModalContent({
       onCloseAutoFocus={e => {e.preventDefault(); if (opener.current?.isConnected) opener.current.focus();}}
       onInteractOutside={e => e.preventDefault()}
       onWheel={e => e.stopPropagation()}>
-      <div className={`modal-title${draggable && placement === 'center' ? ' modal-title-draggable' : ''}`} onPointerDown={e => {
+      <div className={`modal-title${draggable && placement === 'center' ? ' modal-title-draggable' : ''}${onBack ? ' modal-title-with-back' : ''}`} onPointerDown={e => {
         if (!draggable || placement !== 'center' || e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
         e.preventDefault(); drag.current = {id: e.pointerId, x: e.clientX, y: e.clientY, ox: offset.x, oy: offset.y}; e.currentTarget.setPointerCapture(e.pointerId);
       }} onPointerMove={move} onPointerUp={end} onPointerCancel={end}>
+        {onBack ? <IconButton variant="quiet" label="Back" onClick={onBack}><ChevronLeft size={20} aria-hidden="true" /></IconButton> : null}
         <Dialog.Title asChild><Text as="h2" variant="title">{title}</Text></Dialog.Title>
-        {headerClose === 'back'
-          ? <IconButton variant="quiet" label="Back" onClick={close}><ChevronLeft size={20} aria-hidden="true" /></IconButton>
-          : <IconButton variant="quiet" label="Close" onClick={close}><X size={20} aria-hidden="true" /></IconButton>}
+        <div className="modal-title-actions">
+          {headerActions}
+          {headerClose !== 'none'
+            ? <IconButton variant="quiet" label="Close" onClick={close}><X size={20} aria-hidden="true" /></IconButton>
+            : null}
+        </div>
       </div>
       {footer != null
         ? <><div className="ui-dialog-body">{children}</div><div className="ui-dialog-footer">{footer}</div></>
@@ -106,7 +120,7 @@ export function ImagePopoverActions({cancel, confirm}: {cancel: () => void; conf
     <Button variant="primary" onClick={confirm}>OK</Button>
   </div>;
 }
-export function DropdownMenu({trigger, items, open, onOpenChange}: {trigger: ReactElement; items: {label: string; icon?: ReactNode; disabled?: boolean; onSelect?: () => void}[]; open?: boolean; onOpenChange?: (open: boolean) => void}) {
+export function DropdownMenu({trigger, items, open, onOpenChange}: {trigger: ReactElement; open?: boolean; onOpenChange?: (open: boolean) => void; items: {label: string; icon?: ReactNode; disabled?: boolean; onSelect?: () => void}[];}) {
   const surface = useSurface();
   return <Menu.Root open={open} onOpenChange={onOpenChange}><Menu.Trigger asChild>{trigger}</Menu.Trigger><Menu.Portal><Menu.Content {...surface} className="ui-menu ui-overlay-surface" align="end" sideOffset={8} collisionPadding={12}>
     {items.map(item => <Menu.Item key={item.label} disabled={item.disabled} onSelect={item.onSelect} className="ui-menu-item">{item.icon}{item.label}</Menu.Item>)}

@@ -39,6 +39,7 @@ func readJSON(w http.ResponseWriter, r *http.Request, limitMsg string) ([]byte, 
 func handler(s *Store, d *DockerProvider, media *MediaStore) http.Handler {
 	mux := http.NewServeMux()
 	registerMediaRoutes(mux, media)
+	registerBuiltinRoutes(mux)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) { respond(w, 200, map[string]string{"status": "ok"}) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()

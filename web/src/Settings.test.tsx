@@ -169,11 +169,14 @@ describe("settings navigation and draft safety", () => {
     ).toBe(true);
     expect(screen.queryByRole("tablist", { name: "Wallpaper type" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "My media" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Videos" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Categories" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "My media" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Gradients" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Nature" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Videos" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
-    expect(screen.getByText(/Confirms this wallpaper in the Settings draft/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add media" })).toBeTruthy();
+    expect(screen.getByText(/Apply in Settings to save/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Use wallpaper" })).toBeTruthy();
     const dialog = screen.getByRole("dialog", { name: "Choose wallpaper" });
     expect(dialog.querySelectorAll("video[loop]").length).toBe(0);
@@ -186,6 +189,8 @@ describe("settings navigation and draft safety", () => {
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gradients" }));
+    expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
     fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
@@ -194,7 +199,7 @@ describe("settings navigation and draft safety", () => {
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
   });
-  it("restores wallpaper draft when Choose wallpaper is closed without Use wallpaper", () => {
+  it("restores wallpaper draft when Choose wallpaper is closed without Use wallpaper", async () => {
     setup();
     page("Background");
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
@@ -204,17 +209,27 @@ describe("settings navigation and draft safety", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
-    fireEvent.click(within(chooser).getByRole("button", { name: "Ocean" }));
-    fireEvent.click(within(chooser).getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    fireEvent.click(within(chooser).getByRole("button", { name: "Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("alertdialog", { name: "Discard wallpaper changes?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /Choose wallpaper|Gradients/ })).toBeNull();
+    });
     expect(screen.getByText("Colour")).toBeTruthy();
     expect(screen.queryByText("Ocean")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     const again = screen.getByRole("dialog", { name: "Choose wallpaper" });
-    fireEvent.click(within(again).getByRole("button", { name: "Ocean" }));
-    fireEvent.keyDown(again, { key: "Escape" });
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
+    fireEvent.click(within(again).getByRole("button", { name: "Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Gradients" }), { key: "Escape" });
+    expect(screen.getByRole("alertdialog", { name: "Discard wallpaper changes?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /Choose wallpaper|Gradients/ })).toBeNull();
+    });
     expect(screen.getByText("Colour")).toBeTruthy();
     expect(screen.queryByText("Ocean")).toBeNull();
   });
@@ -355,7 +370,10 @@ describe("settings navigation and draft safety", () => {
     page("Background");
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
-    const input = within(chooser).getByLabelText("Upload image") as HTMLInputElement;
+    const input = chooser.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
     const file = new File(["x"], "big.webp", { type: "image/webp" });
     Object.defineProperty(file, "size", { value: 13 * 1024 * 1024 });
     fireEvent.change(input, { target: { files: [file] } });

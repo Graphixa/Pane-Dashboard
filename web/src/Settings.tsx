@@ -24,6 +24,7 @@ import {
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
+import { queueRecentWallpaperOnSave } from "./wallpaperRecent";
 
 const pages = [
   ["general", "General", Settings2],
@@ -135,6 +136,7 @@ export default function Settings({
         appearance: draft.appearance,
       };
       validate(next);
+      queueRecentWallpaperOnSave(next.appearance.background?.wallpaper);
       apply(next);
       close();
     } catch (e) {

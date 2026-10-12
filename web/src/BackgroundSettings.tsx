@@ -1,14 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Button,
   ColourField,
-  ColourPopoverFields,
-  IconButton,
   Modal,
   Notice,
-  Popover,
-  PopoverHead,
   Range,
   ScrollArea,
   Section,
@@ -18,7 +14,7 @@ import {
   SettingsRow,
   Switch,
   Text,
-  useDeferredColour,
+  useConfirmation,
 } from "./design/components";
 import { prepareUpload } from "./ImageField";
 import {
@@ -43,8 +39,26 @@ import {
   type Wallpaper,
 } from "./appearance";
 import { getEffectPack } from "./effects/registry";
-
-type MediaKind = "image" | "video";
+import {
+  builtinMediaUrl,
+  builtinPosterUrl,
+  wallpaperCatalogueCategories,
+  wallpaperCatalogueItems,
+} from "./generated/wallpaperCatalogue";
+import {
+  loadRecentWallpapers,
+  wallpaperMatches,
+  type RecentWallpaperEntry,
+} from "./wallpaperRecent";
+import {
+  WallpaperCategoryCard,
+  WallpaperColourChip,
+  WallpaperCustomColour,
+  WallpaperSection,
+  WallpaperTile,
+  sortStaticBeforeLive,
+  type MediaKind,
+} from "./wallpaperChooser";
 
 function assetIdFromRef(ref: MediaRef): string | null {
   return ref.source === "asset" ? ref.assetId : null;
@@ -67,7 +81,6 @@ function useMediaKinds(library: MediaRef[], wallpaper: Wallpaper) {
   useEffect(() => {
     if (wallpaper.kind === "image") remember(wallpaper.media, "image");
     if (wallpaper.kind === "video") remember(wallpaper.media, "video");
-    // wallpaper identity only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wallpaper]);
 
@@ -82,6 +95,11 @@ function useMediaKinds(library: MediaRef[], wallpaper: Wallpaper) {
           const key = mediaSrc(ref);
           if (ref.source === "url") {
             found.set(key, "image");
+            return;
+          }
+          if (ref.source === "builtin") {
+            const item = wallpaperCatalogueItems[ref.builtinId];
+            found.set(key, item?.kind === "video" ? "video" : "image");
             return;
           }
           try {
@@ -103,14 +121,12 @@ function useMediaKinds(library: MediaRef[], wallpaper: Wallpaper) {
     return () => {
       cancelled = true;
     };
-    // kinds read for skip; library drives re-probe of new entries
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [library]);
 
   return { kinds, remember };
 }
 
-/** Resolve stored upload display names from media meta (not stored on MediaRef). */
 function useMediaNames(library: MediaRef[]) {
   const [names, setNames] = useState<Map<string, string>>(() => new Map());
 
@@ -148,7 +164,7 @@ function useMediaNames(library: MediaRef[]) {
               found.set(key, body.name.trim());
             }
           } catch {
-            /* ignore missing meta */
+            /* ignore */
           }
         }),
       );
@@ -177,21 +193,6 @@ function titleCase(id: string) {
 function assetRefFromPath(path: string): MediaRef | null {
   const m = path.match(/^\/media\/assets\/([A-Za-z0-9_-]{1,128})$/);
   return m ? { source: "asset", assetId: m[1] } : null;
-}
-
-function chipInk(hex: string) {
-  const n = Number.parseInt(hex.slice(1), 16);
-  if (!Number.isFinite(n)) return "#ffffff";
-  const y = ((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114;
-  return y > 160000 ? "#1a222e" : "#ffffff";
-}
-
-/** Live-paint the solid wallpaper base while the custom chip is dragged. */
-function paintSolidWallpaper(hex: string) {
-  const paint = solidBackgroundPaint(hex);
-  document.querySelectorAll<HTMLElement>(".scene, .scene-base").forEach((node) => {
-    node.style.background = paint;
-  });
 }
 
 function StillPreview({ b }: { b: Background }) {
@@ -242,278 +243,7 @@ function StillPreview({ b }: { b: Background }) {
   );
 }
 
-/** Horizontal shelf: tiles sit in a settings-group inset and clip there. */
-function WallpaperShelf({
-  heading,
-  label,
-  compact = false,
-  children,
-}: {
-  heading: string;
-  label: string;
-  compact?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <section className={`background-shelf${compact ? " background-shelf-compact" : ""}`}>
-      <div className="background-shelf-head">
-        <Text as="h3" variant="label" className="background-shelf-heading">
-          {heading}
-        </Text>
-      </div>
-      <SettingsGroup className="background-shelf-box">
-        <div
-          className="background-shelf-bleed"
-          tabIndex={0}
-          role="group"
-          aria-label={label}
-        >
-          <div className="background-shelf-track">{children}</div>
-        </div>
-      </SettingsGroup>
-    </section>
-  );
-}
-
-function WallpaperColourChip({
-  name,
-  colour,
-  pressed,
-  onSelect,
-}: {
-  name: string;
-  colour: string;
-  pressed: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      className="wallpaper-colour-chip"
-      aria-label={name}
-      title={name}
-      aria-pressed={pressed}
-      onClick={onSelect}
-    >
-      <span
-        className="wallpaper-colour-chip-paint"
-        style={{ background: colour, color: chipInk(colour) }}
-        aria-hidden="true"
-      >
-        {pressed ? <Check size={16} strokeWidth={2.75} /> : null}
-      </span>
-    </Button>
-  );
-}
-
-function WallpaperCustomColour({
-  colour,
-  pressed,
-  onColour,
-}: {
-  colour: string;
-  pressed: boolean;
-  onColour: (colour: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
-    colour,
-    onColour,
-    paintLive: paintSolidWallpaper,
-  });
-  const picking = open && live.toLowerCase() !== colour.toLowerCase();
-  const filled = pressed || picking;
-  return (
-    <Popover
-      label="Custom colour"
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) flush();
-        setOpen(next);
-      }}
-      trigger={
-        <Button
-          variant="surface"
-          type="button"
-          className={`wallpaper-colour-chip wallpaper-colour-chip-add${picking ? " wallpaper-colour-chip-picking" : ""}${filled ? " wallpaper-colour-chip-filled" : ""}`}
-          aria-label="Custom colour"
-          title="Custom colour"
-          aria-pressed={pressed}
-        >
-          <span
-            className="wallpaper-colour-chip-paint"
-            style={filled ? { background: live, color: chipInk(live) } : undefined}
-            aria-hidden="true"
-          >
-            {pressed && !open ? (
-              <Check size={16} strokeWidth={2.75} />
-            ) : (
-              <Plus size={16} />
-            )}
-          </span>
-        </Button>
-      }
-    >
-      <PopoverHead
-        title="Custom colour"
-        closeLabel="Close Custom colour picker"
-        onClose={() => {
-          flush();
-          setOpen(false);
-        }}
-      />
-      <ColourPopoverFields
-        pickerLabel="Custom colour"
-        swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : "#a2cbbb"}
-        hex={hex}
-        onHexChange={setHex}
-        onSwatchChange={noteInput}
-        onHexCommit={applyHex}
-      />
-    </Popover>
-  );
-}
-
-function StillTile({
-  label,
-  pressed,
-  paint,
-  onSelect,
-}: {
-  label: string;
-  pressed: boolean;
-  paint: string;
-  onSelect: () => void;
-}) {
-  return (
-    <Button
-      variant="surface"
-      type="button"
-      className="background-swatch"
-      aria-label={label}
-      title={label}
-      aria-pressed={pressed}
-      onClick={onSelect}
-    >
-      <div className="ui-aspect-ratio background-swatch-frame">
-        <span className="background-swatch-paint" style={{ background: paint }} />
-        {pressed ? (
-          <span className="background-swatch-check" aria-hidden="true">
-            <Check size={16} strokeWidth={2.75} />
-          </span>
-        ) : null}
-      </div>
-    </Button>
-  );
-}
-
-function VideoThumb({ src }: { src: string }) {
-  return (
-    <video
-      className="background-swatch-paint background-swatch-video"
-      src={src}
-      muted
-      playsInline
-      preload="metadata"
-      aria-hidden="true"
-    />
-  );
-}
-
-function MediaTile({
-  label,
-  pressed,
-  src,
-  kind = "image",
-  onSelect,
-  onRemove,
-}: {
-  label: string;
-  pressed: boolean;
-  src: string;
-  kind?: MediaKind;
-  onSelect: () => void;
-  onRemove?: () => void;
-}) {
-  const a11y = `${label}, ${kind === "video" ? "video" : "image"}`;
-  return (
-    <div className="background-swatch-wrap">
-      <Button
-        variant="surface"
-        type="button"
-        className="background-swatch"
-        aria-label={a11y}
-        title={label}
-        aria-pressed={pressed}
-        onClick={onSelect}
-      >
-        <div className="ui-aspect-ratio background-swatch-frame">
-          {kind === "video" ? (
-            <VideoThumb src={src} />
-          ) : (
-            <span
-              className="background-swatch-paint background-current-image"
-              style={{ backgroundImage: `url(${src})` }}
-            />
-          )}
-          {pressed ? (
-            <span className="background-swatch-check" aria-hidden="true">
-              <Check size={16} strokeWidth={2.75} />
-            </span>
-          ) : null}
-        </div>
-      </Button>
-      {onRemove && (
-        <IconButton
-          variant="quiet"
-          type="button"
-          className="background-swatch-remove"
-          label={`Remove ${label}`}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onRemove();
-          }}
-        >
-          <Trash2 size={16} aria-hidden="true" />
-        </IconButton>
-      )}
-    </div>
-  );
-}
-
-function UploadTile({
-  label,
-  accept,
-  onFile,
-}: {
-  label: string;
-  accept: string;
-  onFile: (file: File) => void;
-}) {
-  return (
-    <label className="background-swatch background-swatch-add">
-      <div className="ui-aspect-ratio background-swatch-frame">
-        <span className="background-swatch-add-placeholder" aria-hidden="true">
-          <Plus size={22} />
-        </span>
-      </div>
-      <span className="file-picker-label">{label}</span>
-      <input
-        type="file"
-        accept={accept}
-        className="file-picker"
-        aria-label={label}
-        onChange={(e) => {
-          const f = e.currentTarget.files?.[0];
-          e.currentTarget.value = "";
-          if (f) onFile(f);
-        }}
-      />
-    </label>
-  );
-}
+type ChooserView = "browse" | "my-media" | "gradients" | `cat:${string}`;
 
 export default function BackgroundSettings({
   settings: b,
@@ -528,12 +258,15 @@ export default function BackgroundSettings({
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
 }) {
+  const { confirm, confirmation } = useConfirmation();
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [chooserView, setChooserView] = useState<ChooserView>("browse");
   const [sheetError, setSheetError] = useState("");
   const [pendingRemove, setPendingRemove] = useState<MediaRef | null>(null);
   const [motionOpen, setMotionOpen] = useState(false);
   const [effectOpen, setEffectOpen] = useState(false);
   const [tintOpen, setTintOpen] = useState(false);
+  const [recent, setRecent] = useState<RecentWallpaperEntry[]>([]);
   const { kinds: mediaKinds, remember: rememberMediaKind } = useMediaKinds(
     b.library,
     b.wallpaper,
@@ -542,6 +275,11 @@ export default function BackgroundSettings({
     b.library,
   );
   const snapshot = useRef<Background | null>(null);
+  const browseScroll = useRef(0);
+  const categoryScroll = useRef<Record<string, number>>({});
+  const browseFocusId = useRef<string | null>(null);
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
+  const addMediaInput = useRef<HTMLInputElement | null>(null);
   const lastMotion = useRef<MotionStyle>(
     b.photoMotion.style !== "none" ? b.photoMotion.style : "ken-burns",
   );
@@ -570,19 +308,46 @@ export default function BackgroundSettings({
     snapshot.current = structuredClone(b);
     setSheetError("");
     setPendingRemove(null);
+    setChooserView("browse");
+    setRecent(loadRecentWallpapers());
+    browseScroll.current = 0;
     setChooserOpen(true);
   };
-  const discardChooser = () => {
+
+  const finishDiscard = () => {
     if (snapshot.current) background(snapshot.current);
     snapshot.current = null;
     setSheetError("");
     setPendingRemove(null);
+    setChooserView("browse");
     setChooserOpen(false);
   };
+
+  const requestDiscardChooser = async () => {
+    const snap = snapshot.current;
+    const dirty =
+      snap != null &&
+      JSON.stringify({ wallpaper: snap.wallpaper, library: snap.library }) !==
+        JSON.stringify({ wallpaper: b.wallpaper, library: b.library });
+    if (
+      !dirty ||
+      (await confirm({
+        title: "Discard wallpaper changes?",
+        description:
+          "Close without Use wallpaper? Your previous Settings draft wallpaper will be restored.",
+        cancelLabel: "Keep editing",
+        actionLabel: "Discard",
+      }))
+    ) {
+      finishDiscard();
+    }
+  };
+
   const commitChooser = () => {
     snapshot.current = null;
     setSheetError("");
     setPendingRemove(null);
+    setChooserView("browse");
     setChooserOpen(false);
   };
 
@@ -599,11 +364,10 @@ export default function BackgroundSettings({
   const selectMedia = (ref: MediaRef, kind: "image" | "video") => {
     const known = b.library.some((entry) => mediaRefEqual(entry, ref));
     let library = b.library;
-    if (!known) {
+    if (!known && ref.source === "asset") {
       try {
         library = prependLibrary(b.library, ref);
       } catch (err) {
-        // Inline in the sheet: nested AlertDialog over Choose wallpaper cannot receive clicks.
         setSheetError((err as Error).message);
         return;
       }
@@ -619,6 +383,12 @@ export default function BackgroundSettings({
     }
   };
 
+  const selectBuiltin = (id: string) => {
+    const item = wallpaperCatalogueItems[id];
+    if (!item) return;
+    selectMedia({ source: "builtin", builtinId: id }, item.kind);
+  };
+
   const upload = async (file: File) => {
     setSheetError("");
     setPendingRemove(null);
@@ -630,6 +400,7 @@ export default function BackgroundSettings({
       rememberMediaKind(ref, committed.kind);
       rememberMediaName(ref, committed.name);
       selectMedia(ref, committed.kind);
+      setChooserView("my-media");
     } catch (err) {
       setSheetError((err as Error).message);
     } finally {
@@ -638,6 +409,9 @@ export default function BackgroundSettings({
   };
 
   const mediaLabel = (ref: MediaRef, kind: MediaKind) => {
+    if (ref.source === "builtin") {
+      return wallpaperCatalogueItems[ref.builtinId]?.title || ref.builtinId;
+    }
     const stored = mediaNames.get(mediaSrc(ref));
     const fallback = kind === "video" ? "Video" : "Photo";
     return stored ? mediaDisplayName(stored, fallback) : fallback;
@@ -645,7 +419,9 @@ export default function BackgroundSettings({
 
   const currentMediaName =
     b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
-      ? mediaNames.get(mediaSrc(b.wallpaper.media))
+      ? b.wallpaper.media.source === "builtin"
+        ? wallpaperCatalogueItems[b.wallpaper.media.builtinId]?.title
+        : mediaNames.get(mediaSrc(b.wallpaper.media))
       : undefined;
 
   const requestRemoveLibraryRef = (ref: MediaRef) => {
@@ -679,26 +455,345 @@ export default function BackgroundSettings({
     b.wallpaper.kind === "video" && mediaRefEqual(b.wallpaper.media, ref);
   const mediaKindOf = (ref: MediaRef): MediaKind | undefined =>
     mediaKinds.get(mediaSrc(ref));
-  const imageLibrary = b.library.filter((ref) => {
-    const kind = mediaKindOf(ref);
-    if (kind === "image") return true;
-    if (kind === "video") return false;
-    return isActiveImage(ref);
-  });
-  const videoLibrary = b.library.filter((ref) => {
-    const kind = mediaKindOf(ref);
-    if (kind === "video") return true;
-    if (kind === "image") return false;
-    return isActiveVideo(ref);
-  });
+
+  const myMediaLibrary = b.library.filter((ref) => ref.source === "asset");
+  const kindForRef = (ref: MediaRef): MediaKind =>
+    mediaKindOf(ref) ?? (isActiveVideo(ref) ? "video" : "image");
+  const myMediaSorted = sortStaticBeforeLive(myMediaLibrary, kindForRef);
+  const recentSorted = sortStaticBeforeLive(recent, (entry) =>
+    entry.wallpaper.kind === "video" ? "video" : "image",
+  );
 
   const mediaWallpaper =
     b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
       ? b.wallpaper
       : null;
 
+  /** Poster URL for live tiles when distinct from the video file; else undefined. */
+  const livePosterSrc = (ref: MediaRef, thumb?: string): string | undefined => {
+    if (ref.source === "builtin") {
+      const item = wallpaperCatalogueItems[ref.builtinId];
+      if (!item) return undefined;
+      const poster = builtinPosterUrl(item);
+      const video = builtinMediaUrl(item.id);
+      return poster !== video ? poster : undefined;
+    }
+    if (thumb && thumb !== mediaSrc(ref)) return thumb;
+    return undefined;
+  };
+
+  const captureBrowseScroll = () => {
+    const el = bodyScrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (el) browseScroll.current = el.scrollTop;
+  };
+
+  const openCategory = (view: ChooserView, focusId: string) => {
+    captureBrowseScroll();
+    browseFocusId.current = focusId;
+    setChooserView(view);
+  };
+
+  const backToBrowse = () => {
+    const el = bodyScrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (el && chooserView !== "browse") {
+      categoryScroll.current[chooserView] = el.scrollTop;
+    }
+    setChooserView("browse");
+  };
+
+  useEffect(() => {
+    if (!chooserOpen) return;
+    const el = bodyScrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]",
+    ) as HTMLElement | null;
+    if (!el) return;
+    if (chooserView === "browse") {
+      el.scrollTop = browseScroll.current;
+      const id = browseFocusId.current;
+      if (id) {
+        requestAnimationFrame(() => {
+          document
+            .querySelector<HTMLElement>(`[data-category-card="${id}"]`)
+            ?.focus();
+        });
+      }
+    } else {
+      el.scrollTop = categoryScroll.current[chooserView] ?? 0;
+    }
+  }, [chooserView, chooserOpen]);
+
+  const categoryTitle =
+    chooserView === "my-media"
+      ? "My media"
+      : chooserView === "gradients"
+        ? "Gradients"
+        : chooserView.startsWith("cat:")
+          ? wallpaperCatalogueCategories.find(
+              (c) => c.id === chooserView.slice(4),
+            )?.name || "Category"
+          : "Choose wallpaper";
+
+  const addMediaControl = (
+    <>
+      <Button
+        type="button"
+        variant="quiet"
+        aria-label="Add media"
+        onClick={() => addMediaInput.current?.click()}
+      >
+        <Plus size={16} aria-hidden="true" />
+        Add media
+      </Button>
+      <input
+        ref={addMediaInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,video/webm,video/mp4"
+        className="file-picker"
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(e) => {
+          const f = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (f) void upload(f);
+        }}
+      />
+    </>
+  );
+
+  const myMediaCoverRef =
+    myMediaSorted.find((ref) => kindForRef(ref) !== "video") ?? undefined;
+  const myMediaCover = myMediaCoverRef ? mediaSrc(myMediaCoverRef) : undefined;
+
+  const renderBrowse = () => (
+    <div className="wallpaper-browse">
+      <WallpaperSection heading="Colours" label="Colours" compact>
+        <div className="wallpaper-colour-row">
+          <WallpaperCustomColour
+            colour={customColour}
+            pressed={b.wallpaper.kind === "solid" && !presetMatch}
+            onColour={selectColour}
+          />
+          <WallpaperColourChip
+            name="None"
+            colour={theme === "dark" ? "#1a222e" : "#eef1f4"}
+            pressed={b.wallpaper.kind === "none"}
+            onSelect={() => setWallpaper({ kind: "none" })}
+          />
+          {accentPresets[theme].map((p) => (
+            <WallpaperColourChip
+              key={p.colour}
+              name={p.name}
+              colour={p.colour}
+              pressed={solidSelected === p.colour.toLowerCase()}
+              onSelect={() => selectColour(p.colour)}
+            />
+          ))}
+        </div>
+      </WallpaperSection>
+
+      {recentSorted.length > 0 && (
+        <WallpaperSection heading="Recently used" label="Recently used">
+          <div className="wallpaper-recent-track">
+            {recentSorted.map((entry) => {
+              const pressed = wallpaperMatches(b.wallpaper, entry.wallpaper);
+              if (entry.wallpaper.kind === "none") {
+                return (
+                  <WallpaperTile
+                    key={entry.key}
+                    label={entry.label}
+                    pressed={pressed}
+                    paint="var(--bg)"
+                    onSelect={() => setWallpaper({ kind: "none" })}
+                  />
+                );
+              }
+              if (entry.wallpaper.kind === "solid") {
+                return (
+                  <WallpaperTile
+                    key={entry.key}
+                    label={entry.label}
+                    pressed={pressed}
+                    paint={solidBackgroundPaint(entry.wallpaper.colour)}
+                    onSelect={() => selectColour(entry.wallpaper.kind === "solid" ? entry.wallpaper.colour : "#a2cbbb")}
+                  />
+                );
+              }
+              if (entry.wallpaper.kind === "gradient") {
+                const preset = entry.wallpaper.preset;
+                return (
+                  <WallpaperTile
+                    key={entry.key}
+                    label={titleCase(preset)}
+                    pressed={pressed}
+                    paint={gradients[preset]}
+                    onSelect={() => selectGradient(preset)}
+                  />
+                );
+              }
+              const mediaWallpaper = entry.wallpaper;
+              if (mediaWallpaper.kind !== "image" && mediaWallpaper.kind !== "video") {
+                return null;
+              }
+              const kind = mediaWallpaper.kind;
+              const videoUrl =
+                kind === "video" ? mediaSrc(mediaWallpaper.media) : undefined;
+              return (
+                <WallpaperTile
+                  key={entry.key}
+                  label={entry.label}
+                  pressed={pressed}
+                  kind={kind}
+                  src={
+                    kind === "video"
+                      ? livePosterSrc(mediaWallpaper.media, entry.thumb)
+                      : entry.thumb
+                  }
+                  videoSrc={videoUrl}
+                  onSelect={() => selectMedia(mediaWallpaper.media, kind)}
+                />
+              );
+            })}
+          </div>
+        </WallpaperSection>
+      )}
+
+      <WallpaperSection heading="Categories" label="Categories">
+        <div className="wallpaper-category-grid">
+          <WallpaperCategoryCard
+            name="My media"
+            coverSrc={myMediaCover}
+            empty={!myMediaCover}
+            onSelect={() => openCategory("my-media", "My media")}
+          />
+          <WallpaperCategoryCard
+            name="Gradients"
+            paint={gradients.ocean}
+            onSelect={() => openCategory("gradients", "Gradients")}
+          />
+          {wallpaperCatalogueCategories.map((cat) => {
+            const cover = wallpaperCatalogueItems[cat.coverId];
+            const coverSrc = cover
+              ? cover.kind === "video"
+                ? builtinPosterUrl(cover)
+                : builtinMediaUrl(cover.id)
+              : undefined;
+            return (
+              <WallpaperCategoryCard
+                key={cat.id}
+                name={cat.name}
+                coverSrc={coverSrc}
+                onSelect={() => openCategory(`cat:${cat.id}`, cat.name)}
+              />
+            );
+          })}
+        </div>
+      </WallpaperSection>
+    </div>
+  );
+
+  const renderCategoryGrid = () => {
+    if (chooserView === "gradients") {
+      return (
+        <div className="wallpaper-media-grid">
+          {(Object.keys(gradients) as (keyof typeof gradients)[]).map((id) => (
+            <WallpaperTile
+              key={id}
+              label={titleCase(id)}
+              pressed={
+                b.wallpaper.kind === "gradient" && b.wallpaper.preset === id
+              }
+              paint={gradients[id]}
+              onSelect={() => selectGradient(id)}
+            />
+          ))}
+        </div>
+      );
+    }
+    if (chooserView === "my-media") {
+      if (!myMediaLibrary.length) {
+        return (
+          <div className="wallpaper-empty-media">
+            <Text as="p" variant="body">
+              Upload photos or muted video loops with Add media. Uploads stay in My media until you Apply settings.
+            </Text>
+            <Button type="button" variant="primary" onClick={() => addMediaInput.current?.click()}>
+              Add media
+            </Button>
+          </div>
+        );
+      }
+      return (
+        <div className="wallpaper-media-grid">
+          {myMediaSorted.map((ref) => {
+            const kind = kindForRef(ref);
+            const url = mediaSrc(ref);
+            return (
+              <WallpaperTile
+                key={url}
+                label={mediaLabel(ref, kind)}
+                pressed={isActiveImage(ref) || isActiveVideo(ref)}
+                kind={kind}
+                src={kind === "video" ? livePosterSrc(ref) : url}
+                videoSrc={kind === "video" ? url : undefined}
+                onSelect={() => selectMedia(ref, kind)}
+                onRemove={() => requestRemoveLibraryRef(ref)}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+    if (chooserView.startsWith("cat:")) {
+      const catId = chooserView.slice(4);
+      const cat = wallpaperCatalogueCategories.find((c) => c.id === catId);
+      if (!cat) return null;
+      const itemIds = sortStaticBeforeLive(
+        cat.itemIds,
+        (id) => wallpaperCatalogueItems[id]?.kind ?? "image",
+      );
+      return (
+        <div className="wallpaper-media-grid">
+          {itemIds.map((id) => {
+            const item = wallpaperCatalogueItems[id];
+            if (!item) return null;
+            const ref: MediaRef = { source: "builtin", builtinId: id };
+            const pressed =
+              (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
+              mediaRefEqual(b.wallpaper.media, ref);
+            const poster = builtinPosterUrl(item);
+            const videoUrl =
+              item.kind === "video" ? builtinMediaUrl(item.id) : undefined;
+            return (
+              <WallpaperTile
+                key={id}
+                label={item.title}
+                pressed={pressed}
+                kind={item.kind}
+                src={
+                  item.kind === "video"
+                    ? poster !== videoUrl
+                      ? poster
+                      : undefined
+                    : poster
+                }
+                videoSrc={videoUrl}
+                onSelect={() => selectBuiltin(id)}
+              />
+            );
+          })}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="background-settings-stack">
+      {confirmation}
       <SettingsGroup className="background-current-group">
         <SettingsRow>
           <div className="background-current">
@@ -759,13 +854,13 @@ export default function BackgroundSettings({
                         background({
                           wallpaper: {
                             ...b.wallpaper,
-                            playback: playback === "static" ? "static" : "loop",
+                            playback: playback as "loop" | "static",
                           },
                         });
                       }}
                     >
                       <SelectOption value="loop">Loop</SelectOption>
-                      <SelectOption value="static">Static poster</SelectOption>
+                      <SelectOption value="static">Static</SelectOption>
                     </Select>
                   </div>
                 )}
@@ -944,11 +1039,25 @@ export default function BackgroundSettings({
       {chooserOpen && (
         <Modal
           nested
-          title="Choose wallpaper"
+          title={chooserView === "browse" ? "Choose wallpaper" : categoryTitle}
           placement="bottom"
           backdrop="none"
           className="background-library-dialog"
-          close={discardChooser}
+          close={() => void requestDiscardChooser()}
+          onBack={chooserView === "browse" ? undefined : backToBrowse}
+          headerActions={addMediaControl}
+          footer={
+            <div className="background-library-actions">
+              <Text as="p" variant="support" className="background-library-actions-note">
+                Apply in Settings to save.
+              </Text>
+              <div className="ui-actions">
+                <Button type="button" variant="primary" onClick={commitChooser}>
+                  Use wallpaper
+                </Button>
+              </div>
+            </div>
+          }
         >
           {sheetError && (
             <Notice tone="error" className="background-library-sheet-notice">
@@ -973,103 +1082,14 @@ export default function BackgroundSettings({
               </div>
             </Notice>
           )}
-          <ScrollArea
-            className="background-library-body-scroll"
-            type="auto"
-            aria-label="Wallpapers"
-          >
-            <div className="background-library-shelves">
-              <WallpaperShelf heading="Colours" label="Colours" compact>
-                <WallpaperCustomColour
-                  colour={customColour}
-                  pressed={b.wallpaper.kind === "solid" && !presetMatch}
-                  onColour={selectColour}
-                />
-                {accentPresets[theme].map((p) => (
-                  <WallpaperColourChip
-                    key={p.colour}
-                    name={p.name}
-                    colour={p.colour}
-                    pressed={solidSelected === p.colour.toLowerCase()}
-                    onSelect={() => selectColour(p.colour)}
-                  />
-                ))}
-              </WallpaperShelf>
-
-              <WallpaperShelf heading="My media" label="My media">
-                <UploadTile
-                  label="Upload image"
-                  accept="image/png,image/jpeg,image/webp"
-                  onFile={(f) => void upload(f)}
-                />
-                {imageLibrary.map((ref) => (
-                  <MediaTile
-                    key={mediaSrc(ref)}
-                    label={mediaLabel(ref, "image")}
-                    pressed={isActiveImage(ref)}
-                    src={mediaSrc(ref)}
-                    kind="image"
-                    onSelect={() => selectMedia(ref, "image")}
-                    onRemove={() => requestRemoveLibraryRef(ref)}
-                  />
-                ))}
-                <StillTile
-                  label="None"
-                  pressed={b.wallpaper.kind === "none"}
-                  paint="var(--bg)"
-                  onSelect={() => setWallpaper({ kind: "none" })}
-                />
-              </WallpaperShelf>
-
-              <WallpaperShelf heading="Gradients" label="Gradients">
-                {(Object.keys(gradients) as (keyof typeof gradients)[]).map(
-                  (id) => (
-                    <StillTile
-                      key={id}
-                      label={titleCase(id)}
-                      pressed={
-                        b.wallpaper.kind === "gradient" &&
-                        b.wallpaper.preset === id
-                      }
-                      paint={gradients[id]}
-                      onSelect={() => selectGradient(id)}
-                    />
-                  ),
-                )}
-              </WallpaperShelf>
-
-              <WallpaperShelf heading="Videos" label="Videos">
-                <UploadTile
-                  label="Upload video"
-                  accept="video/webm,video/mp4"
-                  onFile={(f) => void upload(f)}
-                />
-                {videoLibrary.map((ref) => (
-                  <MediaTile
-                    key={`v-${mediaSrc(ref)}`}
-                    label={mediaLabel(ref, "video")}
-                    pressed={isActiveVideo(ref)}
-                    src={mediaSrc(ref)}
-                    kind="video"
-                    onSelect={() => selectMedia(ref, "video")}
-                    onRemove={() => requestRemoveLibraryRef(ref)}
-                  />
-                ))}
-              </WallpaperShelf>
-              <Text as="p" variant="support" className="background-library-note">
-                Upload a muted loop to use as an animated wallpaper.
-              </Text>
-            </div>
-          </ScrollArea>
-          <div className="background-library-actions">
-            <Text as="p" variant="support" className="background-library-actions-note">
-              Confirms this wallpaper in the Settings draft. Use Apply to save.
-            </Text>
-            <div className="ui-actions">
-              <Button type="button" variant="primary" onClick={commitChooser}>
-                Use wallpaper
-              </Button>
-            </div>
+          <div ref={bodyScrollRef} className="background-library-scroll-host">
+            <ScrollArea
+              className="background-library-body-scroll"
+              type="auto"
+              aria-label={chooserView === "browse" ? "Wallpapers" : categoryTitle}
+            >
+              {chooserView === "browse" ? renderBrowse() : renderCategoryGrid()}
+            </ScrollArea>
           </div>
         </Modal>
       )}

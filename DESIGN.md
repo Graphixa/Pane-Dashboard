@@ -211,6 +211,24 @@ interaction/accessibility tests, then migrate its consumers.
 8. Tailwind is not required. Introducing it must preserve these semantic roles,
    palette resolution and components; arbitrary utilities must not bypass the system.
 
+## Choose wallpaper sheet
+
+The Background **Choose wallpaper** bottom sheet is a production layout on the shared
+`Modal` (nested, `backdrop="none"`, `footer` for the fixed action row). Browse order:
+compact Colours swatches → optional Recently used carousel → category cards (three
+columns at ~720 px, two then one as the viewport narrows). Category covers use a fixed
+gallery tint (~64% neutral dark in Midnight / light in Daylight) over a representative
+image or paint — not the user’s Theme overlay or creative Tint. Inside a category, the
+same dialog shows a caption-free 16:9 thumbnail grid; `onBack` plus trailing Close keep
+navigation in one layer. Wallpaper tiles mark selection with accent border and a
+top-left checkmark; keyboard focus uses a separate ring; live (video) tiles show a
+compact bottom-right “Live” badge with a play mark on a still poster (or first-frame
+still when no poster). Hover or keyboard focus plays the muted loop in the thumb;
+leave/blur returns to the still; `prefers-reduced-motion` keeps the still only (no
+load-time autoplay). Category grids list static wallpapers before live ones. Prefer
+the Component Reference Modal example with `onBack` / `headerActions` when extending
+this pattern.
+
 ## Verification and adoption
 
 Run `npm ci && npm test && npm run build` in `web`, then `go test ./... && go vet ./...`

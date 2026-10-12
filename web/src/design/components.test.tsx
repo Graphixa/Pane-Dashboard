@@ -183,6 +183,22 @@ it("uses a three-region sheet layout when Modal provides footer", () => {
   expect(dialog.querySelector(".ui-dialog-body .ui-settings-group-compact")).toBeTruthy();
 });
 
+it("shows Back and Close together when onBack is set", () => {
+  const close = vi.fn();
+  const back = vi.fn();
+  render(
+    <Modal title="Nature" close={close} onBack={back} headerActions={<Button>Add media</Button>}>
+      Grid
+    </Modal>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  expect(back).toHaveBeenCalled();
+  expect(close).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Add media" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(close).toHaveBeenCalled();
+});
+
 it("renders Notice banners with alert semantics for errors", () => {
   render(<Notice tone="error" banner><span>Save failed</span><div className="ui-actions"><Button>Retry</Button></div></Notice>);
   expect(screen.getByRole("alert").textContent).toContain("Save failed");

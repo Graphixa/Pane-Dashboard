@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Config, validate } from "./model";
-export function useConfig() {
+
+export function useConfig(options?: {
+  /** Fires after a successful revision-protected PUT (not on load). */
+  onSaved?: (config: Config) => void;
+}) {
   const [config, setConfig] = useState<Config | null>(null),
     [status, setStatus] = useState("Loading"),
     [error, setError] = useState("");
@@ -11,6 +15,9 @@ export function useConfig() {
     blocked = useRef(false),
     timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined),
     alive = useRef(true);
+  const onSavedRef = useRef(options?.onSaved);
+  onSavedRef.current = options?.onSaved;
+
   const save = useCallback(async () => {
     if (
       busy.current ||
@@ -21,6 +28,7 @@ export function useConfig() {
       return;
     busy.current = true;
     const body = JSON.stringify(current.current);
+    const snapshot = current.current;
     setStatus("Saving");
     try {
       const res = await fetch("/api/config", {
@@ -39,6 +47,7 @@ export function useConfig() {
       saved.current = body;
       setStatus("Saved");
       setError("");
+      onSavedRef.current?.(snapshot);
     } catch (e) {
       setStatus(blocked.current ? "Conflict" : "Not saved");
       setError(String((e as Error).message));
