@@ -17,7 +17,7 @@ export type WallpaperCatalogueCategory = {
 };
 export const wallpaperCatalogueCategories: WallpaperCatalogueCategory[] = [
   {
-    "id": "built-in",
+    "id": "static",
     "name": "Wallpapers",
     "coverId": "mountains-night@v1",
     "itemIds": [
@@ -34,18 +34,142 @@ export const wallpaperCatalogueCategories: WallpaperCatalogueCategory[] = [
   {
     "id": "live",
     "name": "Live",
-    "coverId": "bokeh-live@v1",
+    "coverId": "neon-wave@v1",
     "itemIds": [
-      "aurora-live@v1",
-      "bokeh-live@v1",
-      "cherry-blossom-live@v1",
-      "fractal-smoke-live@v1",
-      "ocean-sunset-live@v1",
-      "rising-tides@v1"
+      "aurora@v1",
+      "bokeh@v1",
+      "cosmic-nebula@v1",
+      "deep-space@v1",
+      "dust@v1",
+      "fractal-smoke@v1",
+      "neon-wave@v1",
+      "ocean-breeze@v1",
+      "ocean-sunset@v1",
+      "on-the-grid@v1",
+      "particle-wave@v1",
+      "sakura-tree-live@v1",
+      "synthwave@v1"
     ]
   }
 ];
 export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
+  "aurora@v1": {
+    "id": "aurora@v1",
+    "kind": "video",
+    "title": "Aurora",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "bokeh@v1": {
+    "id": "bokeh@v1",
+    "kind": "video",
+    "title": "Bokeh",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "cosmic-nebula@v1": {
+    "id": "cosmic-nebula@v1",
+    "kind": "video",
+    "title": "Cosmic Nebula",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "deep-space@v1": {
+    "id": "deep-space@v1",
+    "kind": "video",
+    "title": "Deep Space",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "dust@v1": {
+    "id": "dust@v1",
+    "kind": "video",
+    "title": "Dust",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "fractal-smoke@v1": {
+    "id": "fractal-smoke@v1",
+    "kind": "video",
+    "title": "Fractal Smoke",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "neon-wave@v1": {
+    "id": "neon-wave@v1",
+    "kind": "video",
+    "title": "Neon Wave",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "ocean-breeze@v1": {
+    "id": "ocean-breeze@v1",
+    "kind": "video",
+    "title": "Ocean Breeze",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "ocean-sunset@v1": {
+    "id": "ocean-sunset@v1",
+    "kind": "video",
+    "title": "Ocean Sunset",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "on-the-grid@v1": {
+    "id": "on-the-grid@v1",
+    "kind": "video",
+    "title": "On The Grid",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "particle-wave@v1": {
+    "id": "particle-wave@v1",
+    "kind": "video",
+    "title": "Particle Wave",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "sakura-tree-live@v1": {
+    "id": "sakura-tree-live@v1",
+    "kind": "video",
+    "title": "Sakura Tree Live",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
+  "synthwave@v1": {
+    "id": "synthwave@v1",
+    "kind": "video",
+    "title": "Synthwave",
+    "mime": "video/mp4",
+    "width": 0,
+    "height": 0,
+    "categoryId": "live"
+  },
   "abstract-waves@v1": {
     "id": "abstract-waves@v1",
     "kind": "image",
@@ -53,7 +177,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "cosmos@v1": {
     "id": "cosmos@v1",
@@ -62,7 +186,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "dune@v1": {
     "id": "dune@v1",
@@ -71,7 +195,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "mountains-day@v1": {
     "id": "mountains-day@v1",
@@ -80,7 +204,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "mountains-night@v1": {
     "id": "mountains-night@v1",
@@ -89,7 +213,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "rainforest@v1": {
     "id": "rainforest@v1",
@@ -98,7 +222,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "skyline@v1": {
     "id": "skyline@v1",
@@ -107,7 +231,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
+    "categoryId": "static"
   },
   "vines@v1": {
     "id": "vines@v1",
@@ -116,61 +240,7 @@ export const wallpaperCatalogueItems: Record<string, WallpaperCatalogueItem> = {
     "mime": "image/jpeg",
     "width": 0,
     "height": 0,
-    "categoryId": "built-in"
-  },
-  "aurora-live@v1": {
-    "id": "aurora-live@v1",
-    "kind": "video",
-    "title": "Aurora Live",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
-  },
-  "bokeh-live@v1": {
-    "id": "bokeh-live@v1",
-    "kind": "video",
-    "title": "Bokeh Live",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
-  },
-  "cherry-blossom-live@v1": {
-    "id": "cherry-blossom-live@v1",
-    "kind": "video",
-    "title": "Cherry Blossom Live",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
-  },
-  "fractal-smoke-live@v1": {
-    "id": "fractal-smoke-live@v1",
-    "kind": "video",
-    "title": "Fractal Smoke Live",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
-  },
-  "ocean-sunset-live@v1": {
-    "id": "ocean-sunset-live@v1",
-    "kind": "video",
-    "title": "Ocean Sunset Live",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
-  },
-  "rising-tides@v1": {
-    "id": "rising-tides@v1",
-    "kind": "video",
-    "title": "Rising Tides",
-    "mime": "video/mp4",
-    "width": 0,
-    "height": 0,
-    "categoryId": "live"
+    "categoryId": "static"
   }
 };
 export function builtinMediaUrl(id: string): string {

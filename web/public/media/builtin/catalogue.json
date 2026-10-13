@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-12T15:59:56.001Z",
+  "generatedAt": "2026-10-13T14:05:42.295Z",
   "categories": [
     {
-      "id": "built-in",
+      "id": "static",
       "name": "Wallpapers",
       "order": 1,
       "coverId": "mountains-night@v1",
@@ -22,18 +22,194 @@
       "id": "live",
       "name": "Live",
       "order": 2,
-      "coverId": "bokeh-live@v1",
+      "coverId": "neon-wave@v1",
       "itemIds": [
-        "aurora-live@v1",
-        "bokeh-live@v1",
-        "cherry-blossom-live@v1",
-        "fractal-smoke-live@v1",
-        "ocean-sunset-live@v1",
-        "rising-tides@v1"
+        "aurora@v1",
+        "bokeh@v1",
+        "cosmic-nebula@v1",
+        "deep-space@v1",
+        "dust@v1",
+        "fractal-smoke@v1",
+        "neon-wave@v1",
+        "ocean-breeze@v1",
+        "ocean-sunset@v1",
+        "on-the-grid@v1",
+        "particle-wave@v1",
+        "sakura-tree-live@v1",
+        "synthwave@v1"
       ]
     }
   ],
   "items": [
+    {
+      "id": "aurora@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/aurora@v1",
+      "bytes": 6527729,
+      "width": 0,
+      "height": 0,
+      "title": "Aurora",
+      "hash": "6c6d95959e42b9c0f7c0f41bf6537bdaa28364b1b129e848c8f8036631109bea",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "bokeh@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/bokeh@v1",
+      "bytes": 14589669,
+      "width": 0,
+      "height": 0,
+      "title": "Bokeh",
+      "hash": "1bd40522a8d103a4f5d18e608b70ec50d9721a42c8462043eaf2c19accce97c6",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "cosmic-nebula@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/cosmic-nebula@v1",
+      "bytes": 2626204,
+      "width": 0,
+      "height": 0,
+      "title": "Cosmic Nebula",
+      "hash": "2ef8862c66c2332bcab128484a5eb0a803d91aa146c67531f568d65bb0a378e7",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "deep-space@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/deep-space@v1",
+      "bytes": 13143948,
+      "width": 0,
+      "height": 0,
+      "title": "Deep Space",
+      "hash": "f25b259bea834bf8e50e7479483c64e118124352321ead568fb95f603a36509d",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "dust@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/dust@v1",
+      "bytes": 7694959,
+      "width": 0,
+      "height": 0,
+      "title": "Dust",
+      "hash": "e0588c638e2b899cbefe694ef1d50ce4d9c777aea231aa4ddc499fd6b6f1b29e",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "fractal-smoke@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/fractal-smoke@v1",
+      "bytes": 14355416,
+      "width": 0,
+      "height": 0,
+      "title": "Fractal Smoke",
+      "hash": "c5a325ebd66d499bfafa3ff9f460a849c6708c562bbb092990627ccf3c9de70d",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "neon-wave@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/neon-wave@v1",
+      "bytes": 21415203,
+      "width": 0,
+      "height": 0,
+      "title": "Neon Wave",
+      "hash": "f7bebfc60cc8d422b7d38e02fe337b8ec46dcc64e175693c43d5747ae2375807",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "ocean-breeze@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/ocean-breeze@v1",
+      "bytes": 6444660,
+      "width": 0,
+      "height": 0,
+      "title": "Ocean Breeze",
+      "hash": "2489385aee587d65f70dc81dbab1a77256496d23a602d18bbc3fec59e6a38e73",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "ocean-sunset@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/ocean-sunset@v1",
+      "bytes": 3548068,
+      "width": 0,
+      "height": 0,
+      "title": "Ocean Sunset",
+      "hash": "0ed1d8e7aaaa68caaa2bfab205e1e67e4e436c03a5c750f59ede53c3fcb048ee",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "on-the-grid@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/on-the-grid@v1",
+      "bytes": 10313408,
+      "width": 0,
+      "height": 0,
+      "title": "On The Grid",
+      "hash": "68368d6f7a20717d942873329756e6cfbd30980db7ff34537de572fa779a77b6",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "particle-wave@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/particle-wave@v1",
+      "bytes": 17359621,
+      "width": 0,
+      "height": 0,
+      "title": "Particle Wave",
+      "hash": "e10bbbbcb7ddd492b96c8339bdfb74331144a5b2c18d7a09375bb5411404ac01",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "sakura-tree-live@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/sakura-tree-live@v1",
+      "bytes": 6587835,
+      "width": 0,
+      "height": 0,
+      "title": "Sakura Tree Live",
+      "hash": "560b6ec2b08caf65bf939aab0491c322a4bac318f63b13e6dfd36a53bf9654f0",
+      "categoryId": "live",
+      "selectable": true
+    },
+    {
+      "id": "synthwave@v1",
+      "kind": "video",
+      "mime": "video/mp4",
+      "file": "media/synthwave@v1",
+      "bytes": 8103673,
+      "width": 0,
+      "height": 0,
+      "title": "Synthwave",
+      "hash": "7d123b0ed5ca70103a0de8a279ce4684f7b3bf28c9cd2a2c43903140add89503",
+      "categoryId": "live",
+      "selectable": true
+    },
     {
       "id": "abstract-waves@v1",
       "kind": "image",
@@ -44,7 +220,7 @@
       "height": 0,
       "title": "Abstract Waves",
       "hash": "e35efa69eaa0ece03e7c984dad6ca79476d8d7e1f80be8fc771a3c6498f47dca",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -57,7 +233,7 @@
       "height": 0,
       "title": "Cosmos",
       "hash": "a99b31c9214d4a5bff0c613ea63990e5204dc4d5362de5f256af3090d9a08daa",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -70,7 +246,7 @@
       "height": 0,
       "title": "Dune",
       "hash": "0cfdbb402384a5689e4d389b122b73a3ecc2591594a7788c648cb1bb2eb0efd6",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -83,7 +259,7 @@
       "height": 0,
       "title": "Mountains Day",
       "hash": "ba02bb927bcb32948151a6beb16f5b27233a07da8bfd1f023ea2dc17472a1e31",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -96,7 +272,7 @@
       "height": 0,
       "title": "Mountains Night",
       "hash": "0b094167167e3c23aad28c6d159a566024a462d554d81de0a3885bdc146379b8",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -109,7 +285,7 @@
       "height": 0,
       "title": "Rainforest",
       "hash": "dcb0d76bc45a36ce0f8544dfb2579873bcc2e699f1018e169576a2e94869b338",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -122,7 +298,7 @@
       "height": 0,
       "title": "Skyline",
       "hash": "fc8095be1b9d23738547a0646f3380c9d55764fa39affdac80bf1e9a12019f63",
-      "categoryId": "built-in",
+      "categoryId": "static",
       "selectable": true
     },
     {
@@ -135,85 +311,7 @@
       "height": 0,
       "title": "Vines",
       "hash": "db46ad680392abbb146c37ab5eb5360b1cb5c5d0b1f59cf98908e436d8a9c425",
-      "categoryId": "built-in",
-      "selectable": true
-    },
-    {
-      "id": "aurora-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/aurora-live@v1",
-      "bytes": 25034075,
-      "width": 0,
-      "height": 0,
-      "title": "Aurora Live",
-      "hash": "84f0db1681ae52df8878efe82aeefff2ecab0cd25d145c3d48942392c1814d12",
-      "categoryId": "live",
-      "selectable": true
-    },
-    {
-      "id": "bokeh-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/bokeh-live@v1",
-      "bytes": 42586711,
-      "width": 0,
-      "height": 0,
-      "title": "Bokeh Live",
-      "hash": "e24d8f86b949a9a06ec2aaf11a1b4910384c716f057c50b9a36c13f287b36a74",
-      "categoryId": "live",
-      "selectable": true
-    },
-    {
-      "id": "cherry-blossom-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/cherry-blossom-live@v1",
-      "bytes": 21441337,
-      "width": 0,
-      "height": 0,
-      "title": "Cherry Blossom Live",
-      "hash": "53c440b348ddf8ec0449cf36b642dccc4053c5cb4dffcfd4c263d74446c3a592",
-      "categoryId": "live",
-      "selectable": true
-    },
-    {
-      "id": "fractal-smoke-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/fractal-smoke-live@v1",
-      "bytes": 14355416,
-      "width": 0,
-      "height": 0,
-      "title": "Fractal Smoke Live",
-      "hash": "c5a325ebd66d499bfafa3ff9f460a849c6708c562bbb092990627ccf3c9de70d",
-      "categoryId": "live",
-      "selectable": true
-    },
-    {
-      "id": "ocean-sunset-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/ocean-sunset-live@v1",
-      "bytes": 28404734,
-      "width": 0,
-      "height": 0,
-      "title": "Ocean Sunset Live",
-      "hash": "a8a45784d44bebd39dd39d2e2a3b9f2779a904cd90f6fd774e3b1e476d1326fd",
-      "categoryId": "live",
-      "selectable": true
-    },
-    {
-      "id": "rising-tides@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/rising-tides@v1",
-      "bytes": 37112597,
-      "width": 0,
-      "height": 0,
-      "title": "Rising Tides",
-      "hash": "a5dd80b4b704b3e571d845038ea78ecdfc146d3502d32103f21ad4202e3ef42d",
-      "categoryId": "live",
+      "categoryId": "static",
       "selectable": true
     }
   ]
