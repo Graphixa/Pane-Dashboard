@@ -19,13 +19,13 @@ export function useConfig(options?: {
   onSavedRef.current = options?.onSaved;
 
   const save = useCallback(async () => {
-    if (
-      busy.current ||
-      blocked.current ||
-      !current.current ||
-      JSON.stringify(current.current) === saved.current
-    )
+    if (busy.current || blocked.current || !current.current) return;
+    // No-op PUT: still notify so Settings Apply can flush Recently used when
+    // the draft already matched the saved config.
+    if (JSON.stringify(current.current) === saved.current) {
+      onSavedRef.current?.(current.current);
       return;
+    }
     busy.current = true;
     const body = JSON.stringify(current.current);
     const snapshot = current.current;

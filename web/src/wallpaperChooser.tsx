@@ -16,6 +16,7 @@ import {
   useDeferredColour,
 } from "./design/components";
 import { solidBackgroundPaint } from "./appearance";
+import { useVideoStill } from "./videoStillCache";
 
 export type MediaKind = "image" | "video";
 
@@ -154,11 +155,6 @@ let activeThumbVideo: HTMLVideoElement | null = null;
 function releaseThumbVideo(el: HTMLVideoElement | null) {
   if (!el) return;
   el.pause();
-  try {
-    el.currentTime = 0;
-  } catch {
-    /* seek may fail before ready */
-  }
   if (activeThumbVideo === el) activeThumbVideo = null;
 }
 
@@ -171,34 +167,77 @@ function claimThumbVideo(el: HTMLVideoElement) {
   const play = el.play();
   if (play && typeof play.catch === "function") {
     play.catch(() => {
-      /* autoplay policy / decode — stay on still */
+      /* stay on paused frame */
     });
   }
 }
 
-function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(false);
+export function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(() => {
+    if (typeof window.matchMedia !== "function") return false;
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  });
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setReduced(mq.matches);
-    sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
   return reduced;
 }
 
-function LiveThumbVideo({
+/** Linger before mounting a hover preview so scrubbing stays cheap. */
+export const LIVE_HOVER_PREVIEW_MS = 180;
+
+/** Arm live preview: focus immediate; hover waits `LIVE_HOVER_PREVIEW_MS`. */
+export function useLiveThumbArm({
+  hover,
+  focus,
+  enabled,
+}: {
+  hover: boolean;
+  focus: boolean;
+  enabled: boolean;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!enabled || !(hover || focus)) {
+      setArmed(false);
+      return;
+    }
+    if (focus) {
+      setArmed(true);
+      return;
+    }
+    const timer = window.setTimeout(() => setArmed(true), LIVE_HOVER_PREVIEW_MS);
+    return () => window.clearTimeout(timer);
+  }, [hover, focus, enabled]);
+  return armed;
+}
+
+/**
+ * Still while idle; `<video>` only when `active`. Thumb stays until playing
+ * so the first video paint is never black. Shared by chooser tiles, Recently
+ * used, and the Background Current preview.
+ */
+export function LiveThumbVideo({
   videoSrc,
-  poster,
+  thumbSrc,
   active,
 }: {
   videoSrc: string;
-  poster?: string;
+  thumbSrc?: string;
   active: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const captured = useVideoStill(thumbSrc ? undefined : videoSrc);
+  const still = thumbSrc ?? captured;
+
+  useEffect(() => {
+    if (!active) setVideoReady(false);
+  }, [active]);
 
   useEffect(() => {
     const v = ref.current;
@@ -208,31 +247,41 @@ function LiveThumbVideo({
     return () => releaseThumbVideo(v);
   }, [active, videoSrc]);
 
+  const showThumb = Boolean(still) && !(active && videoReady);
+
   return (
-    <video
-      ref={ref}
-      className="wallpaper-tile-video"
-      src={videoSrc}
-      poster={poster}
-      muted
-      playsInline
-      loop
-      preload="metadata"
+    <>
+      {showThumb || !active ? <TileStill src={showThumb ? still : undefined} /> : null}
+      {active ? (
+        <video
+          ref={ref}
+          className="wallpaper-tile-video"
+          src={videoSrc}
+          muted
+          playsInline
+          loop
+          preload="auto"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPlaying={() => setVideoReady(true)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function TileStill({ src }: { src?: string }) {
+  if (!src) {
+    return <span className="wallpaper-tile-paint" aria-hidden="true" />;
+  }
+  return (
+    <img
+      className="wallpaper-tile-paint wallpaper-tile-image"
+      src={src}
+      alt=""
+      loading="eager"
+      draggable={false}
       aria-hidden="true"
-      tabIndex={-1}
-      onLoadedData={(event) => {
-        const v = event.currentTarget;
-        if (active) return;
-        // Nudge past 0 so browsers paint a decodeable still when no poster exists.
-        if (!poster) {
-          try {
-            if (v.currentTime < 0.05) v.currentTime = 0.05;
-          } catch {
-            /* ignore */
-          }
-        }
-        v.pause();
-      }}
     />
   );
 }
@@ -251,9 +300,9 @@ export function WallpaperTile({
   pressed: boolean;
   kind?: MediaKind;
   paint?: string;
-  /** Still image URL (photo tile, or live poster when available). */
+  /** Still / thumb image URL (photos, or live catalogue thumb). */
   src?: string;
-  /** Video file URL for live tiles (hover/focus preview). */
+  /** Video file URL for live tiles (loads on hover/focus when a thumb exists). */
   videoSrc?: string;
   onSelect: () => void;
   onRemove?: () => void;
@@ -263,8 +312,11 @@ export function WallpaperTile({
   const [hover, setHover] = useState(false);
   const [focus, setFocus] = useState(false);
   const tileId = useId();
-  const playPreview =
-    live && Boolean(videoSrc) && !reducedMotion && (hover || focus);
+  const playPreview = useLiveThumbArm({
+    hover,
+    focus,
+    enabled: live && Boolean(videoSrc) && !reducedMotion,
+  });
   const a11y = `${label}${live ? ", live wallpaper" : ""}`;
 
   return (
@@ -291,14 +343,11 @@ export function WallpaperTile({
           ) : live && videoSrc ? (
             <LiveThumbVideo
               videoSrc={videoSrc}
-              poster={src}
+              thumbSrc={src}
               active={playPreview}
             />
           ) : (
-            <span
-              className="wallpaper-tile-paint wallpaper-tile-image"
-              style={src ? { backgroundImage: `url(${src})` } : undefined}
-            />
+            <TileStill src={src} />
           )}
         </div>
         {live ? (
@@ -356,7 +405,7 @@ export function WallpaperCategoryCard({
       onClick={onSelect}
     >
       <span
-        className={`wallpaper-category-cover${empty && !paint ? " wallpaper-category-cover-empty" : ""}`}
+        className={`wallpaper-category-cover${empty && !paint && !coverSrc ? " wallpaper-category-cover-empty" : ""}`}
         style={
           paint
             ? { background: paint }

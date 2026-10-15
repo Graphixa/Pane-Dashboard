@@ -416,11 +416,26 @@
   min-width: 0;
 }
 .ui-aspect-ratio.background-current-frame {
+  position: relative;
   width: 100%;
   border-radius: var(--radius-surface);
   border: var(--border-width) solid var(--line);
   background: var(--bg);
   overflow: hidden;
+}
+/* Live Current preview reuses chooser LiveThumbVideo stacking. */
+.background-current-frame > .wallpaper-tile-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.background-current-preview:focus {
+  outline: none;
+}
+.background-current-preview:focus-visible .background-current-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
 }
 .background-current-meta {
   display: flex;
@@ -488,6 +503,13 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+img.background-current-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
 }
 .background-motion-tip {
   display: inline-flex;
@@ -1118,6 +1140,7 @@
   inset: 0;
   background-size: cover;
   background-position: center;
+  overflow: hidden;
 }
 .wallpaper-category-cover-empty {
   background: color-mix(in srgb, var(--panel-high) 80%, var(--line));
@@ -1188,15 +1211,28 @@
 .wallpaper-tile-image {
   background-size: cover;
   background-position: center;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+}
+img.wallpaper-tile-image {
+  display: block;
 }
 .wallpaper-tile-video {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center;
   pointer-events: none;
-  background: color-mix(in srgb, var(--bg) 70%, #000 30%);
+  background: transparent;
+}
+.wallpaper-tile-frame > .wallpaper-tile-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 .wallpaper-tile-selected .wallpaper-tile-frame,
 .wallpaper-tile[aria-pressed="true"] .wallpaper-tile-frame {

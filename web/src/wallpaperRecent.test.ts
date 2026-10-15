@@ -4,6 +4,7 @@ import {
   RECENT_WALLPAPER_KEY,
   flushPendingRecentWallpaper,
   loadRecentWallpapers,
+  pruneRecentMediaRef,
   queueRecentWallpaperOnSave,
   recordRecentWallpaper,
   wallpaperIdentityKey,
@@ -46,5 +47,27 @@ describe("wallpaperRecent", () => {
         position: "center",
       }),
     ).toBe("image:builtin:forest@v1");
+  });
+
+  it("prunes asset entries and hides them when absent from the library", () => {
+    const asset = { source: "asset" as const, assetId: "hulk1" };
+    recordRecentWallpaper({
+      kind: "image",
+      media: asset,
+      position: "center",
+    });
+    recordRecentWallpaper({ kind: "gradient", preset: "ocean" });
+    expect(loadRecentWallpapers()).toHaveLength(2);
+    expect(loadRecentWallpapers([])).toHaveLength(1);
+    expect(loadRecentWallpapers([])[0]?.key).toBe("gradient:ocean");
+    expect(loadRecentWallpapers([asset]).map((e) => e.key)).toEqual([
+      "gradient:ocean",
+      "image:asset:hulk1",
+    ]);
+
+    pruneRecentMediaRef(asset);
+    expect(loadRecentWallpapers([asset]).map((e) => e.key)).toEqual([
+      "gradient:ocean",
+    ]);
   });
 });

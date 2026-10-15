@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
 import { Config } from "./model";
+import { LIVE_HOVER_PREVIEW_MS } from "./wallpaperChooser";
+import { RECENT_WALLPAPER_KEY, recordRecentWallpaper } from "./wallpaperRecent";
+import { clearVideoStillCache } from "./videoStillCache";
 const config = (): Config => ({
   version: 3,
   dashboard: { title: "Akira", widthMode: "fixed", width: 960 },
@@ -26,16 +29,19 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  clearVideoStillCache();
+  localStorage.removeItem(RECENT_WALLPAPER_KEY);
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
-const setup = () => {
+const setup = (cfg: Config = config()) => {
   const apply = vi.fn(),
     close = vi.fn(),
     imported = vi.fn(),
     preview = vi.fn();
   const result = render(
     <Settings
-      config={config()}
+      config={cfg}
       apply={apply}
       close={close}
       imported={imported}
@@ -172,7 +178,8 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("heading", { name: "Categories" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "My media" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Gradients" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Nature" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Wallpapers" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Live" })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Videos" })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
     expect(screen.getByRole("button", { name: "Add media" })).toBeTruthy();
@@ -365,6 +372,96 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
   });
+  it("Current band live preview stays still until hover linger", async () => {
+    vi.useFakeTimers();
+    const play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.play = play;
+    HTMLMediaElement.prototype.pause = vi.fn();
+    const cfg = config();
+    cfg.appearance.background = {
+      wallpaper: {
+        kind: "video",
+        media: { source: "builtin", builtinId: "aurora@v1" },
+        position: "center",
+        playback: "loop",
+      },
+      library: [],
+      photoMotion: { style: "none", intensity: 40 },
+      themeOverlayOpacity: 25,
+    };
+    setup(cfg);
+    page("Background");
+    const preview = screen.getByLabelText("Aurora, live wallpaper preview");
+    expect(preview.querySelector("video")).toBeNull();
+    expect(
+      preview.querySelector("img.wallpaper-tile-image")?.getAttribute("src"),
+    ).toMatch(/aurora-thumb/);
+    fireEvent.mouseEnter(preview);
+    expect(preview.querySelector("video")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_HOVER_PREVIEW_MS);
+    });
+    expect(preview.querySelector("video.wallpaper-tile-video")).toBeTruthy();
+    expect(play).toHaveBeenCalled();
+    expect(preview.querySelector("img.wallpaper-tile-image")).toBeTruthy();
+  });
+
+  it("Recently used live tiles stay still until hover linger", async () => {
+    vi.useFakeTimers();
+    const play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.play = play;
+    HTMLMediaElement.prototype.pause = vi.fn();
+    recordRecentWallpaper({
+      kind: "video",
+      media: { source: "builtin", builtinId: "neon-wave@v1" },
+      position: "center",
+      playback: "loop",
+    });
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const tile = screen.getByRole("button", {
+      name: /Neon Wave, live wallpaper/,
+    });
+    const wrap = tile.closest(".wallpaper-tile-wrap")!;
+    expect(wrap.querySelector("video")).toBeNull();
+    fireEvent.mouseEnter(wrap);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_HOVER_PREVIEW_MS);
+    });
+    expect(wrap.querySelector("video.wallpaper-tile-video")).toBeTruthy();
+    expect(play).toHaveBeenCalled();
+  });
+
+  it("removing an upload drops it from My media and Recently used", async () => {
+    const asset = { source: "asset" as const, assetId: "upload-hulk" };
+    const cfg = config();
+    cfg.appearance.background = {
+      wallpaper: { kind: "image", media: asset, position: "center" },
+      library: [asset],
+      photoMotion: { style: "none", intensity: 40 },
+      themeOverlayOpacity: 25,
+    };
+    recordRecentWallpaper({
+      kind: "image",
+      media: asset,
+      position: "center",
+    });
+    setup(cfg);
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    expect(within(chooser).getByRole("heading", { name: "Recently used" })).toBeTruthy();
+    fireEvent.click(within(chooser).getByRole("button", { name: "My media" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Photo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Remove Photo" })).toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.queryByRole("heading", { name: "Recently used" })).toBeNull();
+  });
+
   it("shows oversized wallpaper upload errors inline in Choose wallpaper, not as a nested alert", async () => {
     setup();
     page("Background");

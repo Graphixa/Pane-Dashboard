@@ -55,9 +55,10 @@ wallpapers/
 
 - Each supported folder becomes one category; My media and Gradients are virtual (not folders).
 - Item IDs are stable `name@vN` (default `v1`); optional `category.json` cover/titles/order; folder placeholders humanise when metadata is absent.
-- Empty bundled folders are omitted from the catalogue (hidden in the chooser). Poster sidecars (`*.poster.png`) are served but not selectable wallpapers.
+- Empty bundled folders are omitted from the catalogue (hidden in the chooser). Catalogue generation requires ffmpeg and writes tiny WebP thumbs (`*-thumb@vN`) beside each item for chooser stills/covers.
 - Nested folders and unsupported extensions fail the generator. Duplicate IDs fail the generator.
-- Thumbnails/posters load for browsing; selecting a video loads bytes on demand via the built-in URL.
+- Chooser live tiles, Recently used live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a session still on first view (cached for the page lifetime). Dashboard video does not treat autoplay rejection as a hard failure.
+- Versioned builtin IDs (`name@vN`) and committed asset IDs are content-addressed: `GET /media/builtin/{id}` and `GET /media/assets/{id}` send `Cache-Control: public, max-age=31536000, immutable`. Staging (`/media/staging/`) stays `private, no-store`. Vite dev proxies `/media` to the Go server so those headers apply in local browse.
 
 ## Composition object (`appearance.background`)
 
@@ -141,6 +142,13 @@ Uploaded header artwork uses the same media store. `dashboard.logo` is either em
 | Archive decompressed | 600 MiB / 64 media files |
 
 Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated WebP, SVG/HTML, remote video, or transcoding.
+
+## Library remove and Recently used
+
+- Trash in My media updates the **draft** library only (no `DELETE /api/media`). Disk GC runs on successful config PUT for assets no longer referenced by wallpaper, library or logo.
+- Removing an upload also prunes that asset from the client Recently used store. Recently used upload tiles are hidden unless the asset remains in the current library.
+- Recently used is written only after a successful Settings Apply persistence (not on Use wallpaper).
+- Opening Choose wallpaper probes `/api/media/meta/{id}` for library assets and drops missing files from the draft library/recent list so Apply cannot fail with `missing media asset` for ghost refs.
 
 ## Dependencies
 

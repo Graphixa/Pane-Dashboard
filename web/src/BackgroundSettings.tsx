@@ -41,24 +41,44 @@ import {
 import { getEffectPack } from "./effects/registry";
 import {
   builtinMediaUrl,
-  builtinPosterUrl,
+  builtinThumbUrl,
   wallpaperCatalogueCategories,
   wallpaperCatalogueItems,
 } from "./generated/wallpaperCatalogue";
 import {
   loadRecentWallpapers,
+  pruneRecentMediaRef,
   wallpaperMatches,
   type RecentWallpaperEntry,
 } from "./wallpaperRecent";
 import {
+  LiveThumbVideo,
   WallpaperCategoryCard,
   WallpaperColourChip,
   WallpaperCustomColour,
   WallpaperSection,
   WallpaperTile,
   sortStaticBeforeLive,
+  useLiveThumbArm,
+  usePrefersReducedMotion,
   type MediaKind,
 } from "./wallpaperChooser";
+
+/** Catalogue thumb or photo URL for Current / Recently used stills. */
+function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
+  if (wallpaper.kind === "image") {
+    if (wallpaper.media.source === "builtin") {
+      const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
+      return item ? builtinThumbUrl(item) : mediaSrc(wallpaper.media);
+    }
+    return mediaSrc(wallpaper.media);
+  }
+  if (wallpaper.kind === "video" && wallpaper.media.source === "builtin") {
+    const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
+    return item ? builtinThumbUrl(item) : undefined;
+  }
+  return undefined;
+}
 
 function assetIdFromRef(ref: MediaRef): string | null {
   return ref.source === "asset" ? ref.assetId : null;
@@ -195,8 +215,60 @@ function assetRefFromPath(path: string): MediaRef | null {
   return m ? { source: "asset", assetId: m[1] } : null;
 }
 
-function StillPreview({ b }: { b: Background }) {
+/** Current-band live preview: same still-first hover/focus arming as chooser tiles. */
+function CurrentLivePreview({
+  videoSrc,
+  thumbSrc,
+  label,
+}: {
+  videoSrc: string;
+  thumbSrc?: string;
+  label: string;
+}) {
+  const reducedMotion = usePrefersReducedMotion();
+  const [hover, setHover] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const active = useLiveThumbArm({
+    hover,
+    focus,
+    enabled: !reducedMotion,
+  });
+  return (
+    <div
+      className="background-current-preview"
+      tabIndex={0}
+      aria-label={`${label}, live wallpaper preview`}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setFocus(true)}
+      onBlur={() => setFocus(false)}
+    >
+      <div className="ui-aspect-ratio background-current-frame">
+        <LiveThumbVideo
+          videoSrc={videoSrc}
+          thumbSrc={thumbSrc}
+          active={active}
+        />
+      </div>
+    </div>
+  );
+}
+
+function StillPreview({ b, label }: { b: Background; label: string }) {
   const w = b.wallpaper;
+  if (w.kind === "video") {
+    const item =
+      w.media.source === "builtin"
+        ? wallpaperCatalogueItems[w.media.builtinId]
+        : undefined;
+    return (
+      <CurrentLivePreview
+        videoSrc={mediaSrc(w.media)}
+        thumbSrc={item ? builtinThumbUrl(item) : undefined}
+        label={label}
+      />
+    );
+  }
   let paint: ReactNode;
   if (w.kind === "none") {
     paint = <span className="background-swatch-paint" style={{ background: "var(--bg)" }} />;
@@ -214,25 +286,19 @@ function StillPreview({ b }: { b: Background }) {
         style={{ background: gradients[w.preset] }}
       />
     );
-  } else if (w.kind === "video") {
-    paint = (
-      <video
-        className="background-swatch-paint background-swatch-video"
-        src={mediaSrc(w.media)}
-        muted
-        playsInline
-        preload="metadata"
-        aria-hidden="true"
-      />
-    );
   } else {
+    const still = wallpaperStillUrl(w) ?? mediaSrc(w.media);
     paint = (
-      <span
-        className="background-swatch-paint background-current-image"
-        style={{
-          backgroundImage: `url(${mediaSrc(w.media)})`,
-          backgroundPosition: w.position,
-        }}
+      <img
+        className="wallpaper-tile-paint wallpaper-tile-image background-current-image"
+        src={still}
+        alt=""
+        loading="eager"
+        fetchPriority="high"
+        decoding="sync"
+        draggable={false}
+        aria-hidden="true"
+        style={{ objectPosition: w.position }}
       />
     );
   }
@@ -299,19 +365,67 @@ export default function BackgroundSettings({
   useEffect(() => {
     if (b.tint) lastTint.current = b.tint;
   }, [b.tint]);
+
   useEffect(() => {
     onPreviewAdjust?.(chooserOpen || motionOpen || effectOpen || tintOpen);
     return () => onPreviewAdjust?.(false);
   }, [chooserOpen, motionOpen, effectOpen, tintOpen, onPreviewAdjust]);
+
+  const refreshRecent = (library = b.library) => {
+    setRecent(loadRecentWallpapers(library));
+  };
+
+  /** Drop library/recent entries whose asset files are gone (avoids “missing media asset” on Apply). */
+  const scrubMissingAssets = async (library: MediaRef[], wallpaper: Wallpaper) => {
+    const assets = library.filter((ref) => ref.source === "asset");
+    if (!assets.length) return;
+    const gone: MediaRef[] = [];
+    await Promise.all(
+      assets.map(async (ref) => {
+        try {
+          const res = await fetch(`/api/media/meta/${encodeURIComponent(ref.assetId)}`);
+          if (res.status === 404) gone.push(ref);
+        } catch {
+          /* offline — leave entry; Apply will surface the error */
+        }
+      }),
+    );
+    if (!gone.length) return;
+    for (const ref of gone) pruneRecentMediaRef(ref);
+    const nextLibrary = library.filter(
+      (ref) => !gone.some((g) => mediaRefEqual(g, ref)),
+    );
+    const activeGone =
+      (wallpaper.kind === "image" || wallpaper.kind === "video") &&
+      wallpaper.media.source === "asset" &&
+      gone.some((g) => mediaRefEqual(g, wallpaper.media));
+    const nextWallpaper: Wallpaper = activeGone ? { kind: "none" } : wallpaper;
+    background({ library: nextLibrary, wallpaper: nextWallpaper });
+    // Keep discard snapshot aligned so Cancel does not restore ghost refs.
+    if (snapshot.current) {
+      snapshot.current = {
+        ...snapshot.current,
+        library: nextLibrary,
+        wallpaper: nextWallpaper,
+      };
+    }
+    setRecent(loadRecentWallpapers(nextLibrary));
+    setSheetError(
+      activeGone
+        ? "The current wallpaper file is missing. It was cleared from My media — choose another, then Apply."
+        : "Some uploads are no longer on disk and were removed from My media.",
+    );
+  };
 
   const openChooser = () => {
     snapshot.current = structuredClone(b);
     setSheetError("");
     setPendingRemove(null);
     setChooserView("browse");
-    setRecent(loadRecentWallpapers());
+    refreshRecent();
     browseScroll.current = 0;
     setChooserOpen(true);
+    void scrubMissingAssets(b.library, b.wallpaper);
   };
 
   const finishDiscard = () => {
@@ -362,24 +476,16 @@ export default function BackgroundSettings({
     setWallpaper({ kind: "gradient", preset });
   };
   const selectMedia = (ref: MediaRef, kind: "image" | "video") => {
-    const known = b.library.some((entry) => mediaRefEqual(entry, ref));
-    let library = b.library;
-    if (!known && ref.source === "asset") {
-      try {
-        library = prependLibrary(b.library, ref);
-      } catch (err) {
-        setSheetError((err as Error).message);
-        return;
-      }
-    }
     setSheetError("");
     if (kind === "image") {
-      setWallpaper({ kind: "image", media: ref, position: "center" }, library);
+      setWallpaper({ kind: "image", media: ref, position: "center" });
     } else {
-      setWallpaper(
-        { kind: "video", media: ref, position: "center", playback: "loop" },
-        library,
-      );
+      setWallpaper({
+        kind: "video",
+        media: ref,
+        position: "center",
+        playback: "loop",
+      });
     }
   };
 
@@ -399,7 +505,15 @@ export default function BackgroundSettings({
       if (!ref) throw Error("Invalid media response.");
       rememberMediaKind(ref, committed.kind);
       rememberMediaName(ref, committed.name);
-      selectMedia(ref, committed.kind);
+      const library = prependLibrary(b.library, ref);
+      if (committed.kind === "image") {
+        setWallpaper({ kind: "image", media: ref, position: "center" }, library);
+      } else {
+        setWallpaper(
+          { kind: "video", media: ref, position: "center", playback: "loop" },
+          library,
+        );
+      }
       setChooserView("my-media");
     } catch (err) {
       setSheetError((err as Error).message);
@@ -434,6 +548,8 @@ export default function BackgroundSettings({
     if (!ref) return;
     setPendingRemove(null);
     const next = b.library.filter((x) => !mediaRefEqual(x, ref));
+    pruneRecentMediaRef(ref);
+    setRecent(loadRecentWallpapers(next));
     const active =
       (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
       mediaRefEqual(b.wallpaper.media, ref);
@@ -468,19 +584,6 @@ export default function BackgroundSettings({
     b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
       ? b.wallpaper
       : null;
-
-  /** Poster URL for live tiles when distinct from the video file; else undefined. */
-  const livePosterSrc = (ref: MediaRef, thumb?: string): string | undefined => {
-    if (ref.source === "builtin") {
-      const item = wallpaperCatalogueItems[ref.builtinId];
-      if (!item) return undefined;
-      const poster = builtinPosterUrl(item);
-      const video = builtinMediaUrl(item.id);
-      return poster !== video ? poster : undefined;
-    }
-    if (thumb && thumb !== mediaSrc(ref)) return thumb;
-    return undefined;
-  };
 
   const captureBrowseScroll = () => {
     const el = bodyScrollRef.current?.querySelector(
@@ -641,17 +744,18 @@ export default function BackgroundSettings({
               const kind = mediaWallpaper.kind;
               const videoUrl =
                 kind === "video" ? mediaSrc(mediaWallpaper.media) : undefined;
+              // Catalogue thumb or photo URL — never feed a video file into <img>.
+              const thumb =
+                kind === "video"
+                  ? wallpaperStillUrl(mediaWallpaper)
+                  : entry.thumb;
               return (
                 <WallpaperTile
                   key={entry.key}
                   label={entry.label}
                   pressed={pressed}
                   kind={kind}
-                  src={
-                    kind === "video"
-                      ? livePosterSrc(mediaWallpaper.media, entry.thumb)
-                      : entry.thumb
-                  }
+                  src={thumb}
                   videoSrc={videoUrl}
                   onSelect={() => selectMedia(mediaWallpaper.media, kind)}
                 />
@@ -676,11 +780,7 @@ export default function BackgroundSettings({
           />
           {wallpaperCatalogueCategories.map((cat) => {
             const cover = wallpaperCatalogueItems[cat.coverId];
-            const coverSrc = cover
-              ? cover.kind === "video"
-                ? builtinPosterUrl(cover)
-                : builtinMediaUrl(cover.id)
-              : undefined;
+            const coverSrc = cover ? builtinThumbUrl(cover) : undefined;
             return (
               <WallpaperCategoryCard
                 key={cat.id}
@@ -737,7 +837,7 @@ export default function BackgroundSettings({
                 label={mediaLabel(ref, kind)}
                 pressed={isActiveImage(ref) || isActiveVideo(ref)}
                 kind={kind}
-                src={kind === "video" ? livePosterSrc(ref) : url}
+                src={kind === "video" ? undefined : url}
                 videoSrc={kind === "video" ? url : undefined}
                 onSelect={() => selectMedia(ref, kind)}
                 onRemove={() => requestRemoveLibraryRef(ref)}
@@ -764,7 +864,6 @@ export default function BackgroundSettings({
             const pressed =
               (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
               mediaRefEqual(b.wallpaper.media, ref);
-            const poster = builtinPosterUrl(item);
             const videoUrl =
               item.kind === "video" ? builtinMediaUrl(item.id) : undefined;
             return (
@@ -773,13 +872,7 @@ export default function BackgroundSettings({
                 label={item.title}
                 pressed={pressed}
                 kind={item.kind}
-                src={
-                  item.kind === "video"
-                    ? poster !== videoUrl
-                      ? poster
-                      : undefined
-                    : poster
-                }
+                src={builtinThumbUrl(item)}
                 videoSrc={videoUrl}
                 onSelect={() => selectBuiltin(id)}
               />
@@ -797,7 +890,7 @@ export default function BackgroundSettings({
       <SettingsGroup className="background-current-group">
         <SettingsRow>
           <div className="background-current">
-            <StillPreview b={b} />
+            <StillPreview b={b} label={wallpaperLabel(b, currentMediaName)} />
             <div className="background-current-meta">
               <Text as="span" variant="support" className="background-current-eyebrow">
                 Currently set

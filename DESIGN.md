@@ -222,12 +222,14 @@ image or paint — not the user’s Theme overlay or creative Tint. Inside a cat
 same dialog shows a caption-free 16:9 thumbnail grid; `onBack` plus trailing Close keep
 navigation in one layer. Wallpaper tiles mark selection with accent border and a
 top-left checkmark; keyboard focus uses a separate ring; live (video) tiles show a
-compact bottom-right “Live” badge with a play mark on a still poster (or first-frame
-still when no poster). Hover or keyboard focus plays the muted loop in the thumb;
+compact bottom-right “Live” badge with a play mark on a catalogue thumb still.
+Hover or keyboard focus plays the muted loop after a short linger on pointer
+(~180 ms; focus is immediate); thumb stays until the first video frame paints;
 leave/blur returns to the still; `prefers-reduced-motion` keeps the still only (no
-load-time autoplay). Category grids list static wallpapers before live ones. Prefer
-the Component Reference Modal example with `onBack` / `headerActions` when extending
-this pattern.
+load-time autoplay). Recently used carousel tiles and the Background Current-band
+live preview use the same shared still-first helper. Category grids list static
+wallpapers before live ones. Prefer the Component Reference Modal example with
+`onBack` / `headerActions` when extending this pattern.
 
 ## Verification and adoption
 

@@ -1,7 +1,7 @@
-import type { Wallpaper } from "./appearance";
+import type { MediaRef, Wallpaper } from "./appearance";
 import { mediaRefEqual } from "./appearance";
 import {
-  builtinMediaUrl,
+  builtinThumbUrl,
   wallpaperCatalogueItems,
 } from "./generated/wallpaperCatalogue";
 
@@ -66,9 +66,7 @@ export function recentEntryFromWallpaper(
     const item = wallpaperCatalogueItems[media.builtinId];
     label = labelHint || item?.title || media.builtinId;
     thumb = item
-      ? item.posterId
-        ? builtinMediaUrl(item.posterId)
-        : builtinMediaUrl(item.id)
+      ? builtinThumbUrl(item)
       : `/media/builtin/${encodeURIComponent(media.builtinId)}`;
   } else {
     thumb = media.url;
@@ -111,8 +109,9 @@ function writeStore(entries: RecentWallpaperEntry[]) {
   }
 }
 
-export function loadRecentWallpapers(): RecentWallpaperEntry[] {
-  return resolveRecentEntries(readStore());
+export function loadRecentWallpapers(library?: MediaRef[]): RecentWallpaperEntry[] {
+  const resolved = resolveRecentEntries(readStore());
+  return library ? filterRecentAgainstLibrary(resolved, library) : resolved;
 }
 
 /** Drop unresolvable built-ins; keep assets/colours/gradients. */
@@ -125,6 +124,30 @@ export function resolveRecentEntries(entries: RecentWallpaperEntry[]): RecentWal
     }
     return true;
   });
+}
+
+/** Uploads stay in Recently used only while they remain in the media library. */
+function filterRecentAgainstLibrary(
+  entries: RecentWallpaperEntry[],
+  library: MediaRef[],
+): RecentWallpaperEntry[] {
+  return entries.filter((entry) => {
+    const w = entry.wallpaper;
+    if (w.kind !== "image" && w.kind !== "video") return true;
+    if (w.media.source !== "asset") return true;
+    return library.some((ref) => mediaRefEqual(ref, w.media));
+  });
+}
+
+/** Remove matching image/video entries from the recent store (library remove / missing asset). */
+export function pruneRecentMediaRef(ref: MediaRef): RecentWallpaperEntry[] {
+  const next = readStore().filter((entry) => {
+    const w = entry.wallpaper;
+    if (w.kind !== "image" && w.kind !== "video") return true;
+    return !mediaRefEqual(w.media, ref);
+  });
+  writeStore(next);
+  return resolveRecentEntries(next);
 }
 
 /** Record after a successful Settings Apply persistence only. */
