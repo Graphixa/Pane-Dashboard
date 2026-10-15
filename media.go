@@ -31,12 +31,12 @@ const (
 )
 
 var (
-	errMediaFull         = errors.New("media storage is full")
-	errMediaUnsupported  = errors.New("unsupported media format")
-	errMediaCorrupt      = errors.New("media is damaged or unreadable")
-	errMediaTooLarge     = errors.New("media exceeds size limits")
-	errMediaNotFound     = errors.New("media not found")
-	errMediaInvalidID    = errors.New("invalid media id")
+	errMediaFull        = errors.New("media storage is full")
+	errMediaUnsupported = errors.New("unsupported media format")
+	errMediaCorrupt     = errors.New("media is damaged or unreadable")
+	errMediaTooLarge    = errors.New("media exceeds size limits")
+	errMediaNotFound    = errors.New("media not found")
+	errMediaInvalidID   = errors.New("invalid media id")
 )
 
 type MediaKind string
@@ -63,16 +63,17 @@ type MediaMeta struct {
 }
 
 type StagingInfo struct {
-	SessionID string    `json:"sessionId"`
-	Meta      MediaMeta `json:"meta"`
-	PreviewURL string   `json:"previewUrl"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	SessionID  string    `json:"sessionId"`
+	Meta       MediaMeta `json:"meta"`
+	PreviewURL string    `json:"previewUrl"`
+	ExpiresAt  time.Time `json:"expiresAt"`
 }
 
 // MediaStore keeps uploads beside the configuration file. No database.
 type MediaStore struct {
-	mu   sync.Mutex
-	root string
+	mu      sync.Mutex
+	thumbMu sync.Mutex
+	root    string
 }
 
 func mediaRootBeside(configPath string) string {
@@ -391,7 +392,17 @@ func (m *MediaStore) GetMeta(id string) (*MediaMeta, error) {
 	if !validMediaID(id) {
 		return nil, errMediaInvalidID
 	}
-	return m.loadMetaLocked(id)
+	meta, err := m.loadMetaLocked(id)
+	if err == nil {
+		_, err = os.Stat(m.assetPath(id))
+	}
+	if os.IsNotExist(err) {
+		return nil, errMediaNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return meta, nil
 }
 
 func (m *MediaStore) GetStagingMeta(id string) (*MediaMeta, error) {

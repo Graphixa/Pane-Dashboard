@@ -1087,6 +1087,7 @@ img.background-current-image {
   min-width: 0;
 }
 .wallpaper-browse-section-body {
+  min-width: 0;
   overflow: visible;
 }
 .wallpaper-browse-heading {
@@ -1102,15 +1103,29 @@ img.background-current-image {
   padding-inline: 4px;
   overflow: visible;
 }
+.wallpaper-recent-inset {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-3);
+  overflow: hidden;
+}
+.wallpaper-recent-scroll {
+  width: 100%;
+  min-width: 0;
+  /* Contain the Radix viewport's intrinsic table width inside the vertical sheet. */
+  contain: inline-size;
+}
+.wallpaper-recent-scroll .ui-scroll-area-viewport {
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
 .wallpaper-recent-track {
   display: flex;
   flex-wrap: nowrap;
+  width: max-content;
   gap: var(--space-3);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  padding-block: 4px;
-  padding-inline: 2px;
-  scroll-snap-type: x proximity;
+  padding: 4px 4px 16px;
 }
 .wallpaper-recent-track > .wallpaper-tile-wrap {
   flex: 0 0 min(168px, 42vw);

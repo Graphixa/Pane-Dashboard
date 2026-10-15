@@ -244,3 +244,52 @@ func TestMediaQuotaRejectsExplicitly(t *testing.T) {
 		t.Fatalf("want errMediaFull, got %v", err)
 	}
 }
+
+func TestImagePosterAndMissingAssetMetadata(t *testing.T) {
+	media, err := openMediaStore(filepath.Join(t.TempDir(), "pane.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := testPNG(t, 1600, 900)
+	staged, err := media.StageUpload(bytes.NewReader(original), mediaImageUploadLimit, "wall.png", "image/png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta, err := media.CommitStaging(staged.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	registerMediaRoutes(mux, media)
+	request := func(path string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest("GET", path, nil))
+		return recorder
+	}
+	poster := request("/media/assets/" + meta.ID + "/poster")
+	if poster.Code != 200 || poster.Header().Get("Content-Type") != "image/jpeg" {
+		t.Fatalf("poster: %d %s", poster.Code, poster.Body.String())
+	}
+	dimensions, _, err := image.DecodeConfig(bytes.NewReader(poster.Body.Bytes()))
+	if err != nil || dimensions.Width != 480 || dimensions.Height != 270 {
+		t.Fatalf("dimensions: %+v %v", dimensions, err)
+	}
+	cached := request("/media/assets/" + meta.ID + "/poster")
+	if !bytes.Equal(poster.Body.Bytes(), cached.Body.Bytes()) {
+		t.Fatal("thumbnail was not cached")
+	}
+	onDisk, err := os.ReadFile(media.assetPath(meta.ID))
+	if err != nil || !bytes.Equal(onDisk, original) {
+		t.Fatal("thumbnail altered original")
+	}
+	if err := os.Remove(media.assetPath(meta.ID)); err != nil {
+		t.Fatal(err)
+	}
+	missing := request("/api/media/meta/" + meta.ID)
+	if missing.Code != 404 || missing.Header().Get("Cache-Control") != "private, no-store" {
+		t.Fatalf("stale metadata: %d", missing.Code)
+	}
+	if gone := request("/media/assets/" + meta.ID + "/poster"); gone.Code != 404 {
+		t.Fatal("served poster for deleted asset")
+	}
+}

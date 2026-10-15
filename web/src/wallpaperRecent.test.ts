@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   RECENT_WALLPAPER_KEY,
+  reconcileRecentWallpapers,
   flushPendingRecentWallpaper,
   loadRecentWallpapers,
   pruneRecentMediaRef,
@@ -70,4 +71,24 @@ describe("wallpaperRecent", () => {
       "gradient:ocean",
     ]);
   });
+});
+
+it("keeps a newer Apply pending when an older save completes", () => {
+  queueRecentWallpaperOnSave({ kind: "gradient", preset: "mist" });
+  flushPendingRecentWallpaper({ kind: "none" });
+  flushPendingRecentWallpaper({ kind: "gradient", preset: "mist" });
+  expect(loadRecentWallpapers()[0].key).toBe("gradient:mist");
+});
+it("reconciles deleted images and videos permanently only after save", () => {
+  const asset = { source: "asset" as const, assetId: "old" };
+  recordRecentWallpaper({ kind: "image", media: asset, position: "center" });
+  recordRecentWallpaper({ kind: "video", media: asset, position: "center", playback: "loop" });
+  expect(loadRecentWallpapers([])).toEqual([]);
+  expect(loadRecentWallpapers([asset])).toHaveLength(2); // Cancel can restore the draft.
+  reconcileRecentWallpapers([]);
+  expect(loadRecentWallpapers([asset])).toEqual([]); // Re-upload cannot resurrect history.
+});
+it("ignores malformed and removed built-in history", () => {
+  localStorage.setItem(RECENT_WALLPAPER_KEY, JSON.stringify([{ key: "broken" }, { key: "old", wallpaper: { kind: "video", media: { source: "builtin", builtinId: "removed@v1" } } }]));
+  expect(loadRecentWallpapers()).toEqual([]);
 });

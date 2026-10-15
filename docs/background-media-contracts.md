@@ -57,7 +57,7 @@ wallpapers/
 - Item IDs are stable `name@vN` (default `v1`); optional `category.json` cover/titles/order; folder placeholders humanise when metadata is absent.
 - Empty bundled folders are omitted from the catalogue (hidden in the chooser). Catalogue generation requires ffmpeg and writes tiny WebP thumbs (`*-thumb@vN`) beside each item for chooser stills/covers.
 - Nested folders and unsupported extensions fail the generator. Duplicate IDs fail the generator.
-- Chooser live tiles, Recently used live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a session still on first view (cached for the page lifetime). Dashboard video does not treat autoplay rejection as a hard failure.
+- Chooser live tiles, Recently used live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a bounded session still from the first hovered/focused playback; idle uploads use a neutral placeholder until then, with no hidden video request. Dashboard video does not treat autoplay rejection as a hard failure.
 - Versioned builtin IDs (`name@vN`) and committed asset IDs are content-addressed: `GET /media/builtin/{id}` and `GET /media/assets/{id}` send `Cache-Control: public, max-age=31536000, immutable`. Staging (`/media/staging/`) stays `private, no-store`. Vite dev proxies `/media` to the Go server so those headers apply in local browse.
 
 ## Composition object (`appearance.background`)
@@ -146,9 +146,9 @@ Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated 
 ## Library remove and Recently used
 
 - Trash in My media updates the **draft** library only (no `DELETE /api/media`). Disk GC runs on successful config PUT for assets no longer referenced by wallpaper, library or logo.
-- Removing an upload also prunes that asset from the client Recently used store. Recently used upload tiles are hidden unless the asset remains in the current library.
-- Recently used is written only after a successful Settings Apply persistence (not on Use wallpaper).
-- Opening Choose wallpaper probes `/api/media/meta/{id}` for library assets and drops missing files from the draft library/recent list so Apply cannot fail with `missing media asset` for ghost refs.
+- Removing an upload hides it from Recently used immediately; successful Apply prunes saved history against the saved library, while Cancel restores draft removals. Recently used upload tiles are hidden unless the asset remains in the current library.
+- Recently used is written only after a successful Settings Apply persistence (not on Use wallpaper), displayed newest-first in an inset horizontal ScrollArea, and refreshed for same-tab and cross-tab history changes.
+- Metadata verifies the underlying asset exists and uses `private, no-store`; missing-file results are applied only to the latest draft of the same open chooser session. Opening Choose wallpaper probes `/api/media/meta/{id}` for library assets and drops missing files from the draft library/recent list so Apply cannot fail with `missing media asset` for ghost refs.
 
 ## Dependencies
 
@@ -162,3 +162,5 @@ Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated 
 - Production migration from schema 1/2 (Path A)
 - Live shaders (#14)
 - Community CSS/HTML pack import
+
+Uploaded image posters at `/media/assets/{id}/poster` are generated lazily, bounded to 480 px, cached in `media/posters/` and served immutable with an ETag. They reuse validated local bytes only; remote image URLs are not fetched by the backend. Videos have no server transcoding path and return 404 for this image endpoint.

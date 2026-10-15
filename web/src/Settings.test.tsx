@@ -14,6 +14,7 @@ const config = (): Config => ({
   items: [],
 });
 beforeEach(() => {
+  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value() {
@@ -521,3 +522,43 @@ describe("settings navigation and draft safety", () => {
   });
 });
 
+
+it("late missing-file checks preserve the latest selection and Cancel snapshot", async () => {
+  const asset = { source: "asset" as const, assetId: "missing-upload" };
+  const cfg = config();
+  cfg.appearance.background = {
+    wallpaper: { kind: "image", media: asset, position: "center" }, library: [asset],
+    photoMotion: { style: "none", intensity: 40 }, themeOverlayOpacity: 25,
+  };
+  let finish!: (response: Response) => void;
+  const response = new Promise<Response>((resolve) => { finish = resolve; });
+  vi.spyOn(globalThis, "fetch").mockReturnValue(response);
+  const { apply } = setup(cfg);
+  page("Background");
+  fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+  fireEvent.click(screen.getByRole("button", { name: "Gradients" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+  await act(async () => finish(new Response(null, { status: 404 })));
+  expect(screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+  const saved = apply.mock.calls[0][0];
+  expect(saved.appearance.background.wallpaper).toEqual({ kind: "gradient", preset: "ocean" });
+  expect(saved.appearance.background.library).toEqual([]);
+});
+
+it("refreshes open Recently used in recency order inside the inset scroll area", async () => {
+  recordRecentWallpaper({ kind: "gradient", preset: "ocean" });
+  setup();
+  page("Background");
+  fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+  act(() => recordRecentWallpaper({ kind: "gradient", preset: "mist" }));
+  const strip = screen.getByLabelText("Recently used wallpapers");
+  expect(strip.closest(".wallpaper-recent-inset")).toBeTruthy();
+  expect(within(strip).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Mist", "Ocean"]);
+  act(() => {
+    localStorage.removeItem(RECENT_WALLPAPER_KEY);
+    window.dispatchEvent(new StorageEvent("storage", { key: RECENT_WALLPAPER_KEY }));
+  });
+  expect(screen.queryByRole("heading", { name: "Recently used" })).toBeNull();
+});

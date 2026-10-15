@@ -215,7 +215,7 @@ interaction/accessibility tests, then migrate its consumers.
 
 The Background **Choose wallpaper** bottom sheet is a production layout on the shared
 `Modal` (nested, `backdrop="none"`, `footer` for the fixed action row). Browse order:
-compact Colours swatches → optional Recently used carousel → category cards (three
+compact Colours swatches → optional newest-first Recently used carousel (inset SettingsGroup containing a horizontal ScrollArea) → category cards (three
 columns at ~720 px, two then one as the viewport narrows). Category covers use a fixed
 gallery tint (~64% neutral dark in Midnight / light in Daylight) over a representative
 image or paint — not the user’s Theme overlay or creative Tint. Inside a category, the
@@ -227,7 +227,7 @@ Hover or keyboard focus plays the muted loop after a short linger on pointer
 (~180 ms; focus is immediate); thumb stays until the first video frame paints;
 leave/blur returns to the still; `prefers-reduced-motion` keeps the still only (no
 load-time autoplay). Recently used carousel tiles and the Background Current-band
-live preview use the same shared still-first helper. Category grids list static
+live preview use the same shared still-first helper. Uploaded images use lazy, bounded server thumbnails; idle upload videos never download a file merely to capture a still. Category grids list static
 wallpapers before live ones. Prefer the Component Reference Modal example with
 `onBack` / `headerActions` when extending this pattern.
 

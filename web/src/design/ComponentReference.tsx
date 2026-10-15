@@ -169,13 +169,15 @@ export default function ComponentReference() {
             });
           }}>Discard confirmation</Button>
         </div>
-        <ScrollArea orientation="horizontal" className="reference-scroll-strip" aria-label="Example horizontal scroll">
-          <div className="reference-scroll-track">
+        <SettingsGroup className="wallpaper-recent-inset">
+        <ScrollArea orientation="horizontal" type="always" className="wallpaper-recent-scroll" aria-label="Example horizontal scroll">
+          <div className="wallpaper-recent-track">
             {["Dusk", "Ocean", "Forest", "Mist", "None", "Waves", "Aurora"].map((label) => (
               <Button key={label} variant="surface">{label}</Button>
             ))}
           </div>
         </ScrollArea>
+        </SettingsGroup>
       </Section>
       <Section title="Palette roles" description="These swatches use the same appearanceStyle palette resolver as the dashboard.">
         <div className="reference-colours">{["bg", "panel", "panel-high", "text", "muted", "accent", "accent-text", "line"].map(role =>

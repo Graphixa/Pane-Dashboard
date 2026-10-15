@@ -47,6 +47,8 @@ import {
 } from "./generated/wallpaperCatalogue";
 import {
   loadRecentWallpapers,
+  RECENT_WALLPAPER_CHANGED,
+  RECENT_WALLPAPER_KEY,
   pruneRecentMediaRef,
   wallpaperMatches,
   type RecentWallpaperEntry,
@@ -71,7 +73,7 @@ function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
       const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
       return item ? builtinThumbUrl(item) : mediaSrc(wallpaper.media);
     }
-    return mediaSrc(wallpaper.media);
+    return imageThumbUrl(wallpaper.media);
   }
   if (wallpaper.kind === "video" && wallpaper.media.source === "builtin") {
     const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
@@ -80,128 +82,59 @@ function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
   return undefined;
 }
 
-function assetIdFromRef(ref: MediaRef): string | null {
-  return ref.source === "asset" ? ref.assetId : null;
+function imageThumbUrl(ref: MediaRef): string {
+  return ref.source === "asset" ? `${mediaSrc(ref)}/poster` : mediaSrc(ref);
 }
 
-/** Resolve image vs video for library tiles (HEAD Content-Type; seed from wallpaper/upload). */
-function useMediaKinds(library: MediaRef[], wallpaper: Wallpaper) {
+// Share in-flight metadata requests between labels, kind detection and existence checks.
+// Do not retain responses: opening the chooser must detect files removed on disk.
+const metadataRequests = new Map<string, Promise<{ status: number; kind?: MediaKind; name?: string }>>();
+function fetchMediaMetadata(id: string) {
+  const pending = metadataRequests.get(id);
+  if (pending) return pending;
+  const request = fetch(`/api/media/meta/${encodeURIComponent(id)}`, { cache: "no-store" })
+    .then(async (response) => {
+      const body = response.ok ? await response.json() : {};
+      return { status: response.status, kind: body.kind as MediaKind | undefined, name: body.name as string | undefined };
+    }).finally(() => metadataRequests.delete(id));
+  metadataRequests.set(id, request);
+  return request;
+}
+
+function useMediaMetadata(library: MediaRef[], wallpaper: Wallpaper) {
   const [kinds, setKinds] = useState<Map<string, MediaKind>>(() => new Map());
-
-  const remember = (ref: MediaRef, kind: MediaKind) => {
-    const key = mediaSrc(ref);
-    setKinds((prev) => {
-      if (prev.get(key) === kind) return prev;
-      const next = new Map(prev);
-      next.set(key, kind);
-      return next;
-    });
-  };
-
+  const [names, setNames] = useState<Map<string, string>>(() => new Map());
+  const rememberKind = (ref: MediaRef, kind: MediaKind) =>
+    setKinds((prev) => new Map(prev).set(mediaSrc(ref), kind));
+  const rememberName = (ref: MediaRef, name: string) =>
+    setNames((prev) => new Map(prev).set(mediaSrc(ref), name.trim()));
   useEffect(() => {
-    if (wallpaper.kind === "image") remember(wallpaper.media, "image");
-    if (wallpaper.kind === "video") remember(wallpaper.media, "video");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (wallpaper.kind === "image" || wallpaper.kind === "video") rememberKind(wallpaper.media, wallpaper.kind);
   }, [wallpaper]);
-
   useEffect(() => {
     let cancelled = false;
-    const missing = library.filter((ref) => !kinds.has(mediaSrc(ref)));
-    if (!missing.length) return;
-    void (async () => {
-      const found = new Map<string, MediaKind>();
-      await Promise.all(
-        missing.map(async (ref) => {
-          const key = mediaSrc(ref);
-          if (ref.source === "url") {
-            found.set(key, "image");
-            return;
-          }
-          if (ref.source === "builtin") {
-            const item = wallpaperCatalogueItems[ref.builtinId];
-            found.set(key, item?.kind === "video" ? "video" : "image");
-            return;
-          }
-          try {
-            const res = await fetch(key, { method: "HEAD" });
-            const ct = (res.headers.get("content-type") || "").toLowerCase();
-            found.set(key, ct.startsWith("video/") ? "video" : "image");
-          } catch {
-            found.set(key, "image");
-          }
-        }),
-      );
-      if (cancelled || !found.size) return;
-      setKinds((prev) => {
-        const next = new Map(prev);
-        found.forEach((kind, key) => next.set(key, kind));
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    for (const ref of library) {
+      if (ref.source !== "asset") continue;
+      void fetchMediaMetadata(ref.assetId).then((meta) => {
+        if (cancelled || meta.status !== 200) return;
+        if (meta.kind === "image" || meta.kind === "video") rememberKind(ref, meta.kind);
+        if (typeof meta.name === "string") rememberName(ref, meta.name);
+      }).catch(() => { /* Leave offline entries intact. */ });
+    }
+    return () => { cancelled = true; };
   }, [library]);
-
-  return { kinds, remember };
+  return { kinds, names, rememberKind, rememberName };
 }
 
-function useMediaNames(library: MediaRef[]) {
-  const [names, setNames] = useState<Map<string, string>>(() => new Map());
-
-  const remember = (ref: MediaRef, name: string) => {
-    const key = mediaSrc(ref);
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setNames((prev) => {
-      if (prev.get(key) === trimmed) return prev;
-      const next = new Map(prev);
-      next.set(key, trimmed);
-      return next;
-    });
+/** Filter missing references from the latest draft, never an earlier async snapshot. */
+export function withoutMissingMedia(settings: Background, gone: MediaRef[]): Background {
+  const missing = (ref: MediaRef) => gone.some((item) => mediaRefEqual(item, ref));
+  const w = settings.wallpaper;
+  return {
+    ...settings,
+    library: settings.library.filter((ref) => !missing(ref)),
+    wallpaper: (w.kind === "image" || w.kind === "video") && missing(w.media) ? { kind: "none" } : w,
   };
-
-  useEffect(() => {
-    let cancelled = false;
-    const missing = library.filter((ref) => {
-      const id = assetIdFromRef(ref);
-      return id && !names.has(mediaSrc(ref));
-    });
-    if (!missing.length) return;
-    void (async () => {
-      const found = new Map<string, string>();
-      await Promise.all(
-        missing.map(async (ref) => {
-          const id = assetIdFromRef(ref);
-          if (!id) return;
-          const key = mediaSrc(ref);
-          try {
-            const res = await fetch(`/api/media/meta/${id}`);
-            if (!res.ok) return;
-            const body = (await res.json()) as { name?: string };
-            if (typeof body.name === "string" && body.name.trim()) {
-              found.set(key, body.name.trim());
-            }
-          } catch {
-            /* ignore */
-          }
-        }),
-      );
-      if (cancelled || !found.size) return;
-      setNames((prev) => {
-        const next = new Map(prev);
-        found.forEach((name, key) => next.set(key, name));
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [library]);
-
-  return { names, remember };
 }
 
 type BackgroundUpdate = (update: Partial<Background>) => void;
@@ -295,7 +228,7 @@ function StillPreview({ b, label }: { b: Background; label: string }) {
         alt=""
         loading="eager"
         fetchPriority="high"
-        decoding="sync"
+        decoding="async"
         draggable={false}
         aria-hidden="true"
         style={{ objectPosition: w.position }}
@@ -333,13 +266,24 @@ export default function BackgroundSettings({
   const [effectOpen, setEffectOpen] = useState(false);
   const [tintOpen, setTintOpen] = useState(false);
   const [recent, setRecent] = useState<RecentWallpaperEntry[]>([]);
-  const { kinds: mediaKinds, remember: rememberMediaKind } = useMediaKinds(
-    b.library,
-    b.wallpaper,
-  );
-  const { names: mediaNames, remember: rememberMediaName } = useMediaNames(
-    b.library,
-  );
+  const { kinds: mediaKinds, names: mediaNames, rememberKind: rememberMediaKind, rememberName: rememberMediaName } = useMediaMetadata(b.library, b.wallpaper);
+  const latest = useRef(b);
+  latest.current = b;
+  const chooserSession = useRef(0);
+  useEffect(() => () => { chooserSession.current++; }, []);
+  useEffect(() => {
+    const refresh = () => setRecent(loadRecentWallpapers(latest.current.library));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === RECENT_WALLPAPER_KEY || event.key === null) refresh();
+    };
+    refresh();
+    window.addEventListener(RECENT_WALLPAPER_CHANGED, refresh);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(RECENT_WALLPAPER_CHANGED, refresh);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [b.library]);
   const snapshot = useRef<Background | null>(null);
   const browseScroll = useRef(0);
   const categoryScroll = useRef<Record<string, number>>({});
@@ -376,45 +320,26 @@ export default function BackgroundSettings({
   };
 
   /** Drop library/recent entries whose asset files are gone (avoids “missing media asset” on Apply). */
-  const scrubMissingAssets = async (library: MediaRef[], wallpaper: Wallpaper) => {
-    const assets = library.filter((ref) => ref.source === "asset");
-    if (!assets.length) return;
+  const scrubMissingAssets = async (library: MediaRef[], session: number) => {
     const gone: MediaRef[] = [];
-    await Promise.all(
-      assets.map(async (ref) => {
-        try {
-          const res = await fetch(`/api/media/meta/${encodeURIComponent(ref.assetId)}`);
-          if (res.status === 404) gone.push(ref);
-        } catch {
-          /* offline — leave entry; Apply will surface the error */
-        }
-      }),
-    );
-    if (!gone.length) return;
+    await Promise.all(library.map(async (ref) => {
+      if (ref.source !== "asset") return;
+      try {
+        const meta = await fetchMediaMetadata(ref.assetId);
+        if (meta.status === 404) gone.push(ref);
+      } catch { /* Offline is not deletion. */ }
+    }));
+    if (session !== chooserSession.current || !gone.length) return;
     for (const ref of gone) pruneRecentMediaRef(ref);
-    const nextLibrary = library.filter(
-      (ref) => !gone.some((g) => mediaRefEqual(g, ref)),
-    );
-    const activeGone =
-      (wallpaper.kind === "image" || wallpaper.kind === "video") &&
-      wallpaper.media.source === "asset" &&
-      gone.some((g) => mediaRefEqual(g, wallpaper.media));
-    const nextWallpaper: Wallpaper = activeGone ? { kind: "none" } : wallpaper;
-    background({ library: nextLibrary, wallpaper: nextWallpaper });
-    // Keep discard snapshot aligned so Cancel does not restore ghost refs.
-    if (snapshot.current) {
-      snapshot.current = {
-        ...snapshot.current,
-        library: nextLibrary,
-        wallpaper: nextWallpaper,
-      };
-    }
-    setRecent(loadRecentWallpapers(nextLibrary));
-    setSheetError(
-      activeGone
-        ? "The current wallpaper file is missing. It was cleared from My media — choose another, then Apply."
-        : "Some uploads are no longer on disk and were removed from My media.",
-    );
+    const current = latest.current;
+    const next = withoutMissingMedia(current, gone);
+    latest.current = next;
+    background({ library: next.library, wallpaper: next.wallpaper });
+    if (snapshot.current) snapshot.current = withoutMissingMedia(snapshot.current, gone);
+    setRecent(loadRecentWallpapers(next.library));
+    setSheetError(next.wallpaper !== current.wallpaper
+      ? "The current wallpaper file is missing. It was cleared from My media — choose another, then Apply."
+      : "Some uploads are no longer on disk and were removed from My media.");
   };
 
   const openChooser = () => {
@@ -425,10 +350,11 @@ export default function BackgroundSettings({
     refreshRecent();
     browseScroll.current = 0;
     setChooserOpen(true);
-    void scrubMissingAssets(b.library, b.wallpaper);
+    void scrubMissingAssets(b.library, ++chooserSession.current);
   };
 
   const finishDiscard = () => {
+    chooserSession.current++;
     if (snapshot.current) background(snapshot.current);
     snapshot.current = null;
     setSheetError("");
@@ -458,6 +384,7 @@ export default function BackgroundSettings({
   };
 
   const commitChooser = () => {
+    chooserSession.current++;
     snapshot.current = null;
     setSheetError("");
     setPendingRemove(null);
@@ -499,13 +426,15 @@ export default function BackgroundSettings({
     setSheetError("");
     setPendingRemove(null);
     onBusy(true);
+    const session = chooserSession.current;
     try {
       const committed = await prepareUpload(file, "background");
+      if (session !== chooserSession.current) return;
       const ref = assetRefFromPath(committed.path);
       if (!ref) throw Error("Invalid media response.");
       rememberMediaKind(ref, committed.kind);
       rememberMediaName(ref, committed.name);
-      const library = prependLibrary(b.library, ref);
+      const library = prependLibrary(latest.current.library, ref);
       if (committed.kind === "image") {
         setWallpaper({ kind: "image", media: ref, position: "center" }, library);
       } else {
@@ -548,7 +477,6 @@ export default function BackgroundSettings({
     if (!ref) return;
     setPendingRemove(null);
     const next = b.library.filter((x) => !mediaRefEqual(x, ref));
-    pruneRecentMediaRef(ref);
     setRecent(loadRecentWallpapers(next));
     const active =
       (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
@@ -576,9 +504,7 @@ export default function BackgroundSettings({
   const kindForRef = (ref: MediaRef): MediaKind =>
     mediaKindOf(ref) ?? (isActiveVideo(ref) ? "video" : "image");
   const myMediaSorted = sortStaticBeforeLive(myMediaLibrary, kindForRef);
-  const recentSorted = sortStaticBeforeLive(recent, (entry) =>
-    entry.wallpaper.kind === "video" ? "video" : "image",
-  );
+  const recentEntries = recent;
 
   const mediaWallpaper =
     b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
@@ -668,8 +594,8 @@ export default function BackgroundSettings({
   );
 
   const myMediaCoverRef =
-    myMediaSorted.find((ref) => kindForRef(ref) !== "video") ?? undefined;
-  const myMediaCover = myMediaCoverRef ? mediaSrc(myMediaCoverRef) : undefined;
+    myMediaSorted.find((ref) => mediaKindOf(ref) === "image") ?? undefined;
+  const myMediaCover = myMediaCoverRef ? imageThumbUrl(myMediaCoverRef) : undefined;
 
   const renderBrowse = () => (
     <div className="wallpaper-browse">
@@ -698,70 +624,72 @@ export default function BackgroundSettings({
         </div>
       </WallpaperSection>
 
-      {recentSorted.length > 0 && (
+      {recentEntries.length > 0 && (
         <WallpaperSection heading="Recently used" label="Recently used">
-          <div className="wallpaper-recent-track">
-            {recentSorted.map((entry) => {
-              const pressed = wallpaperMatches(b.wallpaper, entry.wallpaper);
-              if (entry.wallpaper.kind === "none") {
-                return (
-                  <WallpaperTile
-                    key={entry.key}
-                    label={entry.label}
-                    pressed={pressed}
-                    paint="var(--bg)"
-                    onSelect={() => setWallpaper({ kind: "none" })}
-                  />
-                );
-              }
-              if (entry.wallpaper.kind === "solid") {
-                return (
-                  <WallpaperTile
-                    key={entry.key}
-                    label={entry.label}
-                    pressed={pressed}
-                    paint={solidBackgroundPaint(entry.wallpaper.colour)}
-                    onSelect={() => selectColour(entry.wallpaper.kind === "solid" ? entry.wallpaper.colour : "#a2cbbb")}
-                  />
-                );
-              }
-              if (entry.wallpaper.kind === "gradient") {
-                const preset = entry.wallpaper.preset;
-                return (
-                  <WallpaperTile
-                    key={entry.key}
-                    label={titleCase(preset)}
-                    pressed={pressed}
-                    paint={gradients[preset]}
-                    onSelect={() => selectGradient(preset)}
-                  />
-                );
-              }
-              const mediaWallpaper = entry.wallpaper;
-              if (mediaWallpaper.kind !== "image" && mediaWallpaper.kind !== "video") {
-                return null;
-              }
-              const kind = mediaWallpaper.kind;
-              const videoUrl =
-                kind === "video" ? mediaSrc(mediaWallpaper.media) : undefined;
-              // Catalogue thumb or photo URL — never feed a video file into <img>.
-              const thumb =
-                kind === "video"
-                  ? wallpaperStillUrl(mediaWallpaper)
-                  : entry.thumb;
-              return (
-                <WallpaperTile
-                  key={entry.key}
-                  label={entry.label}
-                  pressed={pressed}
-                  kind={kind}
-                  src={thumb}
-                  videoSrc={videoUrl}
-                  onSelect={() => selectMedia(mediaWallpaper.media, kind)}
-                />
-              );
-            })}
-          </div>
+          <SettingsGroup className="wallpaper-recent-inset">
+            <ScrollArea orientation="horizontal" type="always" className="wallpaper-recent-scroll" aria-label="Recently used wallpapers">
+              <div className="wallpaper-recent-track">
+                {recentEntries.map((entry) => {
+                  const pressed = wallpaperMatches(b.wallpaper, entry.wallpaper);
+                  if (entry.wallpaper.kind === "none") {
+                    return (
+                      <WallpaperTile
+                        key={entry.key}
+                        label={entry.label}
+                        pressed={pressed}
+                        paint="var(--bg)"
+                        onSelect={() => setWallpaper({ kind: "none" })}
+                      />
+                    );
+                  }
+                  if (entry.wallpaper.kind === "solid") {
+                    return (
+                      <WallpaperTile
+                        key={entry.key}
+                        label={entry.label}
+                        pressed={pressed}
+                        paint={solidBackgroundPaint(entry.wallpaper.colour)}
+                        onSelect={() => selectColour(entry.wallpaper.kind === "solid" ? entry.wallpaper.colour : "#a2cbbb")}
+                      />
+                    );
+                  }
+                  if (entry.wallpaper.kind === "gradient") {
+                    const preset = entry.wallpaper.preset;
+                    return (
+                      <WallpaperTile
+                        key={entry.key}
+                        label={titleCase(preset)}
+                        pressed={pressed}
+                        paint={gradients[preset]}
+                        onSelect={() => selectGradient(preset)}
+                      />
+                    );
+                  }
+                  const mediaWallpaper = entry.wallpaper;
+                  if (mediaWallpaper.kind !== "image" && mediaWallpaper.kind !== "video") {
+                    return null;
+                  }
+                  const kind = mediaWallpaper.kind;
+                  const videoUrl =
+                    kind === "video" ? mediaSrc(mediaWallpaper.media) : undefined;
+                  // Catalogue thumb or photo URL — never feed a video file into <img>.
+                  const thumb =
+                    wallpaperStillUrl(mediaWallpaper);
+                  return (
+                    <WallpaperTile
+                      key={entry.key}
+                      label={entry.label}
+                      pressed={pressed}
+                      kind={kind}
+                      src={thumb}
+                      videoSrc={videoUrl}
+                      onSelect={() => selectMedia(mediaWallpaper.media, kind)}
+                    />
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </SettingsGroup>
         </WallpaperSection>
       )}
 
@@ -837,7 +765,7 @@ export default function BackgroundSettings({
                 label={mediaLabel(ref, kind)}
                 pressed={isActiveImage(ref) || isActiveVideo(ref)}
                 kind={kind}
-                src={kind === "video" ? undefined : url}
+                src={kind === "video" ? undefined : imageThumbUrl(ref)}
                 videoSrc={kind === "video" ? url : undefined}
                 onSelect={() => selectMedia(ref, kind)}
                 onRemove={() => requestRemoveLibraryRef(ref)}

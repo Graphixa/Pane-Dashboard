@@ -16,7 +16,7 @@ import {
   useDeferredColour,
 } from "./design/components";
 import { solidBackgroundPaint } from "./appearance";
-import { useVideoStill } from "./videoStillCache";
+import { capturePlayingVideoStill, useVideoStill } from "./videoStillCache";
 
 export type MediaKind = "image" | "video";
 
@@ -237,14 +237,18 @@ export function LiveThumbVideo({
 
   useEffect(() => {
     if (!active) setVideoReady(false);
-  }, [active]);
+  }, [active, videoSrc]);
 
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     if (active) claimThumbVideo(v);
     else releaseThumbVideo(v);
-    return () => releaseThumbVideo(v);
+    return () => {
+      releaseThumbVideo(v);
+      v.removeAttribute("src");
+      v.load(); // Abort the media download when a preview leaves the screen.
+    };
   }, [active, videoSrc]);
 
   const showThumb = Boolean(still) && !(active && videoReady);
@@ -263,7 +267,10 @@ export function LiveThumbVideo({
           preload="auto"
           aria-hidden="true"
           tabIndex={-1}
-          onPlaying={() => setVideoReady(true)}
+          onPlaying={(event) => {
+            setVideoReady(true);
+            if (!thumbSrc) capturePlayingVideoStill(videoSrc, event.currentTarget);
+          }}
         />
       ) : null}
     </>
@@ -279,7 +286,8 @@ function TileStill({ src }: { src?: string }) {
       className="wallpaper-tile-paint wallpaper-tile-image"
       src={src}
       alt=""
-      loading="eager"
+      loading="lazy"
+      decoding="async"
       draggable={false}
       aria-hidden="true"
     />

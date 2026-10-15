@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LIVE_HOVER_PREVIEW_MS,
   sortStaticBeforeLive,
   WallpaperTile,
 } from "./wallpaperChooser";
 import { clearVideoStillCache, seedVideoStillForTest } from "./videoStillCache";
+
+beforeEach(() => { vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {}); });
 
 afterEach(() => {
   cleanup();
@@ -33,6 +35,12 @@ describe("sortStaticBeforeLive", () => {
 });
 
 describe("WallpaperTile", () => {
+  it("does not create hidden video downloads for uncached idle uploads", () => {
+    const create = vi.spyOn(document, "createElement");
+    render(<WallpaperTile label="Upload" kind="video" videoSrc="/media/assets/new" pressed={false} onSelect={vi.fn()} />);
+    expect(create.mock.calls.filter(([tag]) => tag === "video")).toHaveLength(0);
+  });
+
   it("keeps idle live tiles on thumb with no video element", () => {
     const { container } = render(
       <WallpaperTile
@@ -183,7 +191,7 @@ describe("WallpaperTile", () => {
     expect(container.querySelector("video")).toBeNull();
   });
 
-  it("renders static tiles as eager images", () => {
+  it("lazy loads static thumbnails", () => {
     const { container } = render(
       <WallpaperTile
         label="Forest"
@@ -195,7 +203,7 @@ describe("WallpaperTile", () => {
     );
     const img = container.querySelector("img.wallpaper-tile-image");
     expect(img?.getAttribute("src")).toBe("/media/forest.jpg");
-    expect(img?.getAttribute("loading")).toBe("eager");
+    expect(img?.getAttribute("loading")).toBe("lazy");
     expect(container.querySelector("video")).toBeNull();
   });
 });

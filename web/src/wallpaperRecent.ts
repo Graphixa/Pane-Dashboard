@@ -7,6 +7,7 @@ import {
 
 export const RECENT_WALLPAPER_KEY = "pane.wallpaper.recent.v1";
 export const RECENT_WALLPAPER_MAX = 8;
+export const RECENT_WALLPAPER_CHANGED = "pane:wallpaper-recent-changed";
 
 export type RecentWallpaperEntry = {
   key: string;
@@ -61,7 +62,7 @@ export function recentEntryFromWallpaper(
   let label = labelHint || (wallpaper.kind === "video" ? "Video" : "Photo");
   let thumb: string | undefined;
   if (media.source === "asset") {
-    thumb = `/media/assets/${media.assetId}`;
+    thumb = wallpaper.kind === "image" ? `/media/assets/${media.assetId}/poster` : undefined;
   } else if (media.source === "builtin") {
     const item = wallpaperCatalogueItems[media.builtinId];
     label = labelHint || item?.title || media.builtinId;
@@ -87,6 +88,22 @@ export function recentEntryFromWallpaper(
   };
 }
 
+function validRecentWallpaper(value: unknown): value is Wallpaper {
+  if (!value || typeof value !== "object") return false;
+  const w = value as Wallpaper;
+  if (w.kind === "none") return true;
+  if (w.kind === "solid") return /^#[0-9a-f]{6}$/i.test(w.colour);
+  if (w.kind === "gradient") return ["dusk", "ocean", "forest", "mist"].includes(w.preset);
+  if ((w.kind !== "image" && w.kind !== "video") || !w.media) return false;
+  const m = w.media;
+  if (m.source === "asset") return typeof m.assetId === "string" && /^[A-Za-z0-9_-]{1,128}$/.test(m.assetId);
+  if (m.source === "builtin") return typeof m.builtinId === "string";
+  if (m.source === "url" && w.kind === "image") {
+    try { return ["http:", "https:"].includes(new URL(m.url).protocol); } catch { return false; }
+  }
+  return false;
+}
+
 function readStore(): RecentWallpaperEntry[] {
   try {
     const raw = localStorage.getItem(RECENT_WALLPAPER_KEY);
@@ -94,7 +111,7 @@ function readStore(): RecentWallpaperEntry[] {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter((e): e is RecentWallpaperEntry => !!e && typeof e === "object" && typeof (e as RecentWallpaperEntry).key === "string")
+      .filter((e): e is RecentWallpaperEntry => !!e && typeof e === "object" && typeof (e as RecentWallpaperEntry).key === "string" && validRecentWallpaper((e as RecentWallpaperEntry).wallpaper))
       .slice(0, RECENT_WALLPAPER_MAX);
   } catch {
     return [];
@@ -107,6 +124,7 @@ function writeStore(entries: RecentWallpaperEntry[]) {
   } catch {
     /* quota / private mode — ignore */
   }
+  window.dispatchEvent(new Event(RECENT_WALLPAPER_CHANGED));
 }
 
 export function loadRecentWallpapers(library?: MediaRef[]): RecentWallpaperEntry[] {
@@ -134,7 +152,7 @@ function filterRecentAgainstLibrary(
   return entries.filter((entry) => {
     const w = entry.wallpaper;
     if (w.kind !== "image" && w.kind !== "video") return true;
-    if (w.media.source !== "asset") return true;
+    if (w.media.source === "builtin") return true;
     return library.some((ref) => mediaRefEqual(ref, w.media));
   });
 }
@@ -148,6 +166,11 @@ export function pruneRecentMediaRef(ref: MediaRef): RecentWallpaperEntry[] {
   });
   writeStore(next);
   return resolveRecentEntries(next);
+}
+
+/** Persist reconciliation only against a successfully saved library, never a draft. */
+export function reconcileRecentWallpapers(library: MediaRef[]) {
+  writeStore(filterRecentAgainstLibrary(resolveRecentEntries(readStore()), library));
 }
 
 /** Record after a successful Settings Apply persistence only. */
@@ -169,8 +192,7 @@ export function queueRecentWallpaperOnSave(wallpaper: Wallpaper | undefined) {
 export function flushPendingRecentWallpaper(saved: Wallpaper | undefined) {
   if (!pendingRecent || !saved) return;
   if (wallpaperIdentityKey(pendingRecent) !== wallpaperIdentityKey(saved)) {
-    pendingRecent = null;
-    return;
+    return; // An older in-flight save must not consume a newer Apply. 
   }
   recordRecentWallpaper(saved);
   pendingRecent = null;
