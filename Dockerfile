@@ -1,4 +1,5 @@
 FROM node:24-alpine AS frontend
+RUN apk add --no-cache ffmpeg
 WORKDIR /src
 COPY wallpapers ./wallpapers
 COPY web/package*.json ./web/

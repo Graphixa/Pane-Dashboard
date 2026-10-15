@@ -76,7 +76,7 @@ Published ports are suggestions, not verified web interfaces. Enter the host's r
 
 ## Development
 
-Requires Node 24 and Go 1.23+ (CI uses Go 1.26).
+Requires Node 24, Go 1.23+ (CI uses Go 1.26), and FFmpeg on PATH to generate bundled wallpaper thumbnails. Docker installs these build dependencies automatically.
 
 ```sh
 cd web

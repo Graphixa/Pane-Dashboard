@@ -6,9 +6,9 @@
 
 | Run directly on your computer | Run with Docker |
 | --- | --- |
-| [Git](https://git-scm.com/downloads/), [Node.js **24**](https://nodejs.org/en/download) (includes npm), [Go **1.26**](https://go.dev/doc/install) | Git and [Docker](https://docs.docker.com/get-started/get-docker/) with **Compose v2** |
+| [Git](https://git-scm.com/downloads/), [Node.js **24**](https://nodejs.org/en/download) (includes npm), [Go **1.26**](https://go.dev/doc/install), [FFmpeg](https://ffmpeg.org/download.html) | Git and [Docker](https://docs.docker.com/get-started/get-docker/) with **Compose v2** |
 
-On Windows/macOS, Docker Desktop includes Compose. On a Linux server, install Docker Engine and the Compose plugin. Docker builds install Node and Go inside the build environment; you do not need them on the host.
+On Windows/macOS, Docker Desktop includes Compose. On a Linux server, install Docker Engine and the Compose plugin. FFmpeg generates the small bundled wallpaper thumbnails during builds. On macOS use `brew install ffmpeg`; on Ubuntu/Debian use `sudo apt install ffmpeg`; on Windows install FFmpeg and add its `bin` folder to PATH. Check `ffmpeg -version` before building. Docker builds install Node, Go and FFmpeg inside the build environment; you do not need them on the host.
 
 Check your tools in a new terminal after installation:
 
