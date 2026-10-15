@@ -102,7 +102,7 @@ Environment variables:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PANE_CONFIG` | `/config/pane.yaml` | Configuration file |
-| `PANE_LISTEN` | `:8080` | HTTP listen address |
+| `PANE_LISTEN` | `127.0.0.1:8080` | HTTP listen address (loopback by default; use `:8080` for all interfaces — Docker image sets this) |
 | `PANE_DOCKER_ENDPOINT` | unset | Opt-in Docker socket/proxy |
 
 The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. Icons are fetched directly from the [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) catalogue through jsDelivr, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. Trademarks belong to their owners. No icon artwork is bundled.
