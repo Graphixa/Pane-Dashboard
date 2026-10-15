@@ -1,6 +1,7 @@
 /**
  * Build-time wallpaper catalogue from repository wallpapers/ folders.
  * Flat categories only; nested folders are rejected.
+ * Videos/images get tiny WebP thumbs (ffmpeg) for chooser stills — not hand-authored.
  *
  * Outputs:
  * - ../../builtin/catalogue.json + media files (Go embed)
@@ -8,17 +9,22 @@
  * - ../src/generated/wallpaperCatalogue.ts (UI import)
  */
 import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
 import {
   copyFile,
   mkdir,
+  mkdtemp,
   readdir,
   readFile,
   rm,
-  stat,
   writeFile,
 } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+
+const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
@@ -31,6 +37,7 @@ const tsOut = path.join(webRoot, "src", "generated", "wallpaperCatalogue.ts");
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const VIDEO_EXT = new Set([".webm", ".mp4", ".m4v"]);
 const SKIP_NAMES = new Set(["category.json", "cover.png", "cover.jpg", "cover.jpeg", "cover.webp"]);
+const THUMB_WIDTH = 480;
 
 function humanise(folder) {
   return folder
@@ -67,7 +74,35 @@ function assertValidBuiltinId(id) {
   }
 }
 
+/** Tiny WebP still for chooser tiles/covers. */
+async function makeThumbWebp(absInput, kind, tmpDir) {
+  const out = path.join(tmpDir, `${createHash("sha1").update(absInput).digest("hex")}.webp`);
+  const args = ["-y"];
+  if (kind === "video") args.push("-ss", "0.5");
+  args.push("-i", absInput);
+  if (kind === "video") args.push("-frames:v", "1");
+  args.push(
+    "-vf",
+    `scale=${THUMB_WIDTH}:-2`,
+    "-c:v",
+    "libwebp",
+    "-quality",
+    "78",
+    out,
+  );
+  try {
+    await execFileAsync("ffmpeg", args, { windowsHide: true });
+  } catch (err) {
+    throw new Error(
+      `ffmpeg thumb failed for ${absInput} (is ffmpeg on PATH?): ${err?.message || err}`,
+    );
+  }
+  return readFile(out);
+}
+
 async function main() {
+  const tmpDir = await mkdtemp(path.join(os.tmpdir(), "pane-wallpaper-thumbs-"));
+
   let categoryDirs = [];
   try {
     const entries = await readdir(sourceRoot, { withFileTypes: true });
@@ -84,128 +119,115 @@ async function main() {
   const itemsById = new Map();
   const mediaWrites = [];
 
-  for (const folder of categoryDirs) {
-    const dir = path.join(sourceRoot, folder);
-    const nested = (await readdir(dir, { withFileTypes: true })).filter((e) => e.isDirectory());
-    if (nested.length) {
-      throw new Error(
-        `Nested folders are not supported in wallpapers/${folder}/ (found ${nested[0].name}). Keep categories flat.`,
-      );
-    }
-
-    let meta = {};
-    try {
-      meta = JSON.parse(await readFile(path.join(dir, "category.json"), "utf8"));
-    } catch (err) {
-      if (!err || err.code !== "ENOENT") throw err;
-    }
-
-    const files = (await readdir(dir))
-      .filter((name) => !SKIP_NAMES.has(name.toLowerCase()))
-      .filter((name) => !name.startsWith("."))
-      .sort();
-
-    const items = [];
-    for (const name of files) {
-      const ext = path.extname(name).toLowerCase();
-      const lower = name.toLowerCase();
-      if (lower.endsWith(".poster.png") || lower.endsWith(".poster.jpg") || lower.endsWith(".poster.webp")) {
-        continue; // poster sidecar, not a selectable wallpaper
-      }
-      if (lower === "cover.png" || lower === "cover.jpg" || lower === "cover.webp") continue;
-
-      let kind = null;
-      if (IMAGE_EXT.has(ext)) kind = "image";
-      else if (VIDEO_EXT.has(ext)) kind = "video";
-      else {
-        throw new Error(`Unsupported file wallpapers/${folder}/${name}`);
+  try {
+    for (const folder of categoryDirs) {
+      const dir = path.join(sourceRoot, folder);
+      const nested = (await readdir(dir, { withFileTypes: true })).filter((e) => e.isDirectory());
+      if (nested.length) {
+        throw new Error(
+          `Nested folders are not supported in wallpapers/${folder}/ (found ${nested[0].name}). Keep categories flat.`,
+        );
       }
 
-      const version = Number.isInteger(meta.version) ? meta.version : 1;
-      const id = `${baseId(name)}@v${version}`;
-      assertValidBuiltinId(id);
-      if (itemsById.has(id)) throw new Error(`Duplicate builtin id: ${id}`);
+      let meta = {};
+      try {
+        meta = JSON.parse(await readFile(path.join(dir, "category.json"), "utf8"));
+      } catch (err) {
+        if (!err || err.code !== "ENOENT") throw err;
+      }
 
-      const abs = path.join(dir, name);
-      const buf = await readFile(abs);
-      const hash = createHash("sha256").update(buf).digest("hex");
-      const size = kind === "image" && ext === ".png" ? probePngSize(buf) : { width: 0, height: 0 };
+      const files = (await readdir(dir))
+        .filter((name) => !SKIP_NAMES.has(name.toLowerCase()))
+        .filter((name) => !name.startsWith("."))
+        .sort();
 
-      let posterId = undefined;
-      const posterCandidates = [
-        `${path.basename(name, ext)}.poster.png`,
-        `${path.basename(name, ext)}.poster.jpg`,
-        `${path.basename(name, ext)}.poster.webp`,
-      ];
-      for (const p of posterCandidates) {
-        try {
-          await stat(path.join(dir, p));
-          posterId = `${baseId(name)}-poster@v${version}`;
-          const pbuf = await readFile(path.join(dir, p));
-          assertValidBuiltinId(posterId);
-          if (itemsById.has(posterId)) throw new Error(`Duplicate poster id: ${posterId}`);
-          itemsById.set(posterId, {
-            id: posterId,
-            kind: "image",
-            mime: mimeFor(path.extname(p).toLowerCase(), "image"),
-            file: `media/${posterId}`,
-            bytes: pbuf.length,
-            width: 0,
-            height: 0,
-            title: `${humanise(baseId(name))} poster`,
-            hash: createHash("sha256").update(pbuf).digest("hex"),
-            categoryId: folder,
-            selectable: false,
-          });
-          mediaWrites.push({ id: posterId, buf: pbuf });
-          break;
-        } catch (e) {
-          if (e && e.code !== "ENOENT") throw e;
+      const items = [];
+      for (const name of files) {
+        const ext = path.extname(name).toLowerCase();
+        const lower = name.toLowerCase();
+        if (lower.includes(".poster.") || lower.includes(".thumb.")) continue;
+        if (lower === "cover.png" || lower === "cover.jpg" || lower === "cover.webp") continue;
+
+        let kind = null;
+        if (IMAGE_EXT.has(ext)) kind = "image";
+        else if (VIDEO_EXT.has(ext)) kind = "video";
+        else {
+          throw new Error(`Unsupported file wallpapers/${folder}/${name}`);
         }
+
+        const version = Number.isInteger(meta.version) ? meta.version : 1;
+        const id = `${baseId(name)}@v${version}`;
+        assertValidBuiltinId(id);
+        if (itemsById.has(id)) throw new Error(`Duplicate builtin id: ${id}`);
+
+        const abs = path.join(dir, name);
+        const buf = await readFile(abs);
+        const hash = createHash("sha256").update(buf).digest("hex");
+        const size = kind === "image" && ext === ".png" ? probePngSize(buf) : { width: 0, height: 0 };
+
+        const thumbId = `${baseId(name)}-thumb@v${version}`;
+        assertValidBuiltinId(thumbId);
+        if (itemsById.has(thumbId)) throw new Error(`Duplicate thumb id: ${thumbId}`);
+        const tbuf = await makeThumbWebp(abs, kind, tmpDir);
+        itemsById.set(thumbId, {
+          id: thumbId,
+          kind: "image",
+          mime: "image/webp",
+          file: `media/${thumbId}`,
+          bytes: tbuf.length,
+          width: 0,
+          height: 0,
+          title: `${humanise(baseId(name))} thumb`,
+          hash: createHash("sha256").update(tbuf).digest("hex"),
+          categoryId: folder,
+          selectable: false,
+        });
+        mediaWrites.push({ id: thumbId, buf: tbuf });
+
+        const title =
+          typeof meta.titles?.[baseId(name)] === "string"
+            ? meta.titles[baseId(name)]
+            : humanise(baseId(name));
+
+        const entry = {
+          id,
+          kind,
+          mime: mimeFor(ext, kind),
+          file: `media/${id}`,
+          bytes: buf.length,
+          width: size.width,
+          height: size.height,
+          title,
+          hash,
+          categoryId: folder,
+          selectable: true,
+          thumbId,
+          licence: typeof meta.licence === "string" ? meta.licence : undefined,
+        };
+        itemsById.set(id, entry);
+        items.push(entry);
+        mediaWrites.push({ id, buf });
       }
 
-      const title =
-        typeof meta.titles?.[baseId(name)] === "string"
-          ? meta.titles[baseId(name)]
-          : humanise(baseId(name));
+      if (!items.length) continue;
 
-      const entry = {
-        id,
-        kind,
-        mime: mimeFor(ext, kind),
-        file: `media/${id}`,
-        bytes: buf.length,
-        width: size.width,
-        height: size.height,
-        title,
-        hash,
-        categoryId: folder,
-        selectable: true,
-        posterId,
-        licence: typeof meta.licence === "string" ? meta.licence : undefined,
-      };
-      itemsById.set(id, entry);
-      items.push(entry);
-      mediaWrites.push({ id, buf });
+      let coverId =
+        typeof meta.cover === "string" && itemsById.has(meta.cover)
+          ? meta.cover
+          : items[0].id;
+      const imageCover = items.find((i) => i.kind === "image");
+      if (!meta.cover && imageCover) coverId = imageCover.id;
+
+      categories.push({
+        id: folder,
+        name: typeof meta.name === "string" ? meta.name : humanise(folder),
+        order: Number.isFinite(meta.order) ? meta.order : categories.length + 1,
+        coverId,
+        itemIds: items.map((i) => i.id),
+      });
     }
-
-    if (!items.length) continue; // empty bundled categories omitted from catalogue
-
-    let coverId =
-      typeof meta.cover === "string" && itemsById.has(meta.cover)
-        ? meta.cover
-        : items[0].id;
-    // Prefer image cover; else first item (video uses poster when browsing)
-    const imageCover = items.find((i) => i.kind === "image");
-    if (!meta.cover && imageCover) coverId = imageCover.id;
-
-    categories.push({
-      id: folder,
-      name: typeof meta.name === "string" ? meta.name : humanise(folder),
-      order: Number.isFinite(meta.order) ? meta.order : categories.length + 1,
-      coverId,
-      itemIds: items.map((i) => i.id),
-    });
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
   }
 
   categories.sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
@@ -214,10 +236,9 @@ async function main() {
     version: 1,
     generatedAt: new Date().toISOString(),
     categories,
-    items: [...itemsById.values()].filter((i) => i.selectable !== false || i.id.includes("-poster@")),
+    items: [...itemsById.values()],
   };
 
-  // Rebuild pack + public
   await rm(packRoot, { recursive: true, force: true });
   await rm(publicRoot, { recursive: true, force: true });
   await mkdir(path.join(packRoot, "media"), { recursive: true });
@@ -246,7 +267,7 @@ async function main() {
       mime: item.mime,
       width: item.width,
       height: item.height,
-      posterId: item.posterId,
+      thumbId: item.thumbId,
       categoryId: item.categoryId,
     };
   }
@@ -262,7 +283,7 @@ async function main() {
       `  mime: string;\n` +
       `  width: number;\n` +
       `  height: number;\n` +
-      `  posterId?: string;\n` +
+      `  thumbId?: string;\n` +
       `  categoryId: string;\n` +
       `};\n` +
       `export type WallpaperCatalogueCategory = {\n` +
@@ -276,15 +297,15 @@ async function main() {
       `export function builtinMediaUrl(id: string): string {\n` +
       `  return "/media/builtin/" + encodeURIComponent(id);\n` +
       `}\n` +
-      `export function builtinPosterUrl(item: WallpaperCatalogueItem): string {\n` +
-      `  if (item.posterId) return builtinMediaUrl(item.posterId);\n` +
-      `  if (item.kind === "image") return builtinMediaUrl(item.id);\n` +
+      `export function builtinThumbUrl(item: WallpaperCatalogueItem): string {\n` +
+      `  if (item.thumbId) return builtinMediaUrl(item.thumbId);\n` +
       `  return builtinMediaUrl(item.id);\n` +
       `}\n`,
   );
 
+  const thumbs = mediaWrites.filter((m) => m.id.includes("-thumb@")).length;
   console.log(
-    `Wallpaper catalogue: ${categories.length} categories, ${Object.keys(uiItems).length} items → builtin/ + public + ${path.relative(webRoot, tsOut)}`,
+    `Wallpaper catalogue: ${categories.length} categories, ${Object.keys(uiItems).length} items, ${thumbs} thumbs → builtin/ + public + ${path.relative(webRoot, tsOut)}`,
   );
 }
 

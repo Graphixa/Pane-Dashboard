@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-13T14:05:42.295Z",
+  "generatedAt": "2026-10-15T14:44:23.834Z",
   "categories": [
     {
       "id": "static",
@@ -26,189 +26,384 @@
       "itemIds": [
         "aurora@v1",
         "bokeh@v1",
+        "cosmic-dust@v1",
         "cosmic-nebula@v1",
         "deep-space@v1",
-        "dust@v1",
         "fractal-smoke@v1",
         "neon-wave@v1",
         "ocean-breeze@v1",
-        "ocean-sunset@v1",
         "on-the-grid@v1",
+        "pacific-sunset@v1",
         "particle-wave@v1",
-        "sakura-tree-live@v1",
+        "sakura-tree@v1",
         "synthwave@v1"
       ]
     }
   ],
   "items": [
     {
+      "id": "aurora-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/aurora-thumb@v1",
+      "bytes": 2678,
+      "width": 0,
+      "height": 0,
+      "title": "Aurora thumb",
+      "hash": "330195a7d939fb59fcd45bcff9c5be08aacec3c96521a669b0bf52b1356e06fb",
+      "categoryId": "live",
+      "selectable": false
+    },
+    {
       "id": "aurora@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/aurora@v1",
-      "bytes": 6527729,
+      "bytes": 5673467,
       "width": 0,
       "height": 0,
       "title": "Aurora",
-      "hash": "6c6d95959e42b9c0f7c0f41bf6537bdaa28364b1b129e848c8f8036631109bea",
+      "hash": "22b874030658a2866bc40cdfe8f98a90c53ca5a058e505602be92f3bbe724963",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "aurora-thumb@v1"
+    },
+    {
+      "id": "bokeh-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/bokeh-thumb@v1",
+      "bytes": 6528,
+      "width": 0,
+      "height": 0,
+      "title": "Bokeh thumb",
+      "hash": "1cb6b9b6383bb92be7159db3c76a217103c39321ed5a2e030ad43fb110064714",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "bokeh@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/bokeh@v1",
-      "bytes": 14589669,
+      "bytes": 11082623,
       "width": 0,
       "height": 0,
       "title": "Bokeh",
-      "hash": "1bd40522a8d103a4f5d18e608b70ec50d9721a42c8462043eaf2c19accce97c6",
+      "hash": "b783b62378d22bfbd490338bc24bfa22ead44549b122d9093d1c0ca945823d2a",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "bokeh-thumb@v1"
+    },
+    {
+      "id": "cosmic-dust-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/cosmic-dust-thumb@v1",
+      "bytes": 8972,
+      "width": 0,
+      "height": 0,
+      "title": "Cosmic Dust thumb",
+      "hash": "3ab43602b4d4bf31dd2667cdfef532b75bf680688263803add4494968883e2a8",
+      "categoryId": "live",
+      "selectable": false
+    },
+    {
+      "id": "cosmic-dust@v1",
+      "kind": "video",
+      "mime": "video/webm",
+      "file": "media/cosmic-dust@v1",
+      "bytes": 7509163,
+      "width": 0,
+      "height": 0,
+      "title": "Cosmic Dust",
+      "hash": "0f19ca0b018ad827862cccedb00211a99775660dba5328eebf2ac351936d57b7",
+      "categoryId": "live",
+      "selectable": true,
+      "thumbId": "cosmic-dust-thumb@v1"
+    },
+    {
+      "id": "cosmic-nebula-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/cosmic-nebula-thumb@v1",
+      "bytes": 2916,
+      "width": 0,
+      "height": 0,
+      "title": "Cosmic Nebula thumb",
+      "hash": "aa849835863106779559bb1ab2d378875f8c63feb8edadb31734f7178d548fc3",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "cosmic-nebula@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/cosmic-nebula@v1",
-      "bytes": 2626204,
+      "bytes": 1479360,
       "width": 0,
       "height": 0,
       "title": "Cosmic Nebula",
-      "hash": "2ef8862c66c2332bcab128484a5eb0a803d91aa146c67531f568d65bb0a378e7",
+      "hash": "797270c766c6311e7356c1693d68a60c8f6a6c81092b1583eae0c643ca02c4d2",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "cosmic-nebula-thumb@v1"
+    },
+    {
+      "id": "deep-space-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/deep-space-thumb@v1",
+      "bytes": 7336,
+      "width": 0,
+      "height": 0,
+      "title": "Deep Space thumb",
+      "hash": "551cf50e18f5c787c7c263d30a888a76bb9c89cf77565d787122fc64cc43b8a8",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "deep-space@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/deep-space@v1",
-      "bytes": 13143948,
+      "bytes": 21944859,
       "width": 0,
       "height": 0,
       "title": "Deep Space",
-      "hash": "f25b259bea834bf8e50e7479483c64e118124352321ead568fb95f603a36509d",
+      "hash": "4363dc3b63418387ec9bb5a5cd1f984b614e7634fda36915d2f589812ce4f251",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "deep-space-thumb@v1"
     },
     {
-      "id": "dust@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/dust@v1",
-      "bytes": 7694959,
+      "id": "fractal-smoke-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/fractal-smoke-thumb@v1",
+      "bytes": 4612,
       "width": 0,
       "height": 0,
-      "title": "Dust",
-      "hash": "e0588c638e2b899cbefe694ef1d50ce4d9c777aea231aa4ddc499fd6b6f1b29e",
+      "title": "Fractal Smoke thumb",
+      "hash": "6d35467d19f599dfff1a052c806c5c1af8514564d6e2ac0fe90ef3b14a1030d6",
       "categoryId": "live",
-      "selectable": true
+      "selectable": false
     },
     {
       "id": "fractal-smoke@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/fractal-smoke@v1",
-      "bytes": 14355416,
+      "bytes": 31565836,
       "width": 0,
       "height": 0,
       "title": "Fractal Smoke",
-      "hash": "c5a325ebd66d499bfafa3ff9f460a849c6708c562bbb092990627ccf3c9de70d",
+      "hash": "a403ddb3f65ccb777e358c98147acc1354653b2d115eee9c5be9aa0f0fad0ad9",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "fractal-smoke-thumb@v1"
+    },
+    {
+      "id": "neon-wave-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/neon-wave-thumb@v1",
+      "bytes": 12186,
+      "width": 0,
+      "height": 0,
+      "title": "Neon Wave thumb",
+      "hash": "05f95e53001afd14f2613ec80364f2df68acde2e844f0e297237cf754d9d0c2e",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "neon-wave@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/neon-wave@v1",
-      "bytes": 21415203,
+      "bytes": 39016665,
       "width": 0,
       "height": 0,
       "title": "Neon Wave",
-      "hash": "f7bebfc60cc8d422b7d38e02fe337b8ec46dcc64e175693c43d5747ae2375807",
+      "hash": "fb87cc3f6e344209abf0932d7534e0d5340e81197d57f647acffe699c1adce33",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "neon-wave-thumb@v1"
+    },
+    {
+      "id": "ocean-breeze-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/ocean-breeze-thumb@v1",
+      "bytes": 8644,
+      "width": 0,
+      "height": 0,
+      "title": "Ocean Breeze thumb",
+      "hash": "55e29c5ac8ef9acb1e7acc490c16deac98bb5344e22ceb19caac272d02a462c3",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "ocean-breeze@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/ocean-breeze@v1",
-      "bytes": 6444660,
+      "bytes": 11291562,
       "width": 0,
       "height": 0,
       "title": "Ocean Breeze",
-      "hash": "2489385aee587d65f70dc81dbab1a77256496d23a602d18bbc3fec59e6a38e73",
+      "hash": "4cafcff4f1f6462dcc49bf6e7146fe578f8cae9adaf1353d35c1b8ee051fc76f",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "ocean-breeze-thumb@v1"
     },
     {
-      "id": "ocean-sunset@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/ocean-sunset@v1",
-      "bytes": 3548068,
+      "id": "on-the-grid-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/on-the-grid-thumb@v1",
+      "bytes": 15100,
       "width": 0,
       "height": 0,
-      "title": "Ocean Sunset",
-      "hash": "0ed1d8e7aaaa68caaa2bfab205e1e67e4e436c03a5c750f59ede53c3fcb048ee",
+      "title": "On The Grid thumb",
+      "hash": "62abd6f7f037e1496217280a0d70973aeb7733fd5e5f8246042dc8b44374bfad",
       "categoryId": "live",
-      "selectable": true
+      "selectable": false
     },
     {
       "id": "on-the-grid@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/on-the-grid@v1",
-      "bytes": 10313408,
+      "bytes": 24398404,
       "width": 0,
       "height": 0,
       "title": "On The Grid",
-      "hash": "68368d6f7a20717d942873329756e6cfbd30980db7ff34537de572fa779a77b6",
+      "hash": "2e37f054c444d1f1aadc502b642d05550f6c799244e45f55669803a32085db3e",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "on-the-grid-thumb@v1"
+    },
+    {
+      "id": "pacific-sunset-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/pacific-sunset-thumb@v1",
+      "bytes": 8770,
+      "width": 0,
+      "height": 0,
+      "title": "Pacific Sunset thumb",
+      "hash": "df49b21873749ce71dd8613c88033f77a39bba4bce4ea697a3d0fc657c64e5c8",
+      "categoryId": "live",
+      "selectable": false
+    },
+    {
+      "id": "pacific-sunset@v1",
+      "kind": "video",
+      "mime": "video/webm",
+      "file": "media/pacific-sunset@v1",
+      "bytes": 4152384,
+      "width": 0,
+      "height": 0,
+      "title": "Pacific Sunset",
+      "hash": "22c6a7d94921abb7ac031219eafa00d462b95955a84874301811e4213319bbcc",
+      "categoryId": "live",
+      "selectable": true,
+      "thumbId": "pacific-sunset-thumb@v1"
+    },
+    {
+      "id": "particle-wave-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/particle-wave-thumb@v1",
+      "bytes": 9128,
+      "width": 0,
+      "height": 0,
+      "title": "Particle Wave thumb",
+      "hash": "7388d3dfafb2ad2940dafe3172b36ede713c79bb537581b6879ca1ece8ded555",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "particle-wave@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/particle-wave@v1",
-      "bytes": 17359621,
+      "bytes": 29504001,
       "width": 0,
       "height": 0,
       "title": "Particle Wave",
-      "hash": "e10bbbbcb7ddd492b96c8339bdfb74331144a5b2c18d7a09375bb5411404ac01",
+      "hash": "f33c4cc1032e718f9b78064189e16fff21b54a9460bb9ded77dd49c6c3667187",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "particle-wave-thumb@v1"
     },
     {
-      "id": "sakura-tree-live@v1",
-      "kind": "video",
-      "mime": "video/mp4",
-      "file": "media/sakura-tree-live@v1",
-      "bytes": 6587835,
+      "id": "sakura-tree-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/sakura-tree-thumb@v1",
+      "bytes": 12418,
       "width": 0,
       "height": 0,
-      "title": "Sakura Tree Live",
-      "hash": "560b6ec2b08caf65bf939aab0491c322a4bac318f63b13e6dfd36a53bf9654f0",
+      "title": "Sakura Tree thumb",
+      "hash": "cc57b8f0ce9680068b5507150bb7dfcd6af2a11b102bbe3fe7bd083ce0d21207",
       "categoryId": "live",
-      "selectable": true
+      "selectable": false
+    },
+    {
+      "id": "sakura-tree@v1",
+      "kind": "video",
+      "mime": "video/webm",
+      "file": "media/sakura-tree@v1",
+      "bytes": 16698906,
+      "width": 0,
+      "height": 0,
+      "title": "Sakura Tree",
+      "hash": "2230d727a566e30a68957258c3f245f9f77322bf362dfeb1edf55e4a4663a464",
+      "categoryId": "live",
+      "selectable": true,
+      "thumbId": "sakura-tree-thumb@v1"
+    },
+    {
+      "id": "synthwave-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/synthwave-thumb@v1",
+      "bytes": 10298,
+      "width": 0,
+      "height": 0,
+      "title": "Synthwave thumb",
+      "hash": "1ef3ea0f92d5eb9cbbb1ddf8a327d3eae5001a7c5e47fb64200e39eef8b5270e",
+      "categoryId": "live",
+      "selectable": false
     },
     {
       "id": "synthwave@v1",
       "kind": "video",
-      "mime": "video/mp4",
+      "mime": "video/webm",
       "file": "media/synthwave@v1",
-      "bytes": 8103673,
+      "bytes": 25929859,
       "width": 0,
       "height": 0,
       "title": "Synthwave",
-      "hash": "7d123b0ed5ca70103a0de8a279ce4684f7b3bf28c9cd2a2c43903140add89503",
+      "hash": "8a9351d5af28c43c3c144606d4390a79d4fb9ef48f8ab6893e8f635c81002704",
       "categoryId": "live",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "synthwave-thumb@v1"
+    },
+    {
+      "id": "abstract-waves-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/abstract-waves-thumb@v1",
+      "bytes": 23314,
+      "width": 0,
+      "height": 0,
+      "title": "Abstract Waves thumb",
+      "hash": "cd27b67d641123a056f9fef111643aed1e6707d3891cd8a305a7b5c664b3f3fb",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "abstract-waves@v1",
@@ -221,7 +416,21 @@
       "title": "Abstract Waves",
       "hash": "e35efa69eaa0ece03e7c984dad6ca79476d8d7e1f80be8fc771a3c6498f47dca",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "abstract-waves-thumb@v1"
+    },
+    {
+      "id": "cosmos-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/cosmos-thumb@v1",
+      "bytes": 8716,
+      "width": 0,
+      "height": 0,
+      "title": "Cosmos thumb",
+      "hash": "c72df69892a694c144003aa23c67768435bc6f5ca5e1deecd19cc1d617b3bbac",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "cosmos@v1",
@@ -234,7 +443,21 @@
       "title": "Cosmos",
       "hash": "a99b31c9214d4a5bff0c613ea63990e5204dc4d5362de5f256af3090d9a08daa",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "cosmos-thumb@v1"
+    },
+    {
+      "id": "dune-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/dune-thumb@v1",
+      "bytes": 14154,
+      "width": 0,
+      "height": 0,
+      "title": "Dune thumb",
+      "hash": "cab8f061fd3272e187aa8402b80801b18dd17f6a346c4359d8cec79859fd6c14",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "dune@v1",
@@ -247,7 +470,21 @@
       "title": "Dune",
       "hash": "0cfdbb402384a5689e4d389b122b73a3ecc2591594a7788c648cb1bb2eb0efd6",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "dune-thumb@v1"
+    },
+    {
+      "id": "mountains-day-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/mountains-day-thumb@v1",
+      "bytes": 13786,
+      "width": 0,
+      "height": 0,
+      "title": "Mountains Day thumb",
+      "hash": "1464cb1e3dceec01f3e666237f6977dd8a56491d99e934a4e6c1ecbdff28abc0",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "mountains-day@v1",
@@ -260,7 +497,21 @@
       "title": "Mountains Day",
       "hash": "ba02bb927bcb32948151a6beb16f5b27233a07da8bfd1f023ea2dc17472a1e31",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "mountains-day-thumb@v1"
+    },
+    {
+      "id": "mountains-night-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/mountains-night-thumb@v1",
+      "bytes": 8530,
+      "width": 0,
+      "height": 0,
+      "title": "Mountains Night thumb",
+      "hash": "d70620e517aa710e30ad7582dc7928457b97cc03cba6c70080a5301a01a79960",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "mountains-night@v1",
@@ -273,7 +524,21 @@
       "title": "Mountains Night",
       "hash": "0b094167167e3c23aad28c6d159a566024a462d554d81de0a3885bdc146379b8",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "mountains-night-thumb@v1"
+    },
+    {
+      "id": "rainforest-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/rainforest-thumb@v1",
+      "bytes": 11102,
+      "width": 0,
+      "height": 0,
+      "title": "Rainforest thumb",
+      "hash": "d5eba4712aa4b68e141df73cae02134809a046d9b3515cfe8a71897e2e8ffc31",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "rainforest@v1",
@@ -286,7 +551,21 @@
       "title": "Rainforest",
       "hash": "dcb0d76bc45a36ce0f8544dfb2579873bcc2e699f1018e169576a2e94869b338",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "rainforest-thumb@v1"
+    },
+    {
+      "id": "skyline-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/skyline-thumb@v1",
+      "bytes": 18772,
+      "width": 0,
+      "height": 0,
+      "title": "Skyline thumb",
+      "hash": "36217f5ee575e051ae9e270533864a77b373e6824d62efa40dac059e33d7e431",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "skyline@v1",
@@ -299,7 +578,21 @@
       "title": "Skyline",
       "hash": "fc8095be1b9d23738547a0646f3380c9d55764fa39affdac80bf1e9a12019f63",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "skyline-thumb@v1"
+    },
+    {
+      "id": "vines-thumb@v1",
+      "kind": "image",
+      "mime": "image/webp",
+      "file": "media/vines-thumb@v1",
+      "bytes": 25038,
+      "width": 0,
+      "height": 0,
+      "title": "Vines thumb",
+      "hash": "41595c4183e10163b088edd18733a2b1e911b6f530cab320877c7eff0625d659",
+      "categoryId": "static",
+      "selectable": false
     },
     {
       "id": "vines@v1",
@@ -312,7 +605,8 @@
       "title": "Vines",
       "hash": "db46ad680392abbb146c37ab5eb5360b1cb5c5d0b1f59cf98908e436d8a9c425",
       "categoryId": "static",
-      "selectable": true
+      "selectable": true,
+      "thumbId": "vines-thumb@v1"
     }
   ]
 }

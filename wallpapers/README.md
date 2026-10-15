@@ -2,6 +2,8 @@
 
 Flat category folders only. Run `npm run catalogue` in `web/` (also via pretest/prebuild) to regenerate `builtin/` and `web/src/generated/wallpaperCatalogue.ts`.
 
+Requires **ffmpeg** on PATH — the catalogue step generates tiny WebP thumbs (`*-thumb@vN`) for chooser tiles and category covers. You do not author poster/thumb sidecars.
+
 Optional `category.json` per folder:
 
 ```json
@@ -15,4 +17,4 @@ Optional `category.json` per folder:
 }
 ```
 
-Supported files: PNG, JPEG, WebP, WebM, MP4. Poster sidecars: `name.poster.png` (served, not selectable). Nested folders are rejected.
+Supported files: PNG, JPEG, WebP, WebM, MP4. Nested folders are rejected. Legacy `*.poster.*` / `*.thumb.*` sidecars in the folder are ignored.

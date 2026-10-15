@@ -45,6 +45,9 @@ func TestServeBuiltinMedia(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("status %d body %s", rec.Code, rec.Body.String())
 	}
+	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
+		t.Fatalf("Cache-Control %q", got)
+	}
 	ct := rec.Header().Get("Content-Type")
 	if ct != "image/png" && ct != "image/jpeg" && ct != "image/webp" && ct != "video/webm" && ct != "video/mp4" {
 		t.Fatalf("content-type %q", ct)
