@@ -57,7 +57,7 @@ wallpapers/
 - Item IDs are stable `name@vN` (default `v1`); optional `category.json` cover/titles/order; folder placeholders humanise when metadata is absent.
 - Empty bundled folders are omitted from the catalogue (hidden in the chooser). Catalogue generation requires ffmpeg and writes tiny WebP thumbs (`*-thumb@vN`) beside each item for chooser stills/covers.
 - Nested folders and unsupported extensions fail the generator. Duplicate IDs fail the generator.
-- Chooser live tiles, Recently selected live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a bounded session still from the first hovered/focused playback; idle uploads use a neutral placeholder until then, with no hidden video request. Dashboard video does not treat autoplay rejection as a hard failure.
+- Chooser live tiles, Recently selected live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos use a durable `/media/assets/{id}/poster` still captured in the browser on Add media (and backfilled on first hover/focus playback when missing). Idle tiles never mount `<video>` merely to show a still. Dashboard video does not treat autoplay rejection as a hard failure.
 - Versioned builtin IDs (`name@vN`) and committed asset IDs are content-addressed: `GET /media/builtin/{id}` and `GET /media/assets/{id}` send `Cache-Control: public, max-age=31536000, immutable`. Staging (`/media/staging/`) stays `private, no-store`. Vite dev proxies `/media` to the Go server so those headers apply in local browse.
 
 ## Composition object (`appearance.background`)
@@ -155,7 +155,7 @@ Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated 
 - WebP: `golang.org/x/image/webp`
 - PNG/JPEG: stdlib
 - Video probe: pure-Go / best-effort; Phase 4 tightens codecs
-- Posters: authored for built-ins; uploads may omit (theme fallback)
+- Posters: catalogue thumbs for built-ins; uploaded images lazy; uploaded videos via client-captured `PUT /api/media/poster/{id}`
 
 ## Out of scope
 
@@ -163,4 +163,4 @@ Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated 
 - Live shaders (#14)
 - Community CSS/HTML pack import
 
-Uploaded image posters at `/media/assets/{id}/poster` are generated lazily, bounded to 480 px, cached in `media/posters/` and served immutable with an ETag. They reuse validated local bytes only; remote image URLs are not fetched by the backend. Videos have no server transcoding path and return 404 for this image endpoint.
+Uploaded image posters at `/media/assets/{id}/poster` are generated lazily, bounded to 480 px, cached in `media/posters/` and served immutable with an ETag. They reuse validated local bytes only; remote image URLs are not fetched by the backend. Uploaded video posters use the same GET path after `PUT /api/media/poster/{id}` stores a client-captured ≤480 px JPEG/WebP still (no runtime ffmpeg or server video decode); missing video posters return 404.

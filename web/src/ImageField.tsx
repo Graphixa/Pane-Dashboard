@@ -2,6 +2,12 @@ import { Button, Input, Label, Notice } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { logoReference } from "./appearance";
+import {
+  assetIdFromMediaPath,
+  extractVideoStillFromFile,
+  putVideoPoster,
+  seedVideoStillFromBlob,
+} from "./videoStillCache";
 
 export type StagedMedia = {
   sessionId: string;
@@ -82,7 +88,20 @@ export async function prepareUpload(
   _kind: "icon" | "logo" | "background",
 ): Promise<CommittedMedia> {
   const staged = await stageMediaUpload(file);
-  return commitStagedMedia(staged.sessionId);
+  const committed = await commitStagedMedia(staged.sessionId);
+  if (committed.kind === "video") {
+    try {
+      const still = await extractVideoStillFromFile(file);
+      const assetId = assetIdFromMediaPath(committed.path);
+      if (still && assetId) {
+        seedVideoStillFromBlob(committed.path, still);
+        await putVideoPoster(assetId, still);
+      }
+    } catch {
+      // Soft-fail: upload already committed; hover backfill can store a poster later.
+    }
+  }
+  return committed;
 }
 
 export default function ImageField({

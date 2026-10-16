@@ -30,6 +30,16 @@ it("commits the entire history only when the matching background is saved", () =
   flushPendingRecentWallpaper(bg);
   expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["image:asset:b","image:asset:a"]);
 });
+it("stores durable poster thumbs for uploaded videos", () => {
+  const video: Wallpaper = {
+    kind: "video",
+    media: { source: "asset", assetId: "clip1" },
+    position: "center",
+    playback: "loop",
+  };
+  const entries = selectRecentWallpaper([], video);
+  expect(entries[0].thumb).toBe("/media/assets/clip1/poster");
+});
 it("filters deleted uploads at save and retains built-ins", () => {
   const builtin: Wallpaper = {kind:"video",media:{source:"builtin",builtinId:"neon-wave@v1"},position:"center",playback:"loop"};
   const entries = selectRecentWallpaper(selectRecentWallpaper([],photo("gone")),builtin);

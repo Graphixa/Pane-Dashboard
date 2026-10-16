@@ -44,7 +44,7 @@ export function recentEntryFromWallpaper(
   let label = labelHint || (wallpaper.kind === "video" ? "Video" : "Photo");
   let thumb: string | undefined;
   if (media.source === "asset") {
-    thumb = wallpaper.kind === "image" ? `/media/assets/${media.assetId}/poster` : undefined;
+    thumb = `/media/assets/${media.assetId}/poster`;
   } else if (media.source === "builtin") {
     const item = wallpaperCatalogueItems[media.builtinId];
     label = labelHint || item?.title || media.builtinId;

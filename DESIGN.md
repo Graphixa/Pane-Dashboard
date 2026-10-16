@@ -227,7 +227,7 @@ Hover or keyboard focus plays the muted loop after a short linger on pointer
 (~180 ms; focus is immediate); thumb stays until the first video frame paints;
 leave/blur returns to the still; `prefers-reduced-motion` keeps the still only (no
 load-time autoplay). Recently selected carousel tiles and the Background Current-band
-live preview use the same shared still-first helper. Uploaded images use lazy, bounded server thumbnails; idle upload videos never download a file merely to capture a still. Category grids list static
+live preview use the same shared still-first helper. Uploaded images use lazy, bounded server thumbnails; uploaded videos use a durable `/poster` still captured in the browser on Add media (idle tiles never mount `<video>` merely to show a still). Category grids list static
 wallpapers before live ones. Prefer the Component Reference Modal example with
 `onBack` / `headerActions` when extending this pattern.
 

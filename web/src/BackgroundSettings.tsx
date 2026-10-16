@@ -66,7 +66,7 @@ import {
   type MediaKind,
 } from "./wallpaperChooser";
 
-/** Catalogue thumb or photo URL for Current / Recently selected stills. */
+/** Catalogue thumb or asset/photo poster URL for Current / Recently selected stills. */
 function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
   if (wallpaper.kind === "image") {
     if (wallpaper.media.source === "builtin") {
@@ -75,9 +75,14 @@ function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
     }
     return imageThumbUrl(wallpaper.media);
   }
-  if (wallpaper.kind === "video" && wallpaper.media.source === "builtin") {
-    const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
-    return item ? builtinThumbUrl(item) : undefined;
+  if (wallpaper.kind === "video") {
+    if (wallpaper.media.source === "builtin") {
+      const item = wallpaperCatalogueItems[wallpaper.media.builtinId];
+      return item ? builtinThumbUrl(item) : undefined;
+    }
+    if (wallpaper.media.source === "asset") {
+      return imageThumbUrl(wallpaper.media);
+    }
   }
   return undefined;
 }
@@ -190,14 +195,10 @@ function CurrentLivePreview({
 function StillPreview({ b, label }: { b: Background; label: string }) {
   const w = b.wallpaper;
   if (w.kind === "video") {
-    const item =
-      w.media.source === "builtin"
-        ? wallpaperCatalogueItems[w.media.builtinId]
-        : undefined;
     return (
       <CurrentLivePreview
         videoSrc={mediaSrc(w.media)}
-        thumbSrc={item ? builtinThumbUrl(item) : undefined}
+        thumbSrc={wallpaperStillUrl(w)}
         label={label}
       />
     );
@@ -722,7 +723,7 @@ export default function BackgroundSettings({
                 label={mediaLabel(ref, kind)}
                 pressed={isActiveImage(ref) || isActiveVideo(ref)}
                 kind={kind}
-                src={kind === "video" ? undefined : imageThumbUrl(ref)}
+                src={imageThumbUrl(ref)}
                 videoSrc={kind === "video" ? url : undefined}
                 onSelect={() => selectMedia(ref, kind)}
                 onRemove={() => requestRemoveLibraryRef(ref)}

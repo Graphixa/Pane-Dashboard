@@ -232,8 +232,13 @@ export function LiveThumbVideo({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
-  const captured = useVideoStill(thumbSrc ? undefined : videoSrc);
-  const still = thumbSrc ?? captured;
+  const [thumbFailed, setThumbFailed] = useState(false);
+  useEffect(() => {
+    setThumbFailed(false);
+  }, [thumbSrc]);
+  const durableThumb = thumbFailed ? undefined : thumbSrc;
+  const captured = useVideoStill(durableThumb ? undefined : videoSrc);
+  const still = durableThumb ?? captured;
 
   useEffect(() => {
     if (!active) setVideoReady(false);
@@ -255,7 +260,12 @@ export function LiveThumbVideo({
 
   return (
     <>
-      {showThumb || !active ? <TileStill src={showThumb ? still : undefined} /> : null}
+      {showThumb || !active ? (
+        <TileStill
+          src={showThumb ? still : undefined}
+          onError={durableThumb ? () => setThumbFailed(true) : undefined}
+        />
+      ) : null}
       {active ? (
         <video
           ref={ref}
@@ -269,7 +279,8 @@ export function LiveThumbVideo({
           tabIndex={-1}
           onPlaying={(event) => {
             setVideoReady(true);
-            if (!thumbSrc) capturePlayingVideoStill(videoSrc, event.currentTarget);
+            // Capture (+ durable PUT) when no working poster yet.
+            if (!durableThumb) capturePlayingVideoStill(videoSrc, event.currentTarget);
           }}
         />
       ) : null}
@@ -277,7 +288,7 @@ export function LiveThumbVideo({
   );
 }
 
-function TileStill({ src }: { src?: string }) {
+function TileStill({ src, onError }: { src?: string; onError?: () => void }) {
   if (!src) {
     return <span className="wallpaper-tile-paint" aria-hidden="true" />;
   }
@@ -290,6 +301,7 @@ function TileStill({ src }: { src?: string }) {
       decoding="async"
       draggable={false}
       aria-hidden="true"
+      onError={onError}
     />
   );
 }

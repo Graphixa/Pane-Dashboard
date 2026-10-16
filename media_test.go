@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"image"
+	"image/jpeg"
 	"image/png"
 	"net/http"
 	"net/http/httptest"
@@ -291,5 +292,74 @@ func TestImagePosterAndMissingAssetMetadata(t *testing.T) {
 	}
 	if gone := request("/media/assets/" + meta.ID + "/poster"); gone.Code != 404 {
 		t.Fatal("served poster for deleted asset")
+	}
+}
+
+func testMinimalWebM(t *testing.T) []byte {
+	t.Helper()
+	// EBML header only — validateVideoFile accepts magic-matched WebM without a full probe.
+	return []byte{0x1a, 0x45, 0xdf, 0xa3, 0x00, 0x00, 0x00, 0x00}
+}
+
+func testJPEG(t *testing.T, w, h int) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	if err := jpeg.Encode(&b, image.NewNRGBA(image.Rect(0, 0, w, h)), &jpeg.Options{Quality: 80}); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func TestVideoPosterPutAndServe(t *testing.T) {
+	media, err := openMediaStore(filepath.Join(t.TempDir(), "pane.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged, err := media.StageUpload(bytes.NewReader(testMinimalWebM(t)), mediaVideoUploadLimit, "loop.webm", "video/webm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	meta, err := media.CommitStaging(staged.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	registerMediaRoutes(mux, media)
+	get := func(path string) *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, httptest.NewRequest("GET", path, nil))
+		return recorder
+	}
+	if missing := get("/media/assets/" + meta.ID + "/poster"); missing.Code != 404 {
+		t.Fatalf("video poster before put: %d", missing.Code)
+	}
+	put := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/api/media/poster/"+meta.ID, bytes.NewReader(testJPEG(t, 640, 360)))
+	req.Header.Set("Content-Type", "image/jpeg")
+	mux.ServeHTTP(put, req)
+	if put.Code != http.StatusNoContent {
+		t.Fatalf("put poster: %d %s", put.Code, put.Body.String())
+	}
+	poster := get("/media/assets/" + meta.ID + "/poster")
+	if poster.Code != 200 || poster.Header().Get("Content-Type") != "image/jpeg" {
+		t.Fatalf("poster: %d %s", poster.Code, poster.Body.String())
+	}
+	dimensions, _, err := image.DecodeConfig(bytes.NewReader(poster.Body.Bytes()))
+	if err != nil || dimensions.Width != 480 || dimensions.Height != 270 {
+		t.Fatalf("dimensions: %+v %v", dimensions, err)
+	}
+	// Image asset cannot accept a video-poster PUT.
+	imgStaged, err := media.StageUpload(bytes.NewReader(testPNG(t, 8, 8)), mediaImageUploadLimit, "a.png", "image/png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	imgMeta, err := media.CommitStaging(imgStaged.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := httptest.NewRecorder()
+	mux.ServeHTTP(bad, httptest.NewRequest("PUT", "/api/media/poster/"+imgMeta.ID, bytes.NewReader(testJPEG(t, 32, 32))))
+	if bad.Code != 400 {
+		t.Fatalf("want 400 for image poster put, got %d", bad.Code)
 	}
 }

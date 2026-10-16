@@ -41,6 +41,23 @@ describe("WallpaperTile", () => {
     expect(create.mock.calls.filter(([tag]) => tag === "video")).toHaveLength(0);
   });
 
+  it("shows durable asset poster on idle My media video tiles", () => {
+    const { container } = render(
+      <WallpaperTile
+        label="Upload"
+        kind="video"
+        pressed={false}
+        src="/media/assets/clip1/poster"
+        videoSrc="/media/assets/clip1"
+        onSelect={vi.fn()}
+      />,
+    );
+    expect(container.querySelector("img.wallpaper-tile-image")?.getAttribute("src")).toBe(
+      "/media/assets/clip1/poster",
+    );
+    expect(container.querySelector("video")).toBeNull();
+  });
+
   it("keeps idle live tiles on thumb with no video element", () => {
     const { container } = render(
       <WallpaperTile

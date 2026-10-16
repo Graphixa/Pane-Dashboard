@@ -25,6 +25,9 @@ func registerMediaRoutes(mux *http.ServeMux, media *MediaStore) {
 	mux.HandleFunc("GET /api/media/meta/{id}", func(w http.ResponseWriter, r *http.Request) {
 		handleMediaMeta(w, r, media)
 	})
+	mux.HandleFunc("PUT /api/media/poster/{id}", func(w http.ResponseWriter, r *http.Request) {
+		handleMediaPosterPut(w, r, media)
+	})
 	mux.HandleFunc("GET /media/assets/{id}/poster", func(w http.ResponseWriter, r *http.Request) {
 		serveMediaPoster(w, r, media)
 	})
