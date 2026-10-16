@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { Plus } from "lucide-react";
 import {
   Button,
@@ -46,9 +46,9 @@ import {
   wallpaperCatalogueItems,
 } from "./generated/wallpaperCatalogue";
 import {
-  loadRecentWallpapers,
-  RECENT_WALLPAPER_CHANGED,
-  RECENT_WALLPAPER_KEY,
+  filterRecentAgainstLibrary,
+  resolveRecentEntries,
+  selectRecentWallpaper,
   pruneRecentMediaRef,
   wallpaperMatches,
   type RecentWallpaperEntry,
@@ -66,7 +66,7 @@ import {
   type MediaKind,
 } from "./wallpaperChooser";
 
-/** Catalogue thumb or photo URL for Current / Recently used stills. */
+/** Catalogue thumb or photo URL for Current / Recently selected stills. */
 function wallpaperStillUrl(wallpaper: Wallpaper): string | undefined {
   if (wallpaper.kind === "image") {
     if (wallpaper.media.source === "builtin") {
@@ -250,12 +250,16 @@ export default function BackgroundSettings({
   onBusy,
   background,
   onPreviewAdjust,
+  recent,
+  setRecent,
 }: {
   settings: Background;
   theme: "dark" | "light";
   onBusy: (busy: boolean) => void;
   background: BackgroundUpdate;
   onPreviewAdjust?: (active: boolean) => void;
+  recent: RecentWallpaperEntry[];
+  setRecent: Dispatch<SetStateAction<RecentWallpaperEntry[]>>;
 }) {
   const { confirm, confirmation } = useConfirmation();
   const [chooserOpen, setChooserOpen] = useState(false);
@@ -265,25 +269,12 @@ export default function BackgroundSettings({
   const [motionOpen, setMotionOpen] = useState(false);
   const [effectOpen, setEffectOpen] = useState(false);
   const [tintOpen, setTintOpen] = useState(false);
-  const [recent, setRecent] = useState<RecentWallpaperEntry[]>([]);
+  const recentSnapshot = useRef<RecentWallpaperEntry[]>([]);
   const { kinds: mediaKinds, names: mediaNames, rememberKind: rememberMediaKind, rememberName: rememberMediaName } = useMediaMetadata(b.library, b.wallpaper);
   const latest = useRef(b);
   latest.current = b;
   const chooserSession = useRef(0);
   useEffect(() => () => { chooserSession.current++; }, []);
-  useEffect(() => {
-    const refresh = () => setRecent(loadRecentWallpapers(latest.current.library));
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === RECENT_WALLPAPER_KEY || event.key === null) refresh();
-    };
-    refresh();
-    window.addEventListener(RECENT_WALLPAPER_CHANGED, refresh);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(RECENT_WALLPAPER_CHANGED, refresh);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, [b.library]);
   const snapshot = useRef<Background | null>(null);
   const browseScroll = useRef(0);
   const categoryScroll = useRef<Record<string, number>>({});
@@ -315,10 +306,6 @@ export default function BackgroundSettings({
     return () => onPreviewAdjust?.(false);
   }, [chooserOpen, motionOpen, effectOpen, tintOpen, onPreviewAdjust]);
 
-  const refreshRecent = (library = b.library) => {
-    setRecent(loadRecentWallpapers(library));
-  };
-
   /** Drop library/recent entries whose asset files are gone (avoids “missing media asset” on Apply). */
   const scrubMissingAssets = async (library: MediaRef[], session: number) => {
     const gone: MediaRef[] = [];
@@ -336,7 +323,8 @@ export default function BackgroundSettings({
     latest.current = next;
     background({ library: next.library, wallpaper: next.wallpaper });
     if (snapshot.current) snapshot.current = withoutMissingMedia(snapshot.current, gone);
-    setRecent(loadRecentWallpapers(next.library));
+    setRecent((entries) => filterRecentAgainstLibrary(entries, next.library));
+    if (snapshot.current) recentSnapshot.current = filterRecentAgainstLibrary(recentSnapshot.current, snapshot.current.library);
     setSheetError(next.wallpaper !== current.wallpaper
       ? "The current wallpaper file is missing. It was cleared from My media — choose another, then Apply."
       : "Some uploads are no longer on disk and were removed from My media.");
@@ -347,7 +335,7 @@ export default function BackgroundSettings({
     setSheetError("");
     setPendingRemove(null);
     setChooserView("browse");
-    refreshRecent();
+    recentSnapshot.current = structuredClone(recent);
     browseScroll.current = 0;
     setChooserOpen(true);
     void scrubMissingAssets(b.library, ++chooserSession.current);
@@ -356,6 +344,7 @@ export default function BackgroundSettings({
   const finishDiscard = () => {
     chooserSession.current++;
     if (snapshot.current) background(snapshot.current);
+    setRecent(recentSnapshot.current);
     snapshot.current = null;
     setSheetError("");
     setPendingRemove(null);
@@ -365,10 +354,11 @@ export default function BackgroundSettings({
 
   const requestDiscardChooser = async () => {
     const snap = snapshot.current;
-    const dirty =
-      snap != null &&
+    const dirty = snap != null && (
       JSON.stringify({ wallpaper: snap.wallpaper, library: snap.library }) !==
-        JSON.stringify({ wallpaper: b.wallpaper, library: b.library });
+        JSON.stringify({ wallpaper: b.wallpaper, library: b.library }) ||
+      JSON.stringify(recentSnapshot.current) !== JSON.stringify(recent)
+    );
     if (
       !dirty ||
       (await confirm({
@@ -394,6 +384,7 @@ export default function BackgroundSettings({
 
   const setWallpaper = (wallpaper: Wallpaper, library = b.library) => {
     background({ wallpaper, library });
+    setRecent((entries) => selectRecentWallpaper(entries, wallpaper));
   };
 
   const selectColour = (colour: string) => {
@@ -477,7 +468,7 @@ export default function BackgroundSettings({
     if (!ref) return;
     setPendingRemove(null);
     const next = b.library.filter((x) => !mediaRefEqual(x, ref));
-    setRecent(loadRecentWallpapers(next));
+    setRecent((entries) => filterRecentAgainstLibrary(entries, next));
     const active =
       (b.wallpaper.kind === "image" || b.wallpaper.kind === "video") &&
       mediaRefEqual(b.wallpaper.media, ref);
@@ -504,7 +495,7 @@ export default function BackgroundSettings({
   const kindForRef = (ref: MediaRef): MediaKind =>
     mediaKindOf(ref) ?? (isActiveVideo(ref) ? "video" : "image");
   const myMediaSorted = sortStaticBeforeLive(myMediaLibrary, kindForRef);
-  const recentEntries = recent;
+  const recentEntries = filterRecentAgainstLibrary(resolveRecentEntries(recent), b.library);
 
   const mediaWallpaper =
     b.wallpaper.kind === "image" || b.wallpaper.kind === "video"
@@ -625,46 +616,12 @@ export default function BackgroundSettings({
       </WallpaperSection>
 
       {recentEntries.length > 0 && (
-        <WallpaperSection heading="Recently used" label="Recently used">
+        <WallpaperSection heading="Recently selected" label="Recently selected">
           <SettingsGroup className="wallpaper-recent-inset">
-            <ScrollArea orientation="horizontal" type="always" className="wallpaper-recent-scroll" aria-label="Recently used wallpapers">
+            <ScrollArea orientation="horizontal" type="always" className="wallpaper-recent-scroll" aria-label="Recently selected wallpapers">
               <div className="wallpaper-recent-track">
                 {recentEntries.map((entry) => {
                   const pressed = wallpaperMatches(b.wallpaper, entry.wallpaper);
-                  if (entry.wallpaper.kind === "none") {
-                    return (
-                      <WallpaperTile
-                        key={entry.key}
-                        label={entry.label}
-                        pressed={pressed}
-                        paint="var(--bg)"
-                        onSelect={() => setWallpaper({ kind: "none" })}
-                      />
-                    );
-                  }
-                  if (entry.wallpaper.kind === "solid") {
-                    return (
-                      <WallpaperTile
-                        key={entry.key}
-                        label={entry.label}
-                        pressed={pressed}
-                        paint={solidBackgroundPaint(entry.wallpaper.colour)}
-                        onSelect={() => selectColour(entry.wallpaper.kind === "solid" ? entry.wallpaper.colour : "#a2cbbb")}
-                      />
-                    );
-                  }
-                  if (entry.wallpaper.kind === "gradient") {
-                    const preset = entry.wallpaper.preset;
-                    return (
-                      <WallpaperTile
-                        key={entry.key}
-                        label={titleCase(preset)}
-                        pressed={pressed}
-                        paint={gradients[preset]}
-                        onSelect={() => selectGradient(preset)}
-                      />
-                    );
-                  }
                   const mediaWallpaper = entry.wallpaper;
                   if (mediaWallpaper.kind !== "image" && mediaWallpaper.kind !== "video") {
                     return null;
@@ -678,7 +635,7 @@ export default function BackgroundSettings({
                   return (
                     <WallpaperTile
                       key={entry.key}
-                      label={entry.label}
+                      label={mediaLabel(mediaWallpaper.media, kind)}
                       pressed={pressed}
                       kind={kind}
                       src={thumb}

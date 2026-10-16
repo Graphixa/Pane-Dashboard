@@ -5,7 +5,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import Settings from "./Settings";
 import { Config } from "./model";
 import { LIVE_HOVER_PREVIEW_MS } from "./wallpaperChooser";
-import { RECENT_WALLPAPER_KEY, recordRecentWallpaper } from "./wallpaperRecent";
+import { RECENT_WALLPAPER_KEY, recordRecentWallpaper, loadRecentWallpapers, flushPendingRecentWallpaper, queueRecentWallpaperOnSave } from "./wallpaperRecent";
 import { clearVideoStillCache } from "./videoStillCache";
 const config = (): Config => ({
   version: 3,
@@ -30,6 +30,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  queueRecentWallpaperOnSave(undefined);
   clearVideoStillCache();
   localStorage.removeItem(RECENT_WALLPAPER_KEY);
   vi.useRealTimers();
@@ -407,7 +408,7 @@ describe("settings navigation and draft safety", () => {
     expect(preview.querySelector("img.wallpaper-tile-image")).toBeTruthy();
   });
 
-  it("Recently used live tiles stay still until hover linger", async () => {
+  it("Recently selected live tiles stay still until hover linger", async () => {
     vi.useFakeTimers();
     const play = vi.fn().mockResolvedValue(undefined);
     HTMLMediaElement.prototype.play = play;
@@ -434,7 +435,7 @@ describe("settings navigation and draft safety", () => {
     expect(play).toHaveBeenCalled();
   });
 
-  it("removing an upload drops it from My media and Recently used", async () => {
+  it("removing an upload drops it from My media and Recently selected", async () => {
     const asset = { source: "asset" as const, assetId: "upload-hulk" };
     const cfg = config();
     cfg.appearance.background = {
@@ -452,7 +453,7 @@ describe("settings navigation and draft safety", () => {
     page("Background");
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
-    expect(within(chooser).getByRole("heading", { name: "Recently used" })).toBeTruthy();
+    expect(within(chooser).getByRole("heading", { name: "Recently selected" })).toBeTruthy();
     fireEvent.click(within(chooser).getByRole("button", { name: "My media" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove Photo" }));
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
@@ -460,7 +461,7 @@ describe("settings navigation and draft safety", () => {
       expect(screen.queryByRole("button", { name: "Remove Photo" })).toBeNull();
     });
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.queryByRole("heading", { name: "Recently used" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Recently selected" })).toBeNull();
   });
 
   it("shows oversized wallpaper upload errors inline in Choose wallpaper, not as a nested alert", async () => {
@@ -547,18 +548,77 @@ it("late missing-file checks preserve the latest selection and Cancel snapshot",
   expect(saved.appearance.background.library).toEqual([]);
 });
 
-it("refreshes open Recently used in recency order inside the inset scroll area", async () => {
-  recordRecentWallpaper({ kind: "gradient", preset: "ocean" });
-  setup();
+it("updates selected uploads immediately, survives navigation, and saves the entire history on Apply", async () => {
+  const first = {source:"asset" as const,assetId:"first"};
+  const second = {source:"asset" as const,assetId:"second"};
+  const cfg = config();
+  cfg.appearance.background = {wallpaper:{kind:"none"},library:[first,second],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  vi.spyOn(globalThis,"fetch").mockImplementation(async (input) => new Response(JSON.stringify({kind:"image",name:String(input).includes("first") ? "First" : "Second"}),{status:200}));
+  const {apply} = setup(cfg);
   page("Background");
-  fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-  act(() => recordRecentWallpaper({ kind: "gradient", preset: "mist" }));
-  const strip = screen.getByLabelText("Recently used wallpapers");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"First"}));
+  fireEvent.click(screen.getByRole("button",{name:"Second"}));
+  fireEvent.click(screen.getByRole("button",{name:"Back"}));
+  let strip = screen.getByLabelText("Recently selected wallpapers");
   expect(strip.closest(".wallpaper-recent-inset")).toBeTruthy();
-  expect(within(strip).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Mist", "Ocean"]);
-  act(() => {
-    localStorage.removeItem(RECENT_WALLPAPER_KEY);
-    window.dispatchEvent(new StorageEvent("storage", { key: RECENT_WALLPAPER_KEY }));
-  });
-  expect(screen.queryByRole("heading", { name: "Recently used" })).toBeNull();
+  expect(within(strip).getAllByRole("button").map(b=>b.querySelector("img")?.getAttribute("src"))).toEqual(["/media/assets/second/poster","/media/assets/first/poster"]);
+  expect(loadRecentWallpapers()).toEqual([]);
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  page("General"); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  strip = screen.getByLabelText("Recently selected wallpapers");
+  expect(within(strip).getAllByRole("button")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
+  expect(loadRecentWallpapers()).toEqual([]);
+  flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
+  expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["image:asset:second","image:asset:first"]);
+});
+
+it("restores history on chooser discard and leaves saved history unchanged on Settings Cancel", async () => {
+  const cfg = config();
+  const asset = {source:"asset" as const,assetId:"one"};
+  cfg.appearance.background = {wallpaper:{kind:"none"},library:[asset],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  vi.spyOn(globalThis,"fetch").mockResolvedValue(new Response(JSON.stringify({kind:"image",name:"One"}),{status:200}));
+  const {close} = setup(cfg); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"One"}));
+  fireEvent.click(within(screen.getByRole("dialog",{name:"My media"})).getByRole("button",{name:"Close"}));
+  fireEvent.click(screen.getByRole("button",{name:"Discard"}));
+  await waitFor(()=>expect(screen.queryByRole("dialog",{name:"My media"})).toBeNull());
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  expect(screen.queryByRole("heading",{name:"Recently selected"})).toBeNull();
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"One"}));
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Cancel"}));
+  fireEvent.click(screen.getByRole("button",{name:"Discard"}));
+  await waitFor(()=>expect(close).toHaveBeenCalled());
+  expect(loadRecentWallpapers()).toEqual([]);
+});
+
+it("tracks built-ins immediately and recognises history-only changes", async () => {
+  const cfg = config();
+  cfg.appearance.background = {wallpaper:{kind:"video",media:{source:"builtin",builtinId:"aurora@v1"},position:"center",playback:"loop"},library:[],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  const {apply} = setup(cfg); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Live"}));
+  fireEvent.click(screen.getByRole("button",{name:"Neon Wave, live wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Aurora, live wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Back"}));
+  const strip=screen.getByLabelText("Recently selected wallpapers");
+  expect(within(strip).getAllByRole("button").map(b=>b.getAttribute("aria-label"))).toEqual(["Aurora, live wallpaper","Neon Wave, live wallpaper"]);
+  // Reselecting the same item does not duplicate it.
+  fireEvent.click(within(strip).getByRole("button",{name:"Aurora, live wallpaper"}));
+  expect(within(strip).getAllByRole("button")).toHaveLength(2);
+  fireEvent.click(within(screen.getByRole("dialog",{name:"Choose wallpaper"})).getByRole("button",{name:"Close"}));
+  expect(screen.getByRole("alertdialog",{name:"Discard wallpaper changes?"})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Keep editing"}));
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
+  flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
+  expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["video:builtin:aurora@v1","video:builtin:neon-wave@v1"]);
 });

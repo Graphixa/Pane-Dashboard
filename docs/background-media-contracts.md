@@ -57,7 +57,7 @@ wallpapers/
 - Item IDs are stable `name@vN` (default `v1`); optional `category.json` cover/titles/order; folder placeholders humanise when metadata is absent.
 - Empty bundled folders are omitted from the catalogue (hidden in the chooser). Catalogue generation requires ffmpeg and writes tiny WebP thumbs (`*-thumb@vN`) beside each item for chooser stills/covers.
 - Nested folders and unsupported extensions fail the generator. Duplicate IDs fail the generator.
-- Chooser live tiles, Recently used live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a bounded session still from the first hovered/focused playback; idle uploads use a neutral placeholder until then, with no hidden video request. Dashboard video does not treat autoplay rejection as a hard failure.
+- Chooser live tiles, Recently selected live tiles, and the Background Current-band live preview share one still-first pattern: thumb while idle (no `<video>` in the DOM); after a short hover linger (~180 ms) or immediately on keyboard focus, the video mounts and plays muted; leave cancels a pending start; the thumb stays until playback paints (no black flash); honour `prefers-reduced-motion`. Builtins use catalogue thumbs; My media videos capture a bounded session still from the first hovered/focused playback; idle uploads use a neutral placeholder until then, with no hidden video request. Dashboard video does not treat autoplay rejection as a hard failure.
 - Versioned builtin IDs (`name@vN`) and committed asset IDs are content-addressed: `GET /media/builtin/{id}` and `GET /media/assets/{id}` send `Cache-Control: public, max-age=31536000, immutable`. Staging (`/media/staging/`) stays `private, no-store`. Vite dev proxies `/media` to the Go server so those headers apply in local browse.
 
 ## Composition object (`appearance.background`)
@@ -143,11 +143,11 @@ Uploaded header artwork uses the same media store. `dashboard.logo` is either em
 
 Formats: PNG/JPEG/WebP images; WebM (VP8/VP9) and MP4 (H.264). No GIF, animated WebP, SVG/HTML, remote video, or transcoding.
 
-## Library remove and Recently used
+## Library remove and Recently selected
 
 - Trash in My media updates the **draft** library only (no `DELETE /api/media`). Disk GC runs on successful config PUT for assets no longer referenced by wallpaper, library or logo.
-- Removing an upload hides it from Recently used immediately; successful Apply prunes saved history against the saved library, while Cancel restores draft removals. Recently used upload tiles are hidden unless the asset remains in the current library.
-- Recently used is written only after a successful Settings Apply persistence (not on Use wallpaper), displayed newest-first in an inset horizontal ScrollArea, and refreshed for same-tab and cross-tab history changes.
+- Removing an upload hides it from Recently selected immediately; successful Apply prunes saved history against the saved library, while Cancel restores draft removals. Recently selected upload tiles are hidden unless the asset remains in the current library.
+- Recently selected contains only image/video wallpapers (built-in or uploaded), never colours, gradients or None. Selecting immediately updates the Settings-owned history draft, moves duplicates to the front and caps it at eight. Use wallpaper retains the draft; chooser discard restores its snapshot; Settings Cancel leaves saved history unchanged. Sidebar navigation preserves the draft. A matching successful Settings Apply saves the entire ordered history to browser storage; failed/older saves cannot commit it. Newly opened Settings loads the saved history, or the already-applied history if its save is pending. The carousel uses an inset horizontal ScrollArea.
 - Metadata verifies the underlying asset exists and uses `private, no-store`; missing-file results are applied only to the latest draft of the same open chooser session. Opening Choose wallpaper probes `/api/media/meta/{id}` for library assets and drops missing files from the draft library/recent list so Apply cannot fail with `missing media asset` for ghost refs.
 
 ## Dependencies

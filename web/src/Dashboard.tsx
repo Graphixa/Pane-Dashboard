@@ -75,7 +75,7 @@ function Artwork({ app }: { app: App }) {
 export default function Dashboard() {
   const state = useConfig({
     onSaved: (saved) => {
-      flushPendingRecentWallpaper(saved.appearance.background?.wallpaper);
+      flushPendingRecentWallpaper(saved.appearance.background);
       reconcileRecentWallpapers(saved.appearance.background?.library ?? []);
     },
   });
