@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from "react";
+import type { RecentWallpaperEntry } from "./wallpaperRecent";
 import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import {
   useEffect,
@@ -88,12 +90,16 @@ export default function AppearanceEditor({
   onBusy,
   section,
   onPreviewAdjust,
+  recent,
+  setRecent,
 }: {
   section: "general" | "appearance" | "background" | "panes";
   draft: Config;
   change: (c: Config | ((prev: Config) => Config)) => void;
   onBusy: (b: boolean) => void;
   onPreviewAdjust?: (active: boolean) => void;
+  recent: RecentWallpaperEntry[];
+  setRecent: Dispatch<SetStateAction<RecentWallpaperEntry[]>>;
 }) {
   const a = draft.appearance,
     b = normaliseBackground(a.background ?? defaultBackground),
@@ -416,6 +422,8 @@ export default function AppearanceEditor({
   if (section === "background")
     return (
       <BackgroundSettings
+        recent={recent}
+        setRecent={setRecent}
         settings={b}
         theme={a.theme}
         onBusy={onBusy}

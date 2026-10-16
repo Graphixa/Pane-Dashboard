@@ -24,7 +24,7 @@ import {
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
-import { queueRecentWallpaperOnSave } from "./wallpaperRecent";
+import { loadRecentDraft, queueRecentWallpaperOnSave } from "./wallpaperRecent";
 
 const pages = [
   ["general", "General", Settings2],
@@ -56,6 +56,8 @@ export default function Settings({
   const { confirm, confirmation } = useConfirmation();
   const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
+  const [recent, setRecent] = useState(() => loadRecentDraft(config.appearance.background));
+  const initialRecent = useRef(JSON.stringify(recent));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [previewAdjust, setPreviewAdjust] = useState(false);
@@ -67,7 +69,7 @@ export default function Settings({
   const configRef = useRef(config);
   onPreviewRef.current = onPreview;
   configRef.current = config;
-  const dirty = settingsValue(draft) !== initial.current;
+  const dirty = settingsValue(draft) !== initial.current || JSON.stringify(recent) !== initialRecent.current;
   const flushPreview = () => {
     previewFrame.current = 0;
     const next = pendingPreview.current;
@@ -136,8 +138,8 @@ export default function Settings({
         appearance: draft.appearance,
       };
       validate(next);
-      queueRecentWallpaperOnSave(next.appearance.background?.wallpaper);
       apply(next);
+      queueRecentWallpaperOnSave(next.appearance.background, recent);
       close();
     } catch (e) {
       setError((e as Error).message);
@@ -197,6 +199,8 @@ export default function Settings({
               <FieldGroup disabled={readOnly || busy}>
                 <div className="settings-sections">
                   <AppearanceEditor
+                    recent={recent}
+                    setRecent={setRecent}
                     draft={draft}
                     change={updateDraft}
                     onBusy={setBusy}

@@ -1,4 +1,4 @@
-import type { MediaRef, Wallpaper } from "./appearance";
+import type { Background, MediaRef, Wallpaper } from "./appearance";
 import { mediaRefEqual } from "./appearance";
 import {
   builtinThumbUrl,
@@ -39,25 +39,7 @@ export function recentEntryFromWallpaper(
   labelHint?: string,
 ): RecentWallpaperEntry | null {
   const key = wallpaperIdentityKey(wallpaper);
-  if (wallpaper.kind === "none") {
-    return { key, wallpaper: { kind: "none" }, label: "None", thumb: undefined };
-  }
-  if (wallpaper.kind === "solid") {
-    return {
-      key,
-      wallpaper: { kind: "solid", colour: wallpaper.colour },
-      label: labelHint || "Colour",
-      thumb: undefined,
-    };
-  }
-  if (wallpaper.kind === "gradient") {
-    return {
-      key,
-      wallpaper: { kind: "gradient", preset: wallpaper.preset },
-      label: labelHint || wallpaper.preset,
-      thumb: undefined,
-    };
-  }
+  if (wallpaper.kind !== "image" && wallpaper.kind !== "video") return null;
   const media = wallpaper.media;
   let label = labelHint || (wallpaper.kind === "video" ? "Video" : "Photo");
   let thumb: string | undefined;
@@ -136,7 +118,7 @@ export function loadRecentWallpapers(library?: MediaRef[]): RecentWallpaperEntry
 export function resolveRecentEntries(entries: RecentWallpaperEntry[]): RecentWallpaperEntry[] {
   return entries.filter((entry) => {
     const w = entry.wallpaper;
-    if (w.kind !== "image" && w.kind !== "video") return true;
+    if (w.kind !== "image" && w.kind !== "video") return false;
     if (w.media.source === "builtin") {
       return Boolean(wallpaperCatalogueItems[w.media.builtinId]);
     }
@@ -145,13 +127,13 @@ export function resolveRecentEntries(entries: RecentWallpaperEntry[]): RecentWal
 }
 
 /** Uploads stay in Recently used only while they remain in the media library. */
-function filterRecentAgainstLibrary(
+export function filterRecentAgainstLibrary(
   entries: RecentWallpaperEntry[],
   library: MediaRef[],
 ): RecentWallpaperEntry[] {
   return entries.filter((entry) => {
     const w = entry.wallpaper;
-    if (w.kind !== "image" && w.kind !== "video") return true;
+    if (w.kind !== "image" && w.kind !== "video") return false;
     if (w.media.source === "builtin") return true;
     return library.some((ref) => mediaRefEqual(ref, w.media));
   });
@@ -161,7 +143,7 @@ function filterRecentAgainstLibrary(
 export function pruneRecentMediaRef(ref: MediaRef): RecentWallpaperEntry[] {
   const next = readStore().filter((entry) => {
     const w = entry.wallpaper;
-    if (w.kind !== "image" && w.kind !== "video") return true;
+    if (w.kind !== "image" && w.kind !== "video") return false;
     return !mediaRefEqual(w.media, ref);
   });
   writeStore(next);
@@ -173,28 +155,32 @@ export function reconcileRecentWallpapers(library: MediaRef[]) {
   writeStore(filterRecentAgainstLibrary(resolveRecentEntries(readStore()), library));
 }
 
-/** Record after a successful Settings Apply persistence only. */
-export function recordRecentWallpaper(wallpaper: Wallpaper, labelHint?: string) {
+/** Pure draft update: selection moves an image/video to the front without saving. */
+export function selectRecentWallpaper(entries: RecentWallpaperEntry[], wallpaper: Wallpaper, labelHint?: string) {
   const entry = recentEntryFromWallpaper(wallpaper, labelHint);
-  if (!entry) return;
-  const prev = readStore().filter((e) => e.key !== entry.key);
-  writeStore([entry, ...prev]);
+  if (!entry) return entries;
+  return [entry, ...resolveRecentEntries(entries).filter((e) => e.key !== entry.key)].slice(0, RECENT_WALLPAPER_MAX);
 }
 
-/** Stamped by Settings Apply; consumed on the next successful config PUT. */
-let pendingRecent: Wallpaper | null = null;
-
-export function queueRecentWallpaperOnSave(wallpaper: Wallpaper | undefined) {
-  pendingRecent = wallpaper ? structuredClone(wallpaper) : null;
+export function recordRecentWallpaper(wallpaper: Wallpaper, labelHint?: string) {
+  writeStore(selectRecentWallpaper(readStore(), wallpaper, labelHint));
 }
 
-/** Call from useConfig after a successful PUT. */
-export function flushPendingRecentWallpaper(saved: Wallpaper | undefined) {
-  if (!pendingRecent || !saved) return;
-  if (wallpaperIdentityKey(pendingRecent) !== wallpaperIdentityKey(saved)) {
-    return; // An older in-flight save must not consume a newer Apply. 
-  }
-  recordRecentWallpaper(saved);
+// History remains a browser preference, outside the portable dashboard schema.
+// Only a matching successful config save commits the entire Settings history draft.
+let pendingRecent: { background: string; entries: RecentWallpaperEntry[] } | null = null;
+export function queueRecentWallpaperOnSave(background: Background | undefined, entries: RecentWallpaperEntry[] = []) {
+  pendingRecent = background ? { background: JSON.stringify(background), entries: structuredClone(entries) } : null;
+}
+/** Reopening Settings during a pending save retains the already-applied history. */
+export function loadRecentDraft(background: Background | undefined) {
+  if (pendingRecent && JSON.stringify(background) === pendingRecent.background) return structuredClone(pendingRecent.entries);
+  return loadRecentWallpapers(background?.library ?? []);
+}
+
+export function flushPendingRecentWallpaper(saved: Background | undefined) {
+  if (!pendingRecent || JSON.stringify(saved) !== pendingRecent.background || !saved) return;
+  writeStore(filterRecentAgainstLibrary(resolveRecentEntries(pendingRecent.entries), saved.library));
   pendingRecent = null;
 }
 
