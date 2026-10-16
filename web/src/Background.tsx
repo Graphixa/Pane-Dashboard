@@ -1,30 +1,47 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import {
+  creativeTintPaint,
   defaultBackground,
   gradients,
-  imageReference,
-  migrateBackground,
+  mediaSrc,
   motionDurationSeconds,
-  overlayBackground,
+  normaliseBackground,
   solidBackgroundPaint,
+  themeOverlayPaint,
   type Background as BackgroundSettings,
 } from "./appearance";
+import EffectLayer from "./effects/EffectLayer";
+import VideoWallpaper from "./VideoWallpaper";
 
 export default function Background({
   settings = defaultBackground,
   theme = "dark",
+  paletteBackground,
 }: {
-  settings?: BackgroundSettings & { dimming?: number };
+  settings?: BackgroundSettings;
   theme?: "dark" | "light";
+  paletteBackground?: string;
 }) {
-  const [failed, setFailed] = useState(false),
-    [hidden, setHidden] = useState(false);
-  const b = migrateBackground(settings, theme);
-  const targetDuration = motionDurationSeconds(b.intensity);
-  const paused = b.motionStyle === "none" || !b.motion || hidden;
-  // Keep duration stable while playing so intensity ticks do not restart CSS animations.
+  const [failed, setFailed] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const b = normaliseBackground(settings);
+  const wall = b.wallpaper;
+  const targetDuration = motionDurationSeconds(b.photoMotion.intensity);
+  const photoMotion =
+    wall.kind === "image" &&
+    b.photoMotion.style !== "none" &&
+    !hidden &&
+    !reducedMotion;
+  const effectPaused = hidden || reducedMotion;
+  const videoPaused = hidden || reducedMotion;
+
   const [playDuration, setPlayDuration] = useState(targetDuration);
-  useEffect(() => setFailed(false), [b.image]);
+  const mediaKey =
+    wall.kind === "image" || wall.kind === "video"
+      ? mediaSrc(wall.media)
+      : "";
+  useEffect(() => setFailed(false), [mediaKey]);
   useEffect(() => {
     const update = () => setHidden(document.hidden);
     update();
@@ -32,61 +49,91 @@ export default function Background({
     return () => document.removeEventListener("visibilitychange", update);
   }, []);
   useEffect(() => {
-    setPlayDuration(targetDuration);
-  }, [b.motionStyle, b.kind]);
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReducedMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   useEffect(() => {
-    if (paused) {
+    setPlayDuration(targetDuration);
+  }, [b.photoMotion.style, wall.kind]);
+  useEffect(() => {
+    if (!photoMotion) {
       setPlayDuration(targetDuration);
       return;
     }
     const timer = window.setTimeout(() => setPlayDuration(targetDuration), 400);
     return () => window.clearTimeout(timer);
-  }, [targetDuration, paused]);
-  const animated = b.kind === "waves" || b.kind === "aurora";
-  const activeImage =
-    b.kind === "image" && imageReference(b.image) && b.image && !failed;
-  const paint =
-    b.kind === "none"
+  }, [targetDuration, photoMotion]);
+
+  const basePaint =
+    wall.kind === "none"
       ? "var(--bg)"
-      : b.kind === "solid"
-        ? solidBackgroundPaint(b.colour)
-        : (gradients[b.preset] ?? gradients.dusk);
+      : wall.kind === "solid"
+        ? solidBackgroundPaint(wall.colour)
+        : wall.kind === "gradient"
+          ? (gradients[wall.preset] ?? gradients.dusk)
+          : "var(--bg)";
+
+  const motionClass =
+    wall.kind === "image" ? `motion-${b.photoMotion.style}` : "motion-none";
+
   return (
     <div
       aria-hidden="true"
-      className={`scene scene-${b.kind} motion-${b.motionStyle}${paused ? " motion-paused" : ""}`}
-      data-wallpaper-tint=""
+      className={`scene scene-bg-${wall.kind} ${motionClass}${photoMotion ? "" : " motion-paused"}`}
       style={
         {
-          "--motion-strength": b.intensity / 100,
+          "--motion-strength": b.photoMotion.intensity / 100,
           "--motion-duration": `${playDuration}s`,
-          background: paint,
+          background: basePaint,
         } as CSSProperties
       }
     >
-      <div className="scene-stage" data-wallpaper-tint="" style={{ background: paint }}>
-        {activeImage && (
-          <img
-            className="scene-image"
-            src={b.image}
-            alt=""
-            referrerPolicy="no-referrer"
-            style={{ objectPosition: b.position }}
-            onError={() => setFailed(true)}
-          />
-        )}
-        {animated && (
-          <div className="scene-motion">
-            <i />
-            <i />
-            <i />
-          </div>
-        )}
-      </div>
-      {b.kind !== "none" && (
+      <div className="scene-base" style={{ background: basePaint }} />
+      {(wall.kind === "image" || wall.kind === "video") && !failed && (
+        <div className="scene-stage scene-photo-host">
+          {wall.kind === "image" && (
+            <img
+              className="scene-image"
+              src={mediaSrc(wall.media)}
+              alt=""
+              referrerPolicy="no-referrer"
+              style={{ objectPosition: wall.position }}
+              onError={() => setFailed(true)}
+            />
+          )}
+          {wall.kind === "video" && (
+            <VideoWallpaper
+              src={mediaSrc(wall.media)}
+              position={wall.position}
+              playback={wall.playback}
+              paused={videoPaused}
+            />
+          )}
+        </div>
+      )}
+      {b.tint && b.tint.opacity > 0 && (
         <div
-          className="scene-overlay"
-          style={{ background: overlayBackground(b) }}
+          className="scene-tint"
+          style={{ background: creativeTintPaint(b.tint) }}
+        />
+      )}
+      {b.effect && (
+        <EffectLayer effect={b.effect} paused={effectPaused} />
+      )}
+      {b.themeOverlayOpacity > 0 && (
+        <div
+          className="scene-theme-overlay"
+          style={{
+            background: themeOverlayPaint(
+              theme,
+              b.themeOverlayOpacity,
+              paletteBackground,
+            ),
+          }}
         />
       )}
     </div>

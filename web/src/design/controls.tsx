@@ -5,7 +5,9 @@ import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
 import * as SliderPrimitive from '@radix-ui/react-slider';
 import * as CollapsiblePrimitive from '@radix-ui/react-collapsible';
 import * as ScrollAreaPrimitive from '@radix-ui/react-scroll-area';
+import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { Check, ChevronDown } from 'lucide-react';
+import { HelpTip } from './help';
 import { useSurface } from './surface';
 
 const DisabledContext = createContext(false);
@@ -54,14 +56,58 @@ export function Checkbox({id, disabled, className = '', onCheckedChange, ...prop
   const label = useContext(LabelContext), groupDisabled = useContext(DisabledContext);
   return <CheckboxPrimitive.Root {...props} id={id ?? label} disabled={disabled || groupDisabled} onCheckedChange={v => onCheckedChange?.(v === true)} className={`ui-checkbox ${className}`}><CheckboxPrimitive.Indicator><Check size={14} aria-hidden="true" /></CheckboxPrimitive.Indicator></CheckboxPrimitive.Root>;
 }
-export function Range({label, value, min, max, unit = '', change, disabled}: {label: string; value: number; min: number; max: number; unit?: string; change: (value: number) => void; disabled?: boolean}) {
+export function Range({
+  label,
+  value,
+  min,
+  max,
+  unit = '',
+  change,
+  disabled,
+  tip,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  change: (value: number) => void;
+  disabled?: boolean;
+  tip?: string;
+}) {
   const groupDisabled = useContext(DisabledContext), id = useId();
-  return <div className="ui-range"><div className="ui-range-label"><span id={id}>{label}</span><output>{value}{unit}</output></div>
-    <SliderPrimitive.Root min={min} max={max} step={1} value={[value]} onValueChange={v => change(v[0])} disabled={disabled || groupDisabled} className="ui-slider">
-      <SliderPrimitive.Track className="ui-slider-track"><SliderPrimitive.Range className="ui-slider-range" /></SliderPrimitive.Track>
-      <SliderPrimitive.Thumb className="ui-slider-thumb" aria-labelledby={id} aria-valuetext={`${value}${unit}`} />
-    </SliderPrimitive.Root>
-  </div>;
+  return (
+    <div className="ui-range">
+      <div className="ui-range-label">
+        <span className="ui-range-label-main">
+          <span id={id}>{label}</span>
+          {tip && <HelpTip subject={label}>{tip}</HelpTip>}
+        </span>
+        <output>
+          {value}
+          {unit}
+        </output>
+      </div>
+      <SliderPrimitive.Root
+        min={min}
+        max={max}
+        step={1}
+        value={[value]}
+        onValueChange={(v) => change(v[0])}
+        disabled={disabled || groupDisabled}
+        className="ui-slider"
+      >
+        <SliderPrimitive.Track className="ui-slider-track">
+          <SliderPrimitive.Range className="ui-slider-range" />
+        </SliderPrimitive.Track>
+        <SliderPrimitive.Thumb
+          className="ui-slider-thumb"
+          aria-labelledby={id}
+          aria-valuetext={`${value}${unit}`}
+        />
+      </SliderPrimitive.Root>
+    </div>
+  );
 }
 export function Disclosure({title, children, defaultOpen = false}: {title: string; children: ReactNode; defaultOpen?: boolean}) {
   const disabled = useContext(DisabledContext);
@@ -103,10 +149,36 @@ export function ScrollArea({
   </ScrollAreaPrimitive.Root>;
 }
 /** Label left, switch right; id association without nesting the control in the label. */
+export function Tabs({
+  value,
+  defaultValue,
+  onValueChange,
+  className = '',
+  children,
+}: {
+  value?: string;
+  defaultValue?: string;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return <TabsPrimitive.Root value={value} defaultValue={defaultValue} onValueChange={onValueChange} className={`ui-tabs ${className}`}>{children}</TabsPrimitive.Root>;
+}
+export function TabsList({ className = '', children, 'aria-label': ariaLabel }: { className?: string; children: ReactNode; 'aria-label'?: string }) {
+  return <TabsPrimitive.List className={`ui-tabs-list ${className}`} aria-label={ariaLabel}>{children}</TabsPrimitive.List>;
+}
+export function TabsTrigger({ value, className = '', children, disabled }: { value: string; className?: string; children: ReactNode; disabled?: boolean }) {
+  const groupDisabled = useContext(DisabledContext);
+  return <TabsPrimitive.Trigger value={value} disabled={disabled || groupDisabled} className={`ui-tabs-trigger ${className}`}>{children}</TabsPrimitive.Trigger>;
+}
+export function TabsContent({ value, className = '', children }: { value: string; className?: string; children: ReactNode }) {
+  return <TabsPrimitive.Content value={value} className={`ui-tabs-content ${className}`}>{children}</TabsPrimitive.Content>;
+}
+
 export function SwitchRow({label, hint, action, checked, onCheckedChange, disabled, id}: {
   label: string;
   hint?: string;
-  /** Optional control under the label (e.g. Customize); replaces hint when set. */
+  /** Optional control under the label (e.g. Customise). */
   action?: ReactNode;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
@@ -115,11 +187,15 @@ export function SwitchRow({label, hint, action, checked, onCheckedChange, disabl
 }) {
   const generated = useId();
   const controlId = id ?? generated;
-  const hintId = !action && hint ? `${controlId}-hint` : undefined;
+  const hintId = hint ? `${controlId}-hint` : undefined;
   return <div className="ui-switch-row">
     <div className="ui-switch-row-copy">
-      <label className="ui-switch-row-label" htmlFor={controlId}>{label}</label>
-      {action ?? (hint ? <p className="ui-switch-row-hint" id={hintId}>{hint}</p> : null)}
+      <div className="ui-switch-row-heading">
+        <label className="ui-switch-row-label" htmlFor={controlId}>{label}</label>
+        {hint && <HelpTip subject={label}>{hint}</HelpTip>}
+      </div>
+      {hint && <span id={hintId} className="ui-visually-hidden">{hint}</span>}
+      {action}
     </div>
     <Switch id={controlId} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} aria-describedby={hintId} />
   </div>;

@@ -11,18 +11,32 @@
   pointer-events: none;
   background: var(--bg);
 }
-.scene-stage {
+.scene-base,
+.scene-tint,
+.scene-theme-overlay,
+.scene-effect {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scene-stage,
+.scene-photo-host {
   position: absolute;
   inset: 0;
   transform-origin: center center;
   will-change: transform;
 }
-.scene-image {
+.scene-image,
+.scene-video {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.scene-effect {
+  overflow: hidden;
+  background: transparent;
 }
 .scene:not(.motion-paused).motion-ken-burns .scene-stage,
 .scene:not(.motion-paused).motion-breathe .scene-stage,
@@ -89,9 +103,26 @@
     transform: scale(1.1) rotate(12deg);
   }
 }
+.scene-theme-overlay,
 .scene-overlay {
   position: absolute;
   inset: 0;
+}
+.scene-dynamic {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.swatch-dynamic-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-align: center;
 }
 .scene-motion {
   position: absolute;
@@ -152,6 +183,13 @@
 }
 .motion-paused .scene-motion i,
 .motion-paused .scene-stage {
+  animation-play-state: paused;
+}
+/* Effect pause is owned by EffectLayer (hidden tab / reduced motion), not photo-motion. */
+.scene-effect.motion-paused,
+.scene-effect.motion-paused *,
+.scene-effect.motion-paused *::before,
+.scene-effect.motion-paused *::after {
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -322,8 +360,49 @@
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
+.background-settings-stack {
+  display: grid;
+  gap: 0;
+}
+.background-settings-stack > .ui-section {
+  margin-top: 0;
+}
 .background-current-group {
   margin-bottom: 0;
+}
+.background-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.background-library-dialog .background-library-tabs {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Only the active panel participates in flex height; inactive stays display:none. */
+.background-library-dialog .background-library-tab-panel[data-state="active"] {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.background-swatch-add {
+  position: relative;
+  cursor: pointer;
+}
+.background-swatch-add .file-picker-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .background-current {
   display: flex;
@@ -337,11 +416,26 @@
   min-width: 0;
 }
 .ui-aspect-ratio.background-current-frame {
+  position: relative;
   width: 100%;
   border-radius: var(--radius-surface);
   border: var(--border-width) solid var(--line);
   background: var(--bg);
   overflow: hidden;
+}
+/* Live Current preview reuses chooser LiveThumbVideo stacking. */
+.background-current-frame > .wallpaper-tile-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.background-current-preview:focus {
+  outline: none;
+}
+.background-current-preview:focus-visible .background-current-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
 }
 .background-current-meta {
   display: flex;
@@ -351,6 +445,25 @@
   flex: 1 1 auto;
   min-width: 0;
   padding-top: 2px;
+}
+.background-current-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+  min-width: 140px;
+  max-width: 180px;
+  margin-left: auto;
+  padding-top: 2px;
+}
+.background-current-control {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: stretch;
+}
+.background-current-control-label {
+  color: var(--muted);
 }
 .background-current-eyebrow {
   color: var(--muted);
@@ -362,11 +475,65 @@
 .background-current-change {
   margin-top: var(--space-3);
 }
+@media (max-width: 520px) {
+  .background-current {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .background-current-preview {
+    width: min(180px, 100%);
+    flex: 0 0 auto;
+  }
+  .background-current-meta {
+    padding-top: 0;
+  }
+  .background-current-controls {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+    padding-top: 0;
+  }
+  .background-current-controls .ui-select {
+    max-width: none;
+    width: 100%;
+  }
+}
 .background-current-image {
   background-color: var(--bg);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+img.background-current-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+}
+.background-motion-tip {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+}
+.ui-settings-row-control > .background-motion-tip {
+  width: 100%;
+  justify-content: flex-end;
+}
+.ui-settings-row-control > .background-motion-tip .ui-select {
+  width: 100%;
+  max-width: 220px;
+}
+.background-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .background-effect-customize {
   justify-self: start;
@@ -391,18 +558,29 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  /* Fold at half the Gradients card: Colours and My images stay fully in view.
-     Show all uses this same sheet. 565px is that fold at the 720px sheet width. */
-  height: min(565px, calc(100dvh - 32px));
-  max-height: min(565px, calc(100dvh - 32px));
+  /* Browse + category grids: fill viewport without a shelf-specific fold. */
+  height: min(70dvh, 720px);
+  max-height: min(70dvh, 720px);
+  padding: var(--library-pad);
   overflow: hidden; /* clip sheet chrome only; body scrolls inside */
 }
 .background-library-dialog > .modal-title {
   flex: 0 0 auto;
   margin-bottom: var(--space-3);
 }
+.background-library-dialog .background-library-sheet-notice {
+  flex: 0 0 auto;
+  margin: 0 0 var(--space-3);
+}
+.background-library-scroll-host {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+}
 .background-library-body-scroll {
-  /* Size from the sheet, not content height — keeps Dynamic reachable via scroll. */
   flex: 1 1 0;
   min-height: 0;
   min-width: 0;
@@ -439,8 +617,32 @@
   min-width: 0;
 }
 .background-library-actions {
-  margin-top: var(--space-3);
-  flex: 0 0 auto;
+  width: 100%;
+  min-height: 64px;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.background-library-actions-note {
+  margin: 0;
+  color: var(--muted);
+  flex: 1 1 12rem;
+}
+.background-library-note {
+  margin: 0;
+  color: var(--muted);
+}
+.background-swatch-check {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
+  pointer-events: none;
 }
 .background-shelf {
   display: grid;
@@ -636,11 +838,22 @@
   color: var(--muted);
   box-shadow: inset 0 0 0 1px var(--line);
 }
-/* Flush accent ring. Replaces the hairline so selection is a single stroke. */
+/* Selected / picking: accent ring. Focus: outer text-contrast ring (not colour alone). */
 .wallpaper-colour-chip[aria-pressed="true"] .wallpaper-colour-chip-paint,
-.wallpaper-colour-chip-picking .wallpaper-colour-chip-paint,
-.wallpaper-colour-chip:focus-visible .wallpaper-colour-chip-paint {
+.wallpaper-colour-chip-picking .wallpaper-colour-chip-paint {
   box-shadow: 0 0 0 var(--focus-width) var(--accent);
+}
+.wallpaper-colour-chip:focus-visible .wallpaper-colour-chip-paint {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-colour-chip[aria-pressed="true"]:focus-visible .wallpaper-colour-chip-paint,
+.wallpaper-colour-chip-picking:focus-visible .wallpaper-colour-chip-paint {
+  box-shadow:
+    0 0 0 var(--focus-width) var(--accent),
+    0 0 0 calc(var(--focus-width) + 2px) var(--panel),
+    0 0 0 calc(var(--focus-width) + 2px + var(--focus-width)) var(--text);
 }
 .background-swatch {
   display: flex;
@@ -662,8 +875,32 @@
   overflow: hidden;
 }
 .background-swatch[aria-pressed="true"] .background-swatch-frame {
+  border-width: 2px;
   border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.background-swatch:focus-visible {
+  outline: none;
+}
+.background-swatch:focus-visible .background-swatch-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.background-swatch[aria-pressed="true"]:focus-visible .background-swatch-frame {
+  border-width: 2px;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 0 3px var(--panel),
+    0 0 0 calc(3px + var(--focus-width)) var(--text);
+}
+.background-swatch-video {
+  display: block;
+  object-fit: cover;
+  object-position: center;
+  background: var(--panel-high);
+  pointer-events: none;
 }
 .background-swatch-paint {
   display: block;
@@ -694,6 +931,19 @@
   opacity: var(--motion-strength, 0.4);
   pointer-events: none;
 }
+/* Pack thumbs: still frame until hover/focus (matches legacy scene-motion cue). */
+.scene-dynamic-thumb .scene-dynamic,
+.scene-dynamic-thumb .scene-dynamic * {
+  animation-play-state: paused !important;
+}
+.background-swatch:hover .scene-dynamic-thumb .scene-dynamic,
+.background-swatch:hover .scene-dynamic-thumb .scene-dynamic *,
+.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic,
+.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic *,
+.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic,
+.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic * {
+  animation-play-state: running !important;
+}
 .swatch-mini-scene .scene-motion i {
   animation-play-state: paused;
 }
@@ -718,8 +968,10 @@
   z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  .swatch-mini-scene .scene-motion i {
-    animation: none;
+  .swatch-mini-scene .scene-motion i,
+  .scene-dynamic-thumb .scene-dynamic,
+  .scene-dynamic-thumb .scene-dynamic * {
+    animation: none !important;
   }
 }
 .image-field {
@@ -820,6 +1072,284 @@
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--bg);
+}
+/* Choose wallpaper — Browse / category grid (#17) */
+.wallpaper-browse {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-3));
+}
+.wallpaper-browse-section {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.wallpaper-browse-section-body {
+  min-width: 0;
+  overflow: visible;
+}
+.wallpaper-browse-heading {
+  margin: 0;
+}
+.wallpaper-colour-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  /* Room for selection/focus rings (box-shadow does not expand layout). */
+  padding-block: 8px;
+  padding-inline: 4px;
+  overflow: visible;
+}
+.wallpaper-recent-inset {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-3);
+  overflow: hidden;
+}
+.wallpaper-recent-scroll {
+  width: 100%;
+  min-width: 0;
+  /* Contain the Radix viewport's intrinsic table width inside the vertical sheet. */
+  contain: inline-size;
+}
+.wallpaper-recent-scroll .ui-scroll-area-viewport {
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+.wallpaper-recent-track {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  gap: var(--space-3);
+  padding: 4px 4px 16px;
+}
+.wallpaper-recent-track > .wallpaper-tile-wrap {
+  flex: 0 0 min(168px, 42vw);
+  width: min(168px, 42vw);
+  scroll-snap-align: start;
+}
+.wallpaper-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.wallpaper-category-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-surface);
+  overflow: hidden;
+  background: var(--panel-high);
+  color: var(--text);
+}
+.wallpaper-category-cover {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+.wallpaper-category-cover-empty {
+  background: color-mix(in srgb, var(--panel-high) 80%, var(--line));
+}
+.wallpaper-category-tint {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #080c13 64%, transparent);
+  pointer-events: none;
+}
+[data-theme="light"] .wallpaper-category-tint {
+  background: color-mix(in srgb, #f4f6f8 64%, transparent);
+}
+.wallpaper-category-name {
+  position: absolute;
+  inset: auto var(--space-3) var(--space-3) var(--space-3);
+  margin: 0;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+  z-index: 1;
+}
+[data-theme="light"] .wallpaper-category-name {
+  text-shadow: 0 1px 2px rgb(255 255 255 / 45%);
+}
+.wallpaper-category-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+  padding-bottom: var(--space-4);
+  padding-inline-end: calc(var(--scrollbar-size) + var(--space-3));
+}
+.wallpaper-tile-wrap {
+  position: relative;
+  min-width: 0;
+  overflow: visible;
+}
+.wallpaper-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  overflow: visible;
+}
+.ui-aspect-ratio.wallpaper-tile-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-surface);
+  border: var(--border-width) solid var(--line);
+  background: var(--bg);
+  overflow: hidden;
+}
+.wallpaper-tile-paint {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.wallpaper-tile-image {
+  background-size: cover;
+  background-position: center;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+}
+img.wallpaper-tile-image {
+  display: block;
+}
+.wallpaper-tile-video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  background: transparent;
+}
+.wallpaper-tile-frame > .wallpaper-tile-image {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.wallpaper-tile-selected .wallpaper-tile-frame,
+.wallpaper-tile[aria-pressed="true"] .wallpaper-tile-frame {
+  border-width: 2px;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.wallpaper-tile:focus-visible {
+  outline: none;
+}
+.wallpaper-tile:focus-visible .wallpaper-tile-frame {
+  box-shadow:
+    0 0 0 2px var(--panel),
+    0 0 0 calc(2px + var(--focus-width)) var(--text);
+}
+.wallpaper-tile-selected:focus-visible .wallpaper-tile-frame,
+.wallpaper-tile[aria-pressed="true"]:focus-visible .wallpaper-tile-frame {
+  box-shadow:
+    0 0 0 var(--focus-width) var(--accent),
+    0 0 0 calc(var(--focus-width) + 2px) var(--panel),
+    0 0 0 calc(var(--focus-width) + 2px + var(--focus-width)) var(--text);
+}
+.wallpaper-tile-check {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  pointer-events: none;
+}
+.wallpaper-tile-video-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  background: color-mix(in srgb, #080c13 72%, transparent);
+  color: #fff;
+  pointer-events: none;
+}
+.wallpaper-tile-video-badge svg {
+  display: block;
+  flex: 0 0 auto;
+}
+.wallpaper-tile-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: var(--border-width) solid var(--line);
+  background: color-mix(in srgb, var(--panel-high) 92%, black 8%);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 45%);
+  opacity: 0;
+  pointer-events: none;
+}
+.wallpaper-tile-wrap:hover .wallpaper-tile-remove,
+.wallpaper-tile-wrap:focus-within .wallpaper-tile-remove,
+.wallpaper-tile-wrap:has(.wallpaper-tile[aria-pressed="true"]) .wallpaper-tile-remove,
+.wallpaper-tile-wrap .wallpaper-tile-remove:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.wallpaper-empty-media {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+  padding: var(--space-4) 0;
+  max-width: 36rem;
+}
+@media (max-width: 720px) {
+  .wallpaper-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .wallpaper-category-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 @media (max-width: 600px) {
   .brand-logo {

@@ -6,9 +6,9 @@
 
 | Run directly on your computer | Run with Docker |
 | --- | --- |
-| [Git](https://git-scm.com/downloads/), [Node.js **24**](https://nodejs.org/en/download) (includes npm), [Go **1.26**](https://go.dev/doc/install) | Git and [Docker](https://docs.docker.com/get-started/get-docker/) with **Compose v2** |
+| [Git](https://git-scm.com/downloads/), [Node.js **24**](https://nodejs.org/en/download) (includes npm), [Go **1.26**](https://go.dev/doc/install), [FFmpeg](https://ffmpeg.org/download.html) | Git and [Docker](https://docs.docker.com/get-started/get-docker/) with **Compose v2** |
 
-On Windows/macOS, Docker Desktop includes Compose. On a Linux server, install Docker Engine and the Compose plugin. Docker builds install Node and Go inside the build environment; you do not need them on the host.
+On Windows/macOS, Docker Desktop includes Compose. On a Linux server, install Docker Engine and the Compose plugin. FFmpeg generates the small bundled wallpaper thumbnails during builds. On macOS use `brew install ffmpeg`; on Ubuntu/Debian use `sudo apt install ffmpeg`; on Windows install FFmpeg and add its `bin` folder to PATH. Check `ffmpeg -version` before building. Docker builds install Node, Go and FFmpeg inside the build environment; you do not need them on the host.
 
 Check your tools in a new terminal after installation:
 
@@ -50,21 +50,20 @@ Start the app using the commands for your terminal.
 
 ```powershell
 $env:PANE_CONFIG = "./config/pane.yaml"
-$env:PANE_LISTEN = "127.0.0.1:8080"
 go run .
 ```
 
 **macOS/Linux:**
 
 ```sh
-PANE_CONFIG=./config/pane.yaml PANE_LISTEN=127.0.0.1:8080 go run .
+PANE_CONFIG=./config/pane.yaml go run .
 ```
 
 Open **http://127.0.0.1:8080**. Keep the terminal running; press **Ctrl+C** to stop.
 
-Pane creates `config/pane.yaml` automatically and keeps your dashboard there. No database is needed. These commands bind the app to your computer only.
+Pane creates `config/pane.yaml` automatically and keeps your dashboard there. No database is needed. The default listen address is loopback only (`127.0.0.1:8080`), so Windows Firewall should not prompt. For LAN access without Docker, set `PANE_LISTEN=:8080` (and allow the firewall once if Windows asks).
 
-Open **Settings → General → Logo** to choose **Icon + name** or a rectangular **Full logo**, using an upload or URL. **Appearance** groups Theme, Colours and Typography. **Background** shows a compact Current preview; **Change wallpaper** opens My images, Gradients and Dynamic folders. **Panes** contains Pane finish, glass Fine tuning and app Labels. All panes share the same style. Change settings, then Apply to update the dashboard. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
+Open **Settings → General → Logo** to choose **Icon + name** or a rectangular **Full logo**, using an upload or URL. **Appearance** groups Theme, Colours and Typography. **Background** shows a compact Current preview; **Change wallpaper** opens the Browse chooser (Colours, categories such as My media, Gradients, Nature and Space). **Panes** contains Pane finish, glass Fine tuning and app Labels. All panes share the same style. Change settings, then Apply to update the dashboard. Uploaded images are included in configuration backups; no extra Docker volume is needed. See [Personalise Pane](README.md#personalise-pane) for image limits and controls. Fonts and gradient backgrounds are bundled locally. Add a pane from the header, then move it on the 16 px grid or resize in whole app slots. Existing saved pane positions are preserved after updating.
 
 ### Optional: live frontend development
 
@@ -153,6 +152,7 @@ This update uses tile-based pane sizes and fixed 80 px icons. **Add → Pane** c
 | `web/dist` is missing | Run `npm ci` and `npm run build` inside `web` before running Go. |
 | Node/npm/Go command not found | Install the prerequisites, then reopen your terminal. |
 | Port 8080 is busy | Stop the other app. For Docker, change the host mapping to `8081:8080` and open port 8081. |
+| Windows Firewall asks about `pane-dashboard.exe` | Local runs should bind loopback and not prompt. If you set `PANE_LISTEN=:8080`, Allow once for a stable `go build -o pane-dashboard.exe` path, or Cancel (app still works on this PC). `go run` rebuilds to a new temp path each time, so Allow there does not stick. |
 | Local permission error at `/config` | Set `PANE_CONFIG` using the local startup commands above. |
 | Frontend opens but API requests fail | Keep Go running on port 8080 alongside Vite. |
 | Docker discovery is disabled | Normal by default. See [optional Docker import](README.md#optional-docker-import) when you are ready to enable it. |

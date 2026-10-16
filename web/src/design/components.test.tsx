@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { Button, IconButton, Notice, SelectField, SelectOption, SwitchRow, TextField, useConfirmation } from "./components";
+import { Button, IconButton, Modal, Notice, Range, Section, SelectField, SelectOption, SettingsGroup, SettingsRow, SwitchRow, TextField, useConfirmation } from "./components";
 
 afterEach(cleanup);
 
@@ -17,6 +17,8 @@ it("connects labels, hints and errors with unique IDs and preserves external des
   expect(ids.map(id => document.getElementById(id)?.textContent)).toEqual(["External context", "Short name", "Name is required"]);
   expect(input.id).not.toBe(screen.getByLabelText("Other name").id);
   expect(screen.getByRole("combobox", { name: "Theme" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "About Name" })).toBeTruthy();
+  expect(document.querySelector(".ui-field-hint")).toBeNull();
 });
 
 it("keeps ordinary buttons from submitting forms and blocks busy actions", () => {
@@ -66,14 +68,135 @@ it("shows delete confirmation with cancel and delete actions, not discard copy",
   await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
 });
 
+function AcknowledgeExample({ onResult }: { onResult: (value: boolean) => void }) {
+  const { confirm, confirmation } = useConfirmation();
+  return <>
+    {confirmation}
+    <Button onClick={async () => onResult(await confirm({
+      title: "Upload failed",
+      description: "Choose a video up to 40 MiB.",
+      actionLabel: "OK",
+    }))}>Fail</Button>
+  </>;
+}
+
+it("shows a single OK for dismiss-only alerts and restores focus on dismiss", async () => {
+  const onResult = vi.fn();
+  render(<AcknowledgeExample onResult={onResult} />);
+  const trigger = screen.getByRole("button", { name: "Fail" });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole("alertdialog");
+  expect(dialog.textContent).toContain("Upload failed");
+  expect(dialog.textContent).toContain("Choose a video up to 40 MiB.");
+  expect(screen.getAllByRole("button", { name: "OK" })).toHaveLength(1);
+  expect(dialog.classList.contains("ui-confirm")).toBe(true);
+  expect(document.querySelector(".ui-confirm-backdrop")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "OK" }));
+  await waitFor(() => expect(onResult).toHaveBeenCalledWith(true));
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  expect(document.activeElement).toBe(trigger);
+});
+
 it("associates SwitchRow labels and optional hints with the switch control", () => {
   const change = vi.fn();
   render(<SwitchRow label="Show app labels" hint="Names beneath icons." checked={false} onCheckedChange={change} />);
   const control = screen.getByRole("switch", { name: "Show app labels" });
   expect(control.getAttribute("aria-describedby")).toBeTruthy();
   expect(document.getElementById(control.getAttribute("aria-describedby")!)?.textContent).toBe("Names beneath icons.");
+  expect(screen.getByRole("button", { name: "About Show app labels" })).toBeTruthy();
+  expect(document.querySelector(".ui-switch-row-hint")).toBeNull();
   fireEvent.click(control);
   expect(change).toHaveBeenCalledWith(true);
+});
+
+it("opens HelpTip content on click and keeps Section tip off the visible description line", async () => {
+  const { container } = render(
+    <Section title="Labels" tip="Show names beneath app icons.">
+      <Range label="Theme overlay" tip="Lightens or darkens the background." value={0} min={0} max={80} unit="%" change={() => {}} />
+    </Section>,
+  );
+  expect(container.querySelector(".ui-section > .ui-text-support")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "About Labels" }));
+  expect(await screen.findByText("Show names beneath app icons.")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "About Theme overlay" }));
+  expect(await screen.findByText("Lightens or darkens the background.")).toBeTruthy();
+});
+
+it("renders stacked Range with label, value and accessible slider name", () => {
+  const change = vi.fn();
+  const { container } = render(
+    <Range label="Blur" value={12} min={0} max={24} unit="px" change={change} />,
+  );
+  expect(screen.getByRole("slider", { name: "Blur" })).toBeTruthy();
+  expect(container.querySelector(".ui-range-inline")).toBeNull();
+  expect(container.querySelector(".ui-range-label")?.textContent).toContain("Blur");
+  expect(container.querySelector(".ui-range-label output")?.textContent).toBe("12px");
+});
+
+it("stacks multiple Ranges in a SettingsGroup without an inline layout", () => {
+  const change = vi.fn();
+  const { container } = render(
+    <SettingsGroup>
+      <SettingsRow label="Effect"><span>Snow</span></SettingsRow>
+      <SwitchRow label="Tint" checked onCheckedChange={() => {}} />
+      <Range label="Speed" value={50} min={0} max={100} unit="%" change={change} />
+      <Range label="Chromatic aberration" value={2} min={0} max={10} unit="px" change={change} />
+    </SettingsGroup>,
+  );
+  const ranges = container.querySelectorAll(".ui-settings-group > .ui-range");
+  expect(ranges).toHaveLength(2);
+  expect(container.querySelector(".ui-range-inline")).toBeNull();
+  for (const row of ranges) {
+    expect(row.querySelector(".ui-range-label")).toBeTruthy();
+    expect(row.querySelector(".ui-slider")).toBeTruthy();
+  }
+  expect(screen.getByRole("slider", { name: "Speed" })).toBeTruthy();
+  expect(screen.getByRole("slider", { name: "Chromatic aberration" })).toBeTruthy();
+});
+
+it("applies compact density class on SettingsGroup", () => {
+  const { container } = render(
+    <SettingsGroup density="compact">
+      <SettingsRow label="Style"><span>Ken Burns</span></SettingsRow>
+    </SettingsGroup>,
+  );
+  expect(container.querySelector(".ui-settings-group-compact")).toBeTruthy();
+});
+
+it("uses a three-region sheet layout when Modal provides footer", () => {
+  const close = vi.fn();
+  render(
+    <Modal title="Tint" close={close} placement="bottom" backdrop="none" footer={<Button variant="primary">Done</Button>}>
+      <SettingsGroup density="compact">
+        <Range label="Opacity" value={25} min={0} max={80} unit="%" change={() => {}} />
+      </SettingsGroup>
+    </Modal>,
+  );
+  const dialog = screen.getByRole("dialog", { name: "Tint" });
+  expect(dialog.classList.contains("ui-dialog-sheet")).toBe(true);
+  expect(dialog.classList.contains("ui-dialog-bottom")).toBe(true);
+  expect(dialog.querySelector(".ui-dialog-body")).toBeTruthy();
+  expect(dialog.querySelector(".ui-dialog-footer")).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Done" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+  expect(dialog.querySelector(".ui-dialog-body .ui-settings-group-compact")).toBeTruthy();
+});
+
+it("shows Back and Close together when onBack is set", () => {
+  const close = vi.fn();
+  const back = vi.fn();
+  render(
+    <Modal title="Nature" close={close} onBack={back} headerActions={<Button>Add media</Button>}>
+      Grid
+    </Modal>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Back" }));
+  expect(back).toHaveBeenCalled();
+  expect(close).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Add media" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Close" }));
+  expect(close).toHaveBeenCalled();
 });
 
 it("renders Notice banners with alert semantics for errors", () => {

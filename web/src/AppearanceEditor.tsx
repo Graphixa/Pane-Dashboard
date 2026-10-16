@@ -1,3 +1,5 @@
+import type { Dispatch, SetStateAction } from "react";
+import type { RecentWallpaperEntry } from "./wallpaperRecent";
 import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import {
   useEffect,
@@ -10,9 +12,8 @@ import {
   contrast,
   defaultBackground,
   defaultGlass,
-  migrateBackground,
+  normaliseBackground,
   normaliseGlass,
-  overlayForTheme,
   accentPresets,
   parseIntegerInput,
   paletteForThemeChange,
@@ -89,15 +90,19 @@ export default function AppearanceEditor({
   onBusy,
   section,
   onPreviewAdjust,
+  recent,
+  setRecent,
 }: {
   section: "general" | "appearance" | "background" | "panes";
   draft: Config;
   change: (c: Config | ((prev: Config) => Config)) => void;
   onBusy: (b: boolean) => void;
   onPreviewAdjust?: (active: boolean) => void;
+  recent: RecentWallpaperEntry[];
+  setRecent: Dispatch<SetStateAction<RecentWallpaperEntry[]>>;
 }) {
   const a = draft.appearance,
-    b = migrateBackground(a.background ?? defaultBackground, a.theme),
+    b = normaliseBackground(a.background ?? defaultBackground),
     g = normaliseGlass(a.glass ?? defaultGlass),
     p = a.palette ?? palettes[a.theme];
   const header = (update: Partial<Config["dashboard"]>) =>
@@ -119,23 +124,21 @@ export default function AppearanceEditor({
       };
     });
   const background = (update: Partial<BackgroundConfig>) =>
-    change((prev) => ({
-      ...prev,
-      appearance: {
-        ...prev.appearance,
-        background: {
-          ...(prev.appearance.background ?? defaultBackground),
-          ...update,
+    change((prev) => {
+      const cur = normaliseBackground(
+        prev.appearance.background ?? defaultBackground,
+      );
+      return {
+        ...prev,
+        appearance: {
+          ...prev.appearance,
+          background: normaliseBackground({ ...cur, ...update }),
         },
-      },
-    }));
+      };
+    });
   const setTheme = (theme: "dark" | "light") =>
     change((prev) => {
       const appearance = prev.appearance;
-      const migrated = migrateBackground(
-        appearance.background ?? defaultBackground,
-        appearance.theme,
-      );
       return {
         ...prev,
         appearance: {
@@ -146,10 +149,9 @@ export default function AppearanceEditor({
             theme,
             appearance.palette,
           ),
-          background: {
-            ...migrated,
-            overlay: overlayForTheme(theme, migrated.overlay),
-          },
+          background: normaliseBackground(
+            appearance.background ?? defaultBackground,
+          ),
         },
       };
     });
@@ -162,7 +164,7 @@ export default function AppearanceEditor({
       <>
         <Section level="h3" className="settings-section"
           title="Dashboard"
-          description="Also used for the browser tab and accessible name."
+          tip="Also used for the browser tab and accessible name."
         >
           <SettingsGroup>
             <SettingsRow>
@@ -177,7 +179,7 @@ export default function AppearanceEditor({
         </Section>
         <Section level="h3" className="settings-section"
           title="Logo"
-          description="How your name and artwork appear in the header."
+          tip="How your name and artwork appear in the header."
         >
           <SettingsGroup>
             <SettingsRow>
@@ -270,7 +272,7 @@ export default function AppearanceEditor({
         </Section>
         <Section level="h3" className="settings-section"
           title="Workspace"
-          description="Tiles keep their size. Narrow screens use a read-only layout."
+          tip="Tiles keep their size. Narrow screens use a read-only layout."
         >
           <SettingsGroup>
             <SettingsRow label="Dashboard width">
@@ -333,7 +335,7 @@ export default function AppearanceEditor({
       <>
         <Section level="h3" className="settings-section"
           title="Pane finish"
-          description={
+          tip={
             g.mode === "glass"
               ? "Clear panes with edge refraction where supported; text and icons stay opaque. Try low opacity and blur around 16–20 px."
               : "Opaque surfaces for a clear, uniform look."
@@ -359,7 +361,7 @@ export default function AppearanceEditor({
         {g.mode === "glass" && (
           <Section level="h3" className="settings-section"
             title="Fine tuning"
-            description="Tune frost and refraction. Displacement needs frost to bend what is behind the pane — below 6 px is raised automatically when displacement is on."
+            tip="Adjust the transparency, blur and refraction of glass panes."
           >
             <SettingsGroup>
               <Range
@@ -405,7 +407,7 @@ export default function AppearanceEditor({
             </SettingsGroup>
           </Section>
         )}
-        <Section level="h3" className="settings-section" title="Labels" description="Show names beneath app icons.">
+        <Section level="h3" className="settings-section" title="Labels" tip="Show names beneath app icons.">
           <SettingsGroup>
             <SwitchRow
               label="Show app labels"
@@ -420,6 +422,8 @@ export default function AppearanceEditor({
   if (section === "background")
     return (
       <BackgroundSettings
+        recent={recent}
+        setRecent={setRecent}
         settings={b}
         theme={a.theme}
         onBusy={onBusy}
@@ -432,7 +436,7 @@ export default function AppearanceEditor({
     <>
       <Section level="h3" className="settings-section"
         title="Theme"
-        description="Changing theme resets custom colours."
+        tip="Changing theme resets custom colours."
       >
         <div
           className="theme-choices choice-row"
@@ -461,7 +465,7 @@ export default function AppearanceEditor({
       </Section>
       <Section level="h3" className="settings-section"
         title="Colours"
-        description="Accent is used for buttons, selections and focus."
+        tip="Accent is used for buttons, selections and focus. Text contrast is checked before saving. Check glass over images."
       >
         <SettingsGroup>
           <SettingsRow label="Accent">
@@ -510,9 +514,6 @@ export default function AppearanceEditor({
                 </Label>
               ))}
             </div>
-            <p className="hint">
-              Text contrast is checked before saving. Check glass over images.
-            </p>
           </Disclosure>
           {badContrast && (
             <SettingsRow>
@@ -535,7 +536,7 @@ export default function AppearanceEditor({
       </Section>
       <Section level="h3" className="settings-section"
         title="Typography"
-        description="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
+        tip="Bundled typefaces for the whole dashboard. Pane titles also use the size below."
       >
         <SettingsGroup>
           <SettingsRow label="Font">

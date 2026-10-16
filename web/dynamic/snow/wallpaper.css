@@ -1,0 +1,43 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(#1a2332, #0d121a);
+}
+.layer {
+  position: absolute;
+  inset: 0;
+}
+.layer-mid {
+  opacity: calc(clamp(0, (var(--pane-density, 55) - 25) / 40, 1));
+}
+.layer-hi {
+  opacity: calc(clamp(0, (var(--pane-density, 55) - 60) / 35, 1));
+}
+.flake {
+  position: absolute;
+  top: -8%;
+  left: var(--x, 50%);
+  width: var(--size, 4px);
+  height: var(--size, 4px);
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.9;
+  animation: snow-fall var(--dur, 12s) linear var(--delay, 0s) infinite;
+}
+@keyframes snow-fall {
+  0% {
+    transform: translate3d(0, -5vh, 0);
+  }
+  25% {
+    transform: translate3d(var(--sway, 8px), 25vh, 0);
+  }
+  50% {
+    transform: translate3d(calc(var(--sway, 8px) * -0.4), 55vh, 0);
+  }
+  75% {
+    transform: translate3d(calc(var(--sway, 8px) * 0.7), 85vh, 0);
+  }
+  100% {
+    transform: translate3d(var(--sway, 8px), 115vh, 0);
+  }
+}

@@ -8,6 +8,10 @@
 .ui-dialog.settings-dialog {
   display: flex;
   flex-direction: column;
+  /* Soft elevation without a dimmed lightbox so dashboard colours stay true. */
+  box-shadow:
+    0 4px 16px rgb(0 0 0 / 12%),
+    0 24px 64px rgb(0 0 0 / 22%);
 }
 .settings-dialog > .modal-title {
   padding: 20px 24px;
@@ -27,13 +31,22 @@
   background: color-mix(in srgb, var(--bg) 45%, transparent);
 }
 .settings-content {
+  position: relative;
   overflow-y: auto;
   min-width: 0;
   padding: 30px 32px 40px;
   scrollbar-gutter: stable;
 }
 .settings-page-title {
-  margin: 0 0 var(--space-6);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .settings-section {
   padding: 0;
@@ -295,31 +308,112 @@
   height: 28px;
   padding: 0;
 }
+.ui-popover:has(.colour-popover-picker) {
+  width: min(280px, calc(100vw - 24px));
+}
 .colour-popover-body {
   display: flex;
   align-items: center;
   gap: 12px;
 }
-.colour-popover-swatch {
+.colour-popover-body.colour-popover-picker {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+.colour-picker-area {
   position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-control);
+  border: var(--border-width) solid var(--line);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none;
+  outline: none;
+}
+.colour-picker-area:focus-visible {
+  box-shadow: 0 0 0 var(--focus-width) var(--accent);
+}
+.colour-picker-area-white,
+.colour-picker-area-black {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.colour-picker-area-white {
+  background: linear-gradient(to right, #fff, transparent);
+}
+.colour-picker-area-black {
+  background: linear-gradient(to top, #000, transparent);
+}
+.colour-picker-area-thumb {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 45%);
+  pointer-events: none;
+}
+.colour-picker-hue {
+  display: grid;
+  gap: var(--space-1);
+}
+.colour-picker-hue-label {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+}
+.colour-picker-hue-slider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  touch-action: none;
+  user-select: none;
+}
+.colour-picker-hue-track {
+  position: relative;
+  height: 10px;
+  flex: 1;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #ff0000,
+    #ffff00,
+    #00ff00,
+    #00ffff,
+    #0000ff,
+    #ff00ff,
+    #ff0000
+  );
+}
+.colour-picker-hue-range {
+  display: none;
+}
+.colour-picker-hue-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+  cursor: grab;
+}
+.colour-popover-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.colour-popover-swatch-preview {
+  flex: 0 0 40px;
   width: 40px;
   height: 40px;
-  margin: 0;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: var(--radius-control);
   border: 1px solid var(--line);
-  flex-shrink: 0;
-  cursor: pointer;
-}
-.colour-popover-swatch input {
-  position: absolute;
-  inset: -4px;
-  width: calc(100% + 8px);
-  height: calc(100% + 8px);
-  padding: 0;
-  border: 0;
-  cursor: pointer;
-  background: transparent;
 }
 .colour-popover-hex {
   display: grid;

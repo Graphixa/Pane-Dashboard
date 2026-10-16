@@ -32,33 +32,8 @@ func openStore(path string) (*Store, error) {
 	} else {
 		s.config, e = decodeYAML(b)
 		if e != nil {
+			// Path A: do not migrate or rewrite older prototype schemas.
 			return nil, fmt.Errorf("refusing to replace invalid %s: %w", path, e)
-		}
-		if s.config.Version == 1 {
-			next, err := upgrade(s.config)
-			if err != nil {
-				return nil, err
-			}
-			// Exclusive creation never overwrites an earlier backup.
-			backup, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".v1-*.bak")
-			if err != nil {
-				return nil, err
-			}
-			if _, err = backup.Write(b); err != nil {
-				backup.Close()
-				return nil, err
-			}
-			if err = backup.Sync(); err != nil {
-				backup.Close()
-				return nil, err
-			}
-			if err = backup.Close(); err != nil {
-				return nil, err
-			}
-			if err = s.write(next); err != nil {
-				return nil, err
-			}
-			s.config = next
 		}
 	}
 	s.revision = revision(s.config)

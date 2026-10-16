@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { LayoutGrid, Server, PanelsTopLeft } from "lucide-react";
 import type { Config } from "./model";
-import { imageReference } from "./appearance";
+import { logoReference } from "./appearance";
 
 export function HeaderBrand({ dashboard }: { dashboard: Config["dashboard"] }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [dashboard.logo]);
   const name = dashboard.title.trim() || "pane.",
-    url = imageReference(dashboard.logo) ? dashboard.logo : undefined;
+    url = logoReference(dashboard.logo) && dashboard.logo ? dashboard.logo : undefined;
   if (dashboard.branding === "logo" && url && !failed)
     return (
       <img

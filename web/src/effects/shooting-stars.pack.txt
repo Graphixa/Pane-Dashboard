@@ -1,0 +1,46 @@
+/* Streaks only — no parallax starfield, no opaque sky. */
+.streak {
+  position: absolute;
+  top: var(--y, 10%);
+  left: var(--x, 50%);
+  width: var(--len, 7em);
+  height: 0.1em;
+  border-radius: 999em;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in srgb, var(--pane-seed, #fff) 55%, transparent) 65%,
+    var(--pane-seed, #fff)
+  );
+  rotate: 152deg;
+  opacity: 0;
+  animation: streak-fly calc(var(--pane-speed, 12s) * 0.55) linear var(--delay, 0s) infinite;
+}
+.streak::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -0.1em;
+  width: 0.26em;
+  height: 0.26em;
+  margin-top: -0.13em;
+  border-radius: 50%;
+  background: var(--pane-seed, #fff);
+  box-shadow: 0 0 0.45em var(--pane-seed, #fff);
+}
+@keyframes streak-fly {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scaleX(0.4);
+  }
+  8% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-42vw, 28vh, 0) scaleX(1);
+  }
+}

@@ -124,17 +124,19 @@ the Pane tokens; screens must not mix a second component library or bespoke copi
 | `Button` | `primary`, `secondary`, `quiet`, `danger` or `surface` (artwork/nav tiles); defaults to `type="button"` |
 | `IconButton` | Required `label`, decorative icon child; retain label if visible text is hidden |
 | `Field` | Render-prop wrapper for one custom control; spread generated ID/ARIA props onto it |
-| `TextField` | Native input props plus `label`, optional `hint` and `error` |
+| `TextField` | Native input props plus `label`, optional `hint` and `error`. Hints render as `HelpTip` beside the label (with a visually hidden copy for `aria-describedby`); errors stay under the control |
 | `SelectField` | Radix select props plus the same label/help/error contract |
-| `SwitchRow` | Settings-style row: label (and optional hint) left, Radix switch right |
+| `SwitchRow` | Settings-style row: label left (optional `hint` as `HelpTip`, optional Customise `action` under the label), Radix switch right; inside a SettingsGroup shares the same label/control columns as SettingsRow |
+| `HelpTip` | Quiet circled `?` beside a heading or label; click opens a compact popover with the help string. Use for Settings help instead of under-label or under-heading subtitles |
 | `Notice` | `info`, `success` or `error`; optional `banner` for message plus inline actions |
-| `Section` | Heading and optional description with consistent spacing; choose `h2` or `h3` |
-| `SettingsGroup` | Inset grouped surface under a Section; holds SettingsRow, SwitchRow, Range or Disclosure rows |
-| `SettingsRow` | Label (optional hint) left, control right inside a SettingsGroup; omit label for a full-width control |
-| `Modal` | Radix Dialog with required title and close handler; optional `placement` (`center` / `bottom`), `backdrop` (`dim` / `none`), and `headerClose` (`close` / `back`); caller owns discard policy |
+| `Section` | Heading with optional `tip` (`HelpTip` beside the title) and optional visible `description` underneath; choose `h2` or `h3`. Product Settings use `tip` for help; keep `description` for content such as About version or long Component Reference guidance |
+| `SettingsGroup` | Inset grouped surface under a Section; holds SettingsRow, SwitchRow, Range or Disclosure rows. Uses a three-column CSS subgrid for SettingsRow / SwitchRow: a `fit-content(10rem)` label track sized to the longest label in that group, a flexible middle, and an auto trailing track, with `--space-3` after the label. Range children span the full group width (stacked layout) with no divider between consecutive Ranges; SettingsRow / SwitchRow keep the shared label track and a `min-height` of `--control-height` plus vertical padding (`density="compact"` uses ~8 px row padding for preview-adjust sheets). Major Settings sections use one ~32 px gap (no stacked margin/padding/divider). |
+| `SettingsRow` | Label left (optional `hint` as `HelpTip`, optional Customise `action` under the label), control right inside a SettingsGroup; omit label for a full-width control. Inside a group, labels share the group’s capped max-content column via subgrid; at narrow widths the control stacks under the label |
+| `Modal` | Radix Dialog with required title and close handler; optional `placement` (`center` / `bottom`), `backdrop` (`dim` / `none`), `headerClose` (`close` / `back`), and optional `footer`. When `footer` is set, the dialog uses a three-region sheet layout (fixed title, scrollable body, fixed footer) sized to content up to about `min(70dvh, 640px)`. Caller owns discard policy. Do not change default centre-dialog scrolling for callers that omit `footer`. |
 | `ScrollArea` | Radix scrollport with themed scrollbar; use for horizontal strips and overflow panes instead of a raw overflow div |
-| `Popover`, `PopoverHead`, `ImagePopoverActions`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling. `Popover` sizes are `compact` (default, colour chips) and `image` (upload pickers). Colour pickers commit live while open; image pickers snapshot and restore on cancel — caller-owned, not merged. `PopoverHead` is the shared title + quiet close; `ImagePopoverActions` is the Cancel/OK footer for image pickers. |
-| `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure` | Radix controls with Pane keyboard, focus and theme treatment |
+| `Popover`, `PopoverHead`, `ImagePopoverActions`, `DropdownMenu` | Radix overlays for anchored and action menus; use the shared portal and surface styling. `Popover` sizes are `compact` (default, colour chips) and `image` (upload pickers). Colour pickers live-paint while open and commit the draft after the drag settles (`ColourField` / `useDeferredColour`); image pickers snapshot and restore on cancel — caller-owned, not merged. `PopoverHead` is the shared title + quiet close; `ImagePopoverActions` is the Cancel/OK footer for image pickers. |
+| `ColourField`, `ColourPopoverFields`, `useDeferredColour` | Shared colour controls (DiceUI/Radix-style saturation–brightness area, hue slider and hex field). Prefer these over a raw `type="color"` input so Settings previews do not thrash on every drag tick. |
+| `Select`, `Switch`, `Checkbox`, `Range`, `Disclosure` | Radix controls with Pane keyboard, focus and theme treatment. `Range` is always stacked: label left (optional `tip` HelpTip) and regular-weight tabular value right on one header line, full-width track directly under the header (no grid gap; separation comes from the slider hit area), about 16 px between consecutive Ranges in a group, with no Range–Range divider. Long labels wrap without overlapping the value; tracks share width within the same group or sheet |
 | `useConfirmation` | Radix Alert Dialog; callers pass title, description, cancel and action labels for discard, delete or replace |
 
 ```tsx
@@ -208,6 +210,26 @@ interaction/accessibility tests, then migrate its consumers.
    in the same change as a deliberate system-level design decision.
 8. Tailwind is not required. Introducing it must preserve these semantic roles,
    palette resolution and components; arbitrary utilities must not bypass the system.
+
+## Choose wallpaper sheet
+
+The Background **Choose wallpaper** bottom sheet is a production layout on the shared
+`Modal` (nested, `backdrop="none"`, `footer` for the fixed action row). Browse order:
+compact Colours swatches → optional newest-first Recently selected image/video carousel (updates on selection; excludes colours/gradients/None) (inset SettingsGroup containing a horizontal ScrollArea) → category cards (three
+columns at ~720 px, two then one as the viewport narrows). Category covers use a fixed
+gallery tint (~64% neutral dark in Midnight / light in Daylight) over a representative
+image or paint — not the user’s Theme overlay or creative Tint. Inside a category, the
+same dialog shows a caption-free 16:9 thumbnail grid; `onBack` plus trailing Close keep
+navigation in one layer. Wallpaper tiles mark selection with accent border and a
+top-left checkmark; keyboard focus uses a separate ring; live (video) tiles show a
+compact bottom-right “Live” badge with a play mark on a catalogue thumb still.
+Hover or keyboard focus plays the muted loop after a short linger on pointer
+(~180 ms; focus is immediate); thumb stays until the first video frame paints;
+leave/blur returns to the still; `prefers-reduced-motion` keeps the still only (no
+load-time autoplay). Recently selected carousel tiles and the Background Current-band
+live preview use the same shared still-first helper. Uploaded images use lazy, bounded server thumbnails; uploaded videos use a durable `/poster` still captured in the browser on Add media (idle tiles never mount `<video>` merely to show a still). Category grids list static
+wallpapers before live ones. Prefer the Component Reference Modal example with
+`onBack` / `headerActions` when extending this pattern.
 
 ## Verification and adoption
 

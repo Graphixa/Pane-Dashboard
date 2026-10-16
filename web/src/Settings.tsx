@@ -24,6 +24,7 @@ import {
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
+import { loadRecentDraft, queueRecentWallpaperOnSave } from "./wallpaperRecent";
 
 const pages = [
   ["general", "General", Settings2],
@@ -55,6 +56,8 @@ export default function Settings({
   const { confirm, confirmation } = useConfirmation();
   const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
+  const [recent, setRecent] = useState(() => loadRecentDraft(config.appearance.background));
+  const initialRecent = useRef(JSON.stringify(recent));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [previewAdjust, setPreviewAdjust] = useState(false);
@@ -66,7 +69,7 @@ export default function Settings({
   const configRef = useRef(config);
   onPreviewRef.current = onPreview;
   configRef.current = config;
-  const dirty = settingsValue(draft) !== initial.current;
+  const dirty = settingsValue(draft) !== initial.current || JSON.stringify(recent) !== initialRecent.current;
   const flushPreview = () => {
     previewFrame.current = 0;
     const next = pendingPreview.current;
@@ -136,6 +139,7 @@ export default function Settings({
       };
       validate(next);
       apply(next);
+      queueRecentWallpaperOnSave(next.appearance.background, recent);
       close();
     } catch (e) {
       setError((e as Error).message);
@@ -150,6 +154,7 @@ export default function Settings({
     <Modal
       title="Settings"
       close={requestClose}
+      backdrop="none"
       className={`settings-dialog${previewAdjust ? " settings-dialog--preview-adjust" : ""}`}
       style={appearanceStyle(draft.appearance)}
       theme={draft.appearance.theme}
@@ -194,6 +199,8 @@ export default function Settings({
               <FieldGroup disabled={readOnly || busy}>
                 <div className="settings-sections">
                   <AppearanceEditor
+                    recent={recent}
+                    setRecent={setRecent}
                     draft={draft}
                     change={updateDraft}
                     onBusy={setBusy}
@@ -210,7 +217,7 @@ export default function Settings({
                 level="h3"
                 className="settings-section"
                 title="Export"
-                description={
+                tip={
                   dirty
                     ? "Apply or discard pending changes before downloading."
                     : "Downloads use your saved dashboard."
@@ -249,7 +256,7 @@ export default function Settings({
                 level="h3"
                 className="settings-section"
                 title="Import"
-                description={
+                tip={
                   dirty
                     ? "Apply your settings first, or cancel and reopen Settings before importing."
                     : undefined

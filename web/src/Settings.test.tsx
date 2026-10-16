@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
 import { Config } from "./model";
+import { LIVE_HOVER_PREVIEW_MS } from "./wallpaperChooser";
+import { RECENT_WALLPAPER_KEY, recordRecentWallpaper, loadRecentWallpapers, flushPendingRecentWallpaper, queueRecentWallpaperOnSave } from "./wallpaperRecent";
+import { clearVideoStillCache } from "./videoStillCache";
 const config = (): Config => ({
-  version: 2,
+  version: 3,
   dashboard: { title: "Akira", widthMode: "fixed", width: 960 },
   appearance: { theme: "dark", showAppLabels: true, showButtonLabels: true },
   items: [],
 });
 beforeEach(() => {
+  vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value() {
@@ -26,16 +30,20 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  queueRecentWallpaperOnSave(undefined);
+  clearVideoStillCache();
+  localStorage.removeItem(RECENT_WALLPAPER_KEY);
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
-const setup = () => {
+const setup = (cfg: Config = config()) => {
   const apply = vi.fn(),
     close = vi.fn(),
     imported = vi.fn(),
     preview = vi.fn();
   const result = render(
     <Settings
-      config={config()}
+      config={cfg}
       apply={apply}
       close={close}
       imported={imported}
@@ -64,6 +72,8 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(screen.getByRole("option", {name: "Oxanium"}));
     page("Import & backup");
     expect(screen.queryByText("Confirm import")).toBeNull();
+    expect(screen.getByRole("button", { name: "About Import" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "About Import" }));
     expect(screen.getByText(/Apply your settings first/)).toBeTruthy();
     expect(
       (
@@ -131,99 +141,121 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("group", { name: "Accent" })).toBeTruthy();
     expect(container.querySelector(".ui-settings-group")).toBeTruthy();
     page("Background");
-    expect(screen.queryByRole("tablist")).toBeNull();
     expect(screen.getByRole("button", { name: "Change wallpaper" })).toBeTruthy();
     expect(screen.getByText("Currently set")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Show all Gradients/i })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Enhancements" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Readability" })).toBeTruthy();
+    expect(screen.getByText("Theme overlay")).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Tint" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: /Customise tint/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    const addMotion = screen.getByRole("combobox", { name: "Add Motion" });
+    expect(addMotion).toBeTruthy();
+    expect((addMotion as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: /Customise motion/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      screen.getByText("Not available for live or video wallpapers."),
+    ).toBeTruthy();
+    const screenEffects = screen.getByRole("combobox", { name: "Screen Effects" });
+    expect(screenEffects.textContent).toMatch(/None/i);
+    expect(
+      (screen.getByRole("button", { name: /Customise screen effects/i }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /^Add$/i })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
     expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains("ui-dialog-bottom")).toBe(true);
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Back" })).toBeNull();
+    expect(
+      screen.getByRole("dialog", { name: "Choose wallpaper" }).classList.contains(
+        "ui-dialog-bottom",
+      ),
+    ).toBe(true);
+    expect(screen.queryByRole("tablist", { name: "Wallpaper type" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Colours" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "My images" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Gradients" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Dynamic" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Scroll .+ left/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "Mint" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Custom colour" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Categories" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "My media" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Gradients" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Wallpapers" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Live" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Videos" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Dynamic" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add media" })).toBeTruthy();
+    expect(screen.getByText(/Apply in Settings to save/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use wallpaper" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    expect(dialog.querySelectorAll("video[loop]").length).toBe(0);
     fireEvent.click(screen.getByRole("button", { name: "Mint" }));
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(dialog.querySelector(".swatch-dynamic-label")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.getByText("None")).toBeTruthy();
+    expect(screen.getByText("Colour")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    expect(
-      screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
-    ).toBe("false");
-    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.getByText("Mint")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    expect(screen.getByRole("button", { name: "Show all My images" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show all Gradients" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show all Dynamic" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Gradients" }));
     expect(screen.getByRole("dialog", { name: "Gradients" })).toBeTruthy();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Select" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Scroll Gradients/ })).toBeNull();
-    expect(document.querySelector(".background-library-grid")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Forest" }));
-    expect(
-      screen.getByRole("button", { name: "Forest" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
-    expect(screen.getByText("Forest")).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Motion effects" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Wallpaper overlay" })).toBeTruthy();
-    const motionCustomize = screen.getAllByRole("button", { name: "Customize" })[0];
-    expect(motionCustomize.hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByRole("switch", { name: "Motion effects" }));
-    expect(motionCustomize.hasAttribute("disabled")).toBe(false);
-    fireEvent.click(motionCustomize);
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Motion settings" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(document.querySelector(".settings-dialog--preview-adjust")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
-    expect(screen.getByText("Forest")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(screen.getByRole("dialog", { name: "Choose wallpaper" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Show all Gradients" }));
-    expect(
-      screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed"),
-    ).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Select" }));
-    expect(screen.queryByRole("dialog", { name: "Gradients" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
+    expect(screen.queryByRole("switch", { name: "Wallpaper overlay" })).toBeNull();
     expect(
       screen.queryByRole("switch", { name: "Show app labels" }),
     ).toBeNull();
+  });
+  it("restores wallpaper draft when Choose wallpaper is closed without Use wallpaper", async () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mint" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
+    expect(screen.getByText("Colour")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    fireEvent.click(within(chooser).getByRole("button", { name: "Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("alertdialog", { name: "Discard wallpaper changes?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /Choose wallpaper|Gradients/ })).toBeNull();
+    });
+    expect(screen.getByText("Colour")).toBeTruthy();
+    expect(screen.queryByText("Ocean")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const again = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    fireEvent.click(within(again).getByRole("button", { name: "Gradients" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Gradients" }), { key: "Escape" });
+    expect(screen.getByRole("alertdialog", { name: "Discard wallpaper changes?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /Choose wallpaper|Gradients/ })).toBeNull();
+    });
+    expect(screen.getByText("Colour")).toBeTruthy();
+    expect(screen.queryByText("Ocean")).toBeNull();
+  });
+  it("opens Tint adjust sheet with fixed header/footer and scrollable body", () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("switch", { name: "Tint" }));
+    fireEvent.click(screen.getByRole("button", { name: /Customise tint/i }));
+    const sheet = screen.getByRole("dialog", { name: "Tint" });
+    expect(sheet.classList.contains("ui-dialog-sheet")).toBe(true);
+    expect(sheet.classList.contains("background-adjust-dialog")).toBe(true);
+    expect(sheet.querySelector(".ui-dialog-body .ui-settings-group-compact")).toBeTruthy();
+    expect(within(sheet).getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(within(sheet).getByRole("button", { name: "Done" })).toBeTruthy();
+    expect(within(sheet).getByRole("slider", { name: "Opacity" })).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog", { name: "Tint" })).toBeNull();
   });
   it("keeps labels in Panes and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
     const { apply } = setup();
@@ -342,6 +374,117 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalledOnce();
   });
+  it("Current band live preview stays still until hover linger", async () => {
+    vi.useFakeTimers();
+    const play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.play = play;
+    HTMLMediaElement.prototype.pause = vi.fn();
+    const cfg = config();
+    cfg.appearance.background = {
+      wallpaper: {
+        kind: "video",
+        media: { source: "builtin", builtinId: "aurora@v1" },
+        position: "center",
+        playback: "loop",
+      },
+      library: [],
+      photoMotion: { style: "none", intensity: 40 },
+      themeOverlayOpacity: 25,
+    };
+    setup(cfg);
+    page("Background");
+    const preview = screen.getByLabelText("Aurora, live wallpaper preview");
+    expect(preview.querySelector("video")).toBeNull();
+    expect(
+      preview.querySelector("img.wallpaper-tile-image")?.getAttribute("src"),
+    ).toMatch(/aurora-thumb/);
+    fireEvent.mouseEnter(preview);
+    expect(preview.querySelector("video")).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_HOVER_PREVIEW_MS);
+    });
+    expect(preview.querySelector("video.wallpaper-tile-video")).toBeTruthy();
+    expect(play).toHaveBeenCalled();
+    expect(preview.querySelector("img.wallpaper-tile-image")).toBeTruthy();
+  });
+
+  it("Recently selected live tiles stay still until hover linger", async () => {
+    vi.useFakeTimers();
+    const play = vi.fn().mockResolvedValue(undefined);
+    HTMLMediaElement.prototype.play = play;
+    HTMLMediaElement.prototype.pause = vi.fn();
+    recordRecentWallpaper({
+      kind: "video",
+      media: { source: "builtin", builtinId: "neon-wave@v1" },
+      position: "center",
+      playback: "loop",
+    });
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const tile = screen.getByRole("button", {
+      name: /Neon Wave, live wallpaper/,
+    });
+    const wrap = tile.closest(".wallpaper-tile-wrap")!;
+    expect(wrap.querySelector("video")).toBeNull();
+    fireEvent.mouseEnter(wrap);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(LIVE_HOVER_PREVIEW_MS);
+    });
+    expect(wrap.querySelector("video.wallpaper-tile-video")).toBeTruthy();
+    expect(play).toHaveBeenCalled();
+  });
+
+  it("removing an upload drops it from My media and Recently selected", async () => {
+    const asset = { source: "asset" as const, assetId: "upload-hulk" };
+    const cfg = config();
+    cfg.appearance.background = {
+      wallpaper: { kind: "image", media: asset, position: "center" },
+      library: [asset],
+      photoMotion: { style: "none", intensity: 40 },
+      themeOverlayOpacity: 25,
+    };
+    recordRecentWallpaper({
+      kind: "image",
+      media: asset,
+      position: "center",
+    });
+    setup(cfg);
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    expect(within(chooser).getByRole("heading", { name: "Recently selected" })).toBeTruthy();
+    fireEvent.click(within(chooser).getByRole("button", { name: "My media" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Photo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "Remove Photo" })).toBeNull();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.queryByRole("heading", { name: "Recently selected" })).toBeNull();
+  });
+
+  it("shows oversized wallpaper upload errors inline in Choose wallpaper, not as a nested alert", async () => {
+    setup();
+    page("Background");
+    fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+    const chooser = screen.getByRole("dialog", { name: "Choose wallpaper" });
+    const input = chooser.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const file = new File(["x"], "big.webp", { type: "image/webp" });
+    Object.defineProperty(file, "size", { value: 13 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => {
+      expect(screen.getByRole("alert").textContent).toContain(
+        "Choose an image up to 12 MiB.",
+      );
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(chooser.querySelector(".background-library-sheet-notice")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "OK" })).toBeNull();
+  });
   it("drags from the Settings title bar without starting from Close", () => {
     const { container } = setup();
     const dialog = screen.getByRole("dialog") as HTMLDivElement;
@@ -380,3 +523,102 @@ describe("settings navigation and draft safety", () => {
   });
 });
 
+
+it("late missing-file checks preserve the latest selection and Cancel snapshot", async () => {
+  const asset = { source: "asset" as const, assetId: "missing-upload" };
+  const cfg = config();
+  cfg.appearance.background = {
+    wallpaper: { kind: "image", media: asset, position: "center" }, library: [asset],
+    photoMotion: { style: "none", intensity: 40 }, themeOverlayOpacity: 25,
+  };
+  let finish!: (response: Response) => void;
+  const response = new Promise<Response>((resolve) => { finish = resolve; });
+  vi.spyOn(globalThis, "fetch").mockReturnValue(response);
+  const { apply } = setup(cfg);
+  page("Background");
+  fireEvent.click(screen.getByRole("button", { name: "Change wallpaper" }));
+  fireEvent.click(screen.getByRole("button", { name: "Gradients" }));
+  fireEvent.click(screen.getByRole("button", { name: "Ocean" }));
+  await act(async () => finish(new Response(null, { status: 404 })));
+  expect(screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
+  fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+  const saved = apply.mock.calls[0][0];
+  expect(saved.appearance.background.wallpaper).toEqual({ kind: "gradient", preset: "ocean" });
+  expect(saved.appearance.background.library).toEqual([]);
+});
+
+it("updates selected uploads immediately, survives navigation, and saves the entire history on Apply", async () => {
+  const first = {source:"asset" as const,assetId:"first"};
+  const second = {source:"asset" as const,assetId:"second"};
+  const cfg = config();
+  cfg.appearance.background = {wallpaper:{kind:"none"},library:[first,second],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  vi.spyOn(globalThis,"fetch").mockImplementation(async (input) => new Response(JSON.stringify({kind:"image",name:String(input).includes("first") ? "First" : "Second"}),{status:200}));
+  const {apply} = setup(cfg);
+  page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"First"}));
+  fireEvent.click(screen.getByRole("button",{name:"Second"}));
+  fireEvent.click(screen.getByRole("button",{name:"Back"}));
+  let strip = screen.getByLabelText("Recently selected wallpapers");
+  expect(strip.closest(".wallpaper-recent-inset")).toBeTruthy();
+  expect(within(strip).getAllByRole("button").map(b=>b.querySelector("img")?.getAttribute("src"))).toEqual(["/media/assets/second/poster","/media/assets/first/poster"]);
+  expect(loadRecentWallpapers()).toEqual([]);
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  page("General"); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  strip = screen.getByLabelText("Recently selected wallpapers");
+  expect(within(strip).getAllByRole("button")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
+  expect(loadRecentWallpapers()).toEqual([]);
+  flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
+  expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["image:asset:second","image:asset:first"]);
+});
+
+it("restores history on chooser discard and leaves saved history unchanged on Settings Cancel", async () => {
+  const cfg = config();
+  const asset = {source:"asset" as const,assetId:"one"};
+  cfg.appearance.background = {wallpaper:{kind:"none"},library:[asset],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  vi.spyOn(globalThis,"fetch").mockResolvedValue(new Response(JSON.stringify({kind:"image",name:"One"}),{status:200}));
+  const {close} = setup(cfg); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"One"}));
+  fireEvent.click(within(screen.getByRole("dialog",{name:"My media"})).getByRole("button",{name:"Close"}));
+  fireEvent.click(screen.getByRole("button",{name:"Discard"}));
+  await waitFor(()=>expect(screen.queryByRole("dialog",{name:"My media"})).toBeNull());
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  expect(screen.queryByRole("heading",{name:"Recently selected"})).toBeNull();
+  fireEvent.click(screen.getByRole("button",{name:"My media"}));
+  fireEvent.click(await screen.findByRole("button",{name:"One"}));
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Cancel"}));
+  fireEvent.click(screen.getByRole("button",{name:"Discard"}));
+  await waitFor(()=>expect(close).toHaveBeenCalled());
+  expect(loadRecentWallpapers()).toEqual([]);
+});
+
+it("tracks built-ins immediately and recognises history-only changes", async () => {
+  const cfg = config();
+  cfg.appearance.background = {wallpaper:{kind:"video",media:{source:"builtin",builtinId:"aurora@v1"},position:"center",playback:"loop"},library:[],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
+  const {apply} = setup(cfg); page("Background");
+  fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Live"}));
+  fireEvent.click(screen.getByRole("button",{name:"Neon Wave, live wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Aurora, live wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Back"}));
+  const strip=screen.getByLabelText("Recently selected wallpapers");
+  expect(within(strip).getAllByRole("button").map(b=>b.getAttribute("aria-label"))).toEqual(["Aurora, live wallpaper","Neon Wave, live wallpaper"]);
+  // Reselecting the same item does not duplicate it.
+  fireEvent.click(within(strip).getByRole("button",{name:"Aurora, live wallpaper"}));
+  expect(within(strip).getAllByRole("button")).toHaveLength(2);
+  fireEvent.click(within(screen.getByRole("dialog",{name:"Choose wallpaper"})).getByRole("button",{name:"Close"}));
+  expect(screen.getByRole("alertdialog",{name:"Discard wallpaper changes?"})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Keep editing"}));
+  fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
+  fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
+  flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
+  expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["video:builtin:aurora@v1","video:builtin:neon-wave@v1"]);
+});

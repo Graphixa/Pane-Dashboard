@@ -1,0 +1,9 @@
+{
+  "id": "grid",
+  "name": "Grid",
+  "description": "Panning grid lines over a soft glow.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#3b82f6", "cssVar": "--pane-seed" },
+    { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 45, "cssVar": "--pane-speed", "map": "duration" }
+  ]
+}

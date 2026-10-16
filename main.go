@@ -36,9 +36,10 @@ func readJSON(w http.ResponseWriter, r *http.Request, limitMsg string) ([]byte, 
 	}
 	return b, true
 }
-func handler(s *Store, d *DockerProvider) http.Handler {
+func handler(s *Store, d *DockerProvider, media *MediaStore) http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/images/prepare", prepareImage)
+	registerMediaRoutes(mux, media)
+	registerBuiltinRoutes(mux)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) { respond(w, 200, map[string]string{"status": "ok"}) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
@@ -56,8 +57,8 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 			apiError(w, 400, e.Error())
 			return
 		}
-		if c.Version != 2 {
-			apiError(w, 400, "This layout uses the old schema. Reload Pane or use Settings > Import.")
+		if c.Version != 3 {
+			apiError(w, 400, "Unsupported configuration version. Schema 3 is required; replace or delete pane.yaml (older prototypes are not migrated).")
 			return
 		}
 		s.mu.Lock()
@@ -70,6 +71,10 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 			apiError(w, 412, "Configuration changed in another session. Reload before editing.")
 			return
 		}
+		if e = validateConfigMedia(c, media); e != nil {
+			apiError(w, 400, e.Error())
+			return
+		}
 		if e = s.write(c); e != nil {
 			log.Printf("save failed: %v", e)
 			apiError(w, 500, "Could not save configuration")
@@ -77,6 +82,15 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 		}
 		s.config = c
 		s.revision = revision(c)
+		if media != nil {
+			protect := MediaGCProtect{AssetIDs: map[string]struct{}{}}
+			if c.Appearance.Background != nil {
+				protect.AssetIDs = collectAssetIDs(*c.Appearance.Background, c.Dashboard.Logo)
+			} else if id, ok := logoAssetID(c.Dashboard.Logo); ok {
+				protect.AssetIDs[id] = struct{}{}
+			}
+			_ = media.Cleanup(protect, time.Now().UTC())
+		}
 		w.Header().Set("ETag", s.revision)
 		respond(w, 200, map[string]bool{"saved": true})
 	})
@@ -86,9 +100,6 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 			return
 		}
 		c, e := decodeJSON(b)
-		if e == nil {
-			c, e = upgrade(c)
-		}
 		if e != nil {
 			apiError(w, 400, e.Error())
 			return
@@ -115,7 +126,7 @@ func handler(s *Store, d *DockerProvider) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' https: http: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' https: http: data: blob:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Cache-Control", "no-store")
 		}
@@ -145,15 +156,27 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
+	media, e := openMediaStore(path)
+	if e != nil {
+		log.Fatal(e)
+	}
 	d, e := newDockerProvider(os.Getenv("PANE_DOCKER_ENDPOINT"))
 	if e != nil {
 		log.Fatal(e)
 	}
-	addr := os.Getenv("PANE_LISTEN")
-	if addr == "" {
-		addr = ":8080"
-	}
-	srv := &http.Server{Addr: addr, Handler: handler(s, d), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 20 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
+	addr := listenAddr()
+	// Read/Write timeouts cover ordinary JSON; media upload/streaming uses longer bounds via
+	// MaxBytesReader and ServeContent. IdleTimeout remains short.
+	srv := &http.Server{Addr: addr, Handler: handler(s, d, media), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: mediaUploadTimeout + 15*time.Second, WriteTimeout: mediaUploadTimeout + 30*time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	log.Printf("Pane listening on %s; use a trusted network or authenticating reverse proxy", addr)
 	log.Fatal(srv.ListenAndServe())
+}
+
+// listenAddr defaults to loopback so local runs do not open inbound LAN sockets
+// (and so Windows Firewall is not prompted). Containers set PANE_LISTEN=:8080.
+func listenAddr() string {
+	if addr := os.Getenv("PANE_LISTEN"); addr != "" {
+		return addr
+	}
+	return "127.0.0.1:8080"
 }

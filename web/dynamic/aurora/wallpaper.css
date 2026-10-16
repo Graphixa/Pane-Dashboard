@@ -1,0 +1,92 @@
+.sky {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 120% 80% at 50% 100%, #0a1220 0%, #04060c 55%, #020308 100%);
+}
+.curtains {
+  position: absolute;
+  inset: -20% -30% 10%;
+  opacity: calc(var(--pane-strength, 70) / 100);
+  filter: blur(calc(22px + var(--pane-softness, 30) * 0.55px));
+  mix-blend-mode: screen;
+}
+.curtains i {
+  position: absolute;
+  display: block;
+  width: 42%;
+  height: 120%;
+  top: -10%;
+  border-radius: 40% 40% 55% 55%;
+  transform-origin: 50% 100%;
+  animation: aurora-sweep var(--pane-speed, 18s) ease-in-out infinite alternate;
+}
+.curtains i:nth-child(1) {
+  left: -8%;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 85%, white) 0%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 45%, transparent) 42%,
+    transparent 78%
+  );
+  animation-duration: calc(var(--pane-speed, 18s) * 1.05);
+}
+.curtains i:nth-child(2) {
+  left: 18%;
+  width: 48%;
+  background: linear-gradient(
+    185deg,
+    color-mix(in srgb, var(--pane-seed-2, #818cf8) 80%, white) 0%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 35%, transparent) 48%,
+    transparent 80%
+  );
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
+  animation-duration: calc(var(--pane-speed, 18s) * 1.25);
+}
+.curtains i:nth-child(3) {
+  left: 42%;
+  width: 46%;
+  background: linear-gradient(
+    175deg,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 70%, var(--pane-seed-2, #818cf8)) 0%,
+    color-mix(in srgb, var(--pane-seed-2, #818cf8) 40%, transparent) 50%,
+    transparent 82%
+  );
+  animation-delay: -16s;
+  animation-duration: calc(var(--pane-speed, 18s) * 0.95);
+}
+.curtains i:nth-child(4) {
+  left: 62%;
+  width: 44%;
+  background: linear-gradient(
+    190deg,
+    color-mix(in srgb, var(--pane-seed-2, #818cf8) 75%, white) 0%,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 30%, transparent) 46%,
+    transparent 78%
+  );
+  animation-delay: -24s;
+  animation-direction: alternate-reverse;
+  animation-duration: calc(var(--pane-speed, 18s) * 1.15);
+}
+.curtains i:nth-child(5) {
+  left: 28%;
+  width: 38%;
+  height: 100%;
+  top: 5%;
+  opacity: 0.7;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pane-seed, #5eead4) 55%, transparent) 0%,
+    transparent 70%
+  );
+  animation-delay: -12s;
+  animation-duration: calc(var(--pane-speed, 18s) * 1.4);
+}
+@keyframes aurora-sweep {
+  from {
+    transform: translate3d(-18%, 2%, 0) skewX(-12deg) scaleY(0.92);
+  }
+  to {
+    transform: translate3d(22%, -4%, 0) skewX(14deg) scaleY(1.12);
+  }
+}

@@ -3,7 +3,7 @@ import {
   type Glass,
   type Palette,
   type UiFont,
-  imageReference,
+  logoReference,
   normaliseAppearanceFont,
   uiFonts,
   validateVisuals,
@@ -27,7 +27,7 @@ export type Pane = {
   apps: App[];
 };
 export type Config = {
-  version: 2;
+  version: 3;
   dashboard: {
     title: string;
     logo?: string;
@@ -142,9 +142,9 @@ export function validate(value: unknown): asserts value is Config {
   ]);
   c.appearance = normaliseAppearanceFont(c.appearance);
   if (
-    c.version !== 2 ||
+    c.version !== 3 ||
     !text(c.dashboard.title, 100) ||
-    (c.dashboard.logo !== undefined && !imageReference(c.dashboard.logo)) ||
+    (c.dashboard.logo !== undefined && !logoReference(c.dashboard.logo)) ||
     (c.dashboard.branding !== undefined &&
       !["icon", "logo"].includes(c.dashboard.branding)) ||
     (c.dashboard.builtinIcon !== undefined &&

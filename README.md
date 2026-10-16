@@ -43,7 +43,7 @@ Old dashboard and pane-template exports are converted during import preview. Rel
 
 ## Personalise Pane
 
-Open **Settings**. Changes stay in a draft as you move between sections and preview live on the dashboard and inside Settings. **Apply settings** saves the complete draft; closing or cancelling asks before discarding and restores the previous look. The Settings backdrop is lightly dimmed without blur so the dashboard stays visible. The fixed action bar stays visible while the main content scrolls. Appearance covers Theme, Colours and Typography. Background is a separate sidebar page. Settings contain no miniature dashboard previews.
+Open **Settings**. Changes stay in a draft as you move between sections and preview live on the dashboard and inside Settings. **Apply settings** saves the complete draft; closing or cancelling asks before discarding and restores the previous look. Settings opens without a dimmed lightbox so dashboard colours stay true; a soft drop shadow lifts the dialog above the shell. The fixed action bar stays visible while the main content scrolls. Appearance covers Theme, Colours and Typography. Background is a separate sidebar page. Settings contain no miniature dashboard previews.
 
 - **General:** set the **Dashboard name**, logo, workspace width and navigation labels. Under **Logo**, choose **Icon + name** for a square brandmark beside your name, or **Full logo** for rectangular artwork replacing both. Use a built-in icon, upload or HTTP(S) URL. Full logos fit within 280 × 48 px on desktop without cropping or stretching. Transparent PNGs with trimmed padding work well. The name still sets the browser title and accessible name; failed images fall back to the built-in icon/name.
 - **Appearance → Theme:** choose Midnight or Daylight. Changing theme resets custom colours, preserving your background and pane finish.
@@ -76,7 +76,7 @@ Published ports are suggestions, not verified web interfaces. Enter the host's r
 
 ## Development
 
-Requires Node 24 and Go 1.23+ (CI uses Go 1.26).
+Requires Node 24, Go 1.23+ (CI uses Go 1.26), and FFmpeg on PATH to generate bundled wallpaper thumbnails. Docker installs these build dependencies automatically.
 
 ```sh
 cd web
@@ -102,7 +102,7 @@ Environment variables:
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PANE_CONFIG` | `/config/pane.yaml` | Configuration file |
-| `PANE_LISTEN` | `:8080` | HTTP listen address |
+| `PANE_LISTEN` | `127.0.0.1:8080` | HTTP listen address (loopback by default; use `:8080` for all interfaces — Docker image sets this) |
 | `PANE_DOCKER_ENDPOINT` | unset | Opt-in Docker socket/proxy |
 
 The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. Icons are fetched directly from the [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) catalogue through jsDelivr, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. Trademarks belong to their owners. No icon artwork is bundled.

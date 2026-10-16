@@ -47,6 +47,7 @@ import { AppEditor, PaneEditor } from "./Editors";
 import Settings from "./Settings";
 import GlassPaneLayers from "./GlassPaneLayers";
 import { useGlassQuality } from "./useGlassQuality";
+import { flushPendingRecentWallpaper, reconcileRecentWallpapers } from "./wallpaperRecent";
 const compactor = getCompactor(null, false, true);
 type Editor =
   | { type: "app"; paneId: string; app?: App; col: number; row: number }
@@ -72,7 +73,12 @@ function Artwork({ app }: { app: App }) {
   );
 }
 export default function Dashboard() {
-  const state = useConfig();
+  const state = useConfig({
+    onSaved: (saved) => {
+      flushPendingRecentWallpaper(saved.appearance.background);
+      reconcileRecentWallpapers(saved.appearance.background?.library ?? []);
+    },
+  });
   if (!state.config)
     return (
       <main className="loading" aria-busy={!state.error || undefined}>

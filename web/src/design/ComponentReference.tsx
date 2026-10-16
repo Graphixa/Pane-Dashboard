@@ -4,8 +4,8 @@ import { CSSProperties, useState } from "react";
 import { ChevronDown, Plus, Settings2 } from "lucide-react";
 import { appearanceStyle, UiFont, uiFonts } from "../appearance";
 import {
-  Button, Checkbox, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
-  Range, ScrollArea, Section, SelectField, SettingsGroup, SettingsRow, SwitchRow, Text, TextField, useConfirmation,
+  Button, Checkbox, ColourField, Disclosure, DropdownMenu, IconButton, ImagePopoverActions, Modal, Notice, Popover, PopoverHead,
+  Range, ScrollArea, Section, Select, SelectField, SettingsGroup, SettingsRow, SwitchRow, Tabs, TabsContent, TabsList, TabsTrigger, Text, TextField, useConfirmation,
 } from "./components";
 
 /** Isolated examples: no useConfig, fetch, localStorage or dashboard mutations. */
@@ -15,16 +15,20 @@ export default function ComponentReference() {
   const [compact, setCompact] = useState(false);
   const [modal, setModal] = useState(false);
   const [bottomModal, setBottomModal] = useState(false);
+  const [categoryModal, setCategoryModal] = useState(false);
   const [name, setName] = useState("Home services");
   const [count, setCount] = useState(0);
   const [selected, setSelected] = useState(false);
   const [paneSize, setPaneSize] = useState(18);
   const [labels, setLabels] = useState(true);
   const [blur, setBlur] = useState(16);
+  const [opacity, setOpacity] = useState(40);
+  const [openLinks, setOpenLinks] = useState("new");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [checked, setChecked] = useState(true);
+  const [sampleColour, setSampleColour] = useState("#7db7ff");
   const { confirm, confirmation } = useConfirmation();
   const style = { ...appearanceStyle({ theme, fontFamily: font }),
     "--pane-title-size": `${paneSize}px`, "--icon-size": "80px" } as CSSProperties;
@@ -60,6 +64,7 @@ export default function ComponentReference() {
           <Button variant="primary" onClick={() => setCount(count + 1)}>Apply example</Button>
           <Button onClick={() => setModal(true)}>Open dialog</Button>
           <Button onClick={() => setBottomModal(true)}>Open bottom sheet</Button>
+          <Button onClick={() => setCategoryModal(true)}>Open category sheet</Button>
           <Button variant="quiet" onClick={() => setCount(0)}>Reset example</Button>
           <Button variant="danger" onClick={() => setCount(0)}>Clear example</Button>
           <Button variant="surface" className="ui-settings-nav" type="button"><Settings2 size={18} aria-hidden="true" /><span>Settings nav</span></Button>
@@ -74,6 +79,16 @@ export default function ComponentReference() {
           <div className="ui-actions"><Button>Retry save</Button></div>
         </Notice>
       </Section>
+      <Section title="Tabs" description="Centred Radix tabs for mutually exclusive panes such as Static / Animated wallpaper shelves.">
+        <Tabs defaultValue="static">
+          <TabsList aria-label="Example wallpaper type">
+            <TabsTrigger value="static">Static</TabsTrigger>
+            <TabsTrigger value="animated">Animated</TabsTrigger>
+          </TabsList>
+          <TabsContent value="static"><Text variant="support">Static shelf example.</Text></TabsContent>
+          <TabsContent value="animated"><Text variant="support">Animated shelf example.</Text></TabsContent>
+        </Tabs>
+      </Section>
       <Section title="Fields and validation">
         <div className="reference-grid">
           <TextField label="Dashboard name" hint="Use a short, recognisable name." value={name} onChange={e => setName(e.target.value)} />
@@ -84,19 +99,36 @@ export default function ComponentReference() {
         <Notice tone="success">Example settings are ready.</Notice>
         <Notice tone="error">Example save failed. Your changes are still available.</Notice>
       </Section>
-      <Section title="Settings groups" description="Inset SettingsGroup surfaces under section headings. Label left, control right; omit the label for full-width controls.">
+      <Section title="Settings groups" tip="Product Settings put help in a (?) tip beside the heading or label. This reference page still uses visible descriptions for longer guidance." description="Inset SettingsGroup surfaces under section headings. Comparable rows share stable label and control columns; omit the label for full-width controls. Narrow viewports stack the control under the label. Row and field hints use HelpTip.">
         <SettingsGroup>
           <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
-          <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+          <SettingsRow label="Open links" hint="Where app tiles open.">
+            <Select aria-label="Open links" value={openLinks} onValueChange={setOpenLinks}>
+              <SelectOption value="new">In a new tab</SelectOption>
+              <SelectOption value="same">In this tab</SelectOption>
+            </Select>
+          </SettingsRow>
+          <ColourField
+            label="Accent colour"
+            hint="Area and hue live-paint while dragging; draft commits after the drag settles."
+            colour={sampleColour}
+            onColour={setSampleColour}
+          />
           <SettingsRow>
-            <TextField label="Dashboard name" value={name} onChange={e => setName(e.target.value)} />
+            <TextField label="Dashboard name" hint="Use a short, recognisable name." value={name} onChange={e => setName(e.target.value)} />
           </SettingsRow>
         </SettingsGroup>
       </Section>
-      <Section title="Switches, ranges and disclosure" description="Settings-style rows keep the label left and control right.">
+      <Section title="Ranges" description="Range always stacks label and value above a full-width track. Consecutive Ranges in a group share track width with no internal divider. Optional tip sits beside the label.">
+        <SettingsGroup>
+          <Range label="Theme overlay" tip="Lightens or darkens the background to suit your theme." value={opacity} min={0} max={80} unit="%" change={setOpacity} />
+          <Range label="Opacity" value={opacity} min={0} max={100} unit="%" change={setOpacity} />
+          <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
+        </SettingsGroup>
+      </Section>
+      <Section title="Switches and disclosure" description="Settings-style rows keep the label left and control right.">
         <SwitchRow label="Show app labels" hint="Names beneath app icons." checked={labels} onCheckedChange={setLabels} />
         <label className="ui-label check"><Checkbox checked={checked} onCheckedChange={setChecked} /> Open in a new tab</label>
-        <Range label="Blur" value={blur} min={0} max={24} unit="px" change={setBlur} />
         <Disclosure title="Fine tuning">
           <Text variant="support">Disclosure content uses the same spacing as sections.</Text>
         </Disclosure>
@@ -137,13 +169,15 @@ export default function ComponentReference() {
             });
           }}>Discard confirmation</Button>
         </div>
-        <ScrollArea orientation="horizontal" className="reference-scroll-strip" aria-label="Example horizontal scroll">
-          <div className="reference-scroll-track">
+        <SettingsGroup className="wallpaper-recent-inset">
+        <ScrollArea orientation="horizontal" type="always" className="wallpaper-recent-scroll" aria-label="Example horizontal scroll">
+          <div className="wallpaper-recent-track">
             {["Dusk", "Ocean", "Forest", "Mist", "None", "Waves", "Aurora"].map((label) => (
               <Button key={label} variant="surface">{label}</Button>
             ))}
           </div>
         </ScrollArea>
+        </SettingsGroup>
       </Section>
       <Section title="Palette roles" description="These swatches use the same appearanceStyle palette resolver as the dashboard.">
         <div className="reference-colours">{["bg", "panel", "panel-high", "text", "muted", "accent", "accent-text", "line"].map(role =>
@@ -170,9 +204,23 @@ export default function ComponentReference() {
           <div className="ui-actions"><Button onClick={() => setModal(false)}>Cancel</Button><Button variant="primary" onClick={() => setModal(false)}>Apply example</Button></div>
         </Section>
       </Modal>}
-      {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}>
-        <Text variant="support">Bottom placement with no dimmed backdrop for live preview adjusters.</Text>
-        <div className="ui-actions"><Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button></div>
+      {categoryModal && <Modal title="Nature" close={() => setCategoryModal(false)} onBack={() => setCategoryModal(false)}
+        headerActions={<Button variant="quiet">Add media</Button>} placement="bottom" backdrop="none" style={style}
+        footer={<div className="background-library-actions"><Text as="p" variant="support">Apply in Settings to save.</Text><Button variant="primary" onClick={() => setCategoryModal(false)}>Use wallpaper</Button></div>}>
+        <Text as="p" variant="body">Back keeps the sheet open; Close dismisses. Used by Choose wallpaper category grids.</Text>
+      </Modal>}
+      {bottomModal && <Modal title="Example bottom sheet" close={() => setBottomModal(false)} placement="bottom" backdrop="none" style={style}
+        footer={<Button variant="primary" onClick={() => setBottomModal(false)}>Done</Button>}>
+        <Text variant="support">Bottom placement with no dimmed backdrop for live preview adjusters. Optional footer pins Done while the body scrolls.</Text>
+        <SettingsGroup density="compact">
+          <SettingsRow label="Style">
+            <Select aria-label="Example style" defaultValue="a">
+              <SelectOption value="a">Option A</SelectOption>
+              <SelectOption value="b">Option B</SelectOption>
+            </Select>
+          </SettingsRow>
+          <Range label="Intensity" value={40} min={0} max={100} unit="%" change={() => {}} />
+        </SettingsGroup>
       </Modal>}
     </main>
   </ThemeSurface>;

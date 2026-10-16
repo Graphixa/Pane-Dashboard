@@ -36,6 +36,8 @@
   --layer-dialog: 100;
   --layer-confirm: 120;
   --layer-popover: 130;
+  /* Above nested sheets (Choose wallpaper); restores clicks under Dialog pointer-events lock. */
+  --layer-alert: 140;
   --danger-text: #ffb4b4;
 }
 [data-theme="light"] {

@@ -1,0 +1,12 @@
+{
+  "id": "aurora",
+  "name": "Aurora",
+  "description": "Horizon curtains in two colours.",
+  "controls": [
+    { "key": "seed", "label": "Colour", "type": "colour", "default": "#5eead4", "cssVar": "--pane-seed" },
+    { "key": "seed2", "label": "Second colour", "type": "colour", "default": "#818cf8", "cssVar": "--pane-seed-2" },
+    { "key": "speed", "label": "Speed", "type": "range", "min": 0, "max": 100, "default": 40, "cssVar": "--pane-speed", "map": "duration" },
+    { "key": "strength", "label": "Strength", "type": "range", "min": 10, "max": 100, "default": 70, "cssVar": "--pane-strength" },
+    { "key": "softness", "label": "Softness", "type": "range", "min": 0, "max": 60, "default": 30, "cssVar": "--pane-softness" }
+  ]
+}
