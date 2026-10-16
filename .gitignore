@@ -1,8 +1,9 @@
 node_modules/
 web/dist/
+internal/ui/dist/
 web/dist-glass-map-sample.png
-pane
-config/
+/pane
+/config/
 *.tmp
 coverage/
 planning/*

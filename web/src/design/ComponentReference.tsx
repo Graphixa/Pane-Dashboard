@@ -79,7 +79,7 @@ export default function ComponentReference() {
           <div className="ui-actions"><Button>Retry save</Button></div>
         </Notice>
       </Section>
-      <Section title="Tabs" description="Centred Radix tabs for mutually exclusive panes such as Static / Animated wallpaper shelves.">
+      <Section title="Tabs" description="Centred Radix tabs for mutually exclusive panes in Settings and editors.">
         <Tabs defaultValue="static">
           <TabsList aria-label="Example wallpaper type">
             <TabsTrigger value="static">Static</TabsTrigger>

@@ -12,10 +12,11 @@ FROM golang:1.26-alpine AS backend
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY *.go ./
-COPY --from=frontend /src/builtin ./builtin
-COPY --from=frontend /src/web/dist ./web/dist
-RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /pane .
+COPY cmd ./cmd
+COPY internal ./internal
+COPY --from=frontend /src/internal/builtin/data ./internal/builtin/data
+COPY --from=frontend /src/web/dist ./internal/ui/dist
+RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /pane ./cmd/pane
 
 FROM alpine:3.23
 RUN apk add --no-cache ca-certificates && addgroup -g 10001 pane && adduser -D -u 10001 -G pane pane && mkdir /config && chown pane:pane /config

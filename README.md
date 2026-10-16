@@ -56,13 +56,9 @@ Open **Settings**. Changes stay in a draft as you move between sections and prev
 
 Draft settings preview live on the dashboard behind Settings without backdrop blur; Cancel restores the prior state ([issue #4](https://github.com/Graphixa/Pane-Dashboard/issues/4)). Apply still validates and saves through the ordinary revision-protected flow.
 
-### Uploaded images and backups
+### Uploaded media and backups
 
-Accepts static PNG, JPEG and WebP files up to 8 MiB / 20 million pixels. The browser resizes icons to at most 512 × 512, logos to 1200 × 320, and backgrounds to 1920 × 1920, retaining aspect ratio. The server validates and re-encodes PNG/JPEG output, strips metadata and accepts at most 2 MiB per prepared image. SVG and GIF uploads are not supported.
-
-Prepared images are embedded in `pane.yaml` only when you apply settings. There is no separate upload folder or orphan-file cleanup. The existing configuration volume therefore persists artwork too, and **Download full backup** includes it. Shared exports include artwork as well: review private logos/backgrounds before sharing. URL-based images remain URLs and are not downloaded into backups.
-
-Configuration saves and imports are limited to 8 MiB. Upload preparation does not change the saved dashboard or revision. Keep any reverse proxy's request-size limit at least 8 MiB. Large uploaded backgrounds increase configuration and backup size; bounded embedded images favour simple, portable single-user backups over a separate asset database.
+Accepts PNG, JPEG and WebP images plus muted WebM/MP4 loops within the limits in [docs/background-media-contracts.md](docs/background-media-contracts.md). Uploads stage and commit through `/api/media/*` into a `media/` directory beside the configuration; `pane.yaml` stores references only (never embedded bytes). SVG, GIF, animated WebP and arbitrary CSS/HTML uploads are rejected. Disk GC removes unreferenced assets after a successful Apply. Portable archives include referenced local media; remote image URLs remain links and are never fetched by the backend.
 
 ## Optional Docker import
 
@@ -83,10 +79,11 @@ cd web
 npm ci
 npm run build
 cd ..
-PANE_CONFIG=./config/pane.yaml go run .
+cp -r web/dist internal/ui/dist
+PANE_CONFIG=./config/pane.yaml go run ./cmd/pane
 ```
 
-For frontend hot reload, run `npm run dev` in `web` in a second terminal. Vite proxies `/api` to the Go server on port 8080. Build the frontend once before compiling Go because the frontend is embedded.
+For frontend hot reload, run `npm run dev` in `web` in a second terminal. Vite proxies `/api` to the Go server on port 8080. Build the frontend once and copy `web/dist` to `internal/ui/dist` before compiling Go because the frontend is embedded.
 
 ```sh
 cd web

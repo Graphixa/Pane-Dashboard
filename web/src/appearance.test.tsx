@@ -111,7 +111,6 @@ describe("schema 3 background media", () => {
       "pane-fx-fireflies-fly-drift",
     );
     expect(container.querySelector(".scene-theme-overlay")).toBeTruthy();
-    expect(container.querySelector(".scene-dynamic")).toBeNull();
     expect(mediaSrc(ref)).toBe("https://example.com/wall.png");
   });
 

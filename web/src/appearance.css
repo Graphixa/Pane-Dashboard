@@ -108,80 +108,6 @@
   position: absolute;
   inset: 0;
 }
-.scene-dynamic {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.swatch-dynamic-label {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 6px;
-  font-size: var(--type-caption);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-  text-align: center;
-}
-.scene-motion {
-  position: absolute;
-  inset: 0;
-  opacity: var(--motion-strength, 0.4);
-}
-.scene-motion i {
-  position: absolute;
-  display: block;
-  animation: pane-drift var(--motion-duration, 54s) ease-in-out infinite
-    alternate;
-}
-.scene-waves .scene-motion i {
-  width: 150%;
-  height: 65%;
-  left: -25%;
-  top: 35%;
-  border-radius: 48%;
-  border-top: 2px solid #ffffff55;
-  background: linear-gradient(180deg, #c0d9ed18, transparent 35%);
-  box-shadow: 0 -14px 40px #ffffff0a;
-}
-.scene-waves .scene-motion i:nth-child(2) {
-  top: 43%;
-  animation-delay: -15s;
-  animation-direction: alternate-reverse;
-}
-.scene-waves .scene-motion i:nth-child(3) {
-  top: 52%;
-  animation-delay: -30s;
-}
-.scene-aurora .scene-motion i {
-  width: 100%;
-  height: 130%;
-  left: -25%;
-  top: -20%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, #83ded844, transparent 65%);
-  transform: rotate(-25deg);
-}
-.scene-aurora .scene-motion i:nth-child(2) {
-  left: 25%;
-  background: radial-gradient(ellipse, #c394db44, transparent 65%);
-  animation-delay: -18s;
-}
-.scene-aurora .scene-motion i:nth-child(3) {
-  left: 55%;
-  background: radial-gradient(ellipse, #a4bde844, transparent 65%);
-  animation-delay: -35s;
-}
-@keyframes pane-drift {
-  from {
-    transform: translate3d(-3%, -2%, 0) rotate(-8deg);
-  }
-  to {
-    transform: translate3d(5%, 5%, 0) rotate(9deg);
-  }
-}
-.motion-paused .scene-motion i,
 .motion-paused .scene-stage {
   animation-play-state: paused;
 }
@@ -193,7 +119,6 @@
   animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-  .scene-motion i,
   .scene-stage {
     animation: none;
   }
@@ -919,39 +844,6 @@ img.background-current-image {
   color: color-mix(in srgb, var(--muted) 70%, var(--text));
 }
 
-.swatch-mini-scene {
-  --motion-strength: 0.55;
-  --motion-duration: 12s;
-  display: block;
-  background: var(--bg);
-}
-.swatch-mini-scene .scene-motion {
-  position: absolute;
-  inset: 0;
-  opacity: var(--motion-strength, 0.4);
-  pointer-events: none;
-}
-/* Pack thumbs: still frame until hover/focus (matches legacy scene-motion cue). */
-.scene-dynamic-thumb .scene-dynamic,
-.scene-dynamic-thumb .scene-dynamic * {
-  animation-play-state: paused !important;
-}
-.background-swatch:hover .scene-dynamic-thumb .scene-dynamic,
-.background-swatch:hover .scene-dynamic-thumb .scene-dynamic *,
-.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic,
-.background-swatch:focus-visible .scene-dynamic-thumb .scene-dynamic *,
-.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic,
-.background-current-preview:hover .scene-dynamic-thumb .scene-dynamic * {
-  animation-play-state: running !important;
-}
-.swatch-mini-scene .scene-motion i {
-  animation-play-state: paused;
-}
-.background-swatch:hover .swatch-mini-scene .scene-motion i,
-.background-swatch:focus-visible .swatch-mini-scene .scene-motion i,
-.background-current-preview:hover .swatch-mini-scene .scene-motion i {
-  animation-play-state: running;
-}
 .swatch-play {
   position: absolute;
   left: 6px;
@@ -966,13 +858,6 @@ img.background-current-image {
   color: #fff;
   pointer-events: none;
   z-index: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .swatch-mini-scene .scene-motion i,
-  .scene-dynamic-thumb .scene-dynamic,
-  .scene-dynamic-thumb .scene-dynamic * {
-    animation: none !important;
-  }
 }
 .image-field {
   display: grid;

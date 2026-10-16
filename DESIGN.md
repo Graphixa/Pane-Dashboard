@@ -13,7 +13,7 @@ conventions. Do not resolve conflicts by silently changing either document.
 | Shared React components and their public props | [components.tsx](web/src/design/components.tsx) |
 | Shared component styles | [components.css](web/src/design/components.css) |
 | Font loading and stylesheet order | [appStyles.ts](web/src/design/appStyles.ts) |
-| Theme/custom palette resolution and validation | [appearance.ts](web/src/appearance.ts), [appearance.go](appearance.go) |
+| Theme/custom palette resolution and validation | [appearance.ts](web/src/appearance.ts), [appearance.go](internal/config/appearance.go) |
 | Radix-backed interaction primitives and focus containment | [controls.tsx](web/src/design/controls.tsx), [overlays.tsx](web/src/design/overlays.tsx) |
 | Interactive component reference | [ComponentReference.tsx](web/src/design/ComponentReference.tsx) |
 | Fixed dashboard geometry | [model.ts](web/src/model.ts), [SPEC.md](SPEC.md#measurements) |
@@ -233,9 +233,10 @@ wallpapers before live ones. Prefer the Component Reference Modal example with
 
 ## Verification and adoption
 
-Run `npm ci && npm test && npm run build` in `web`, then `go test ./... && go vet ./...`
-at the repository root. Existing CI additionally runs race detection and Docker
-build. Record any unavailable runtime or skipped browser checks in the PR.
+Run `npm ci && npm test && npm run build` in `web`, copy `web/dist` to `internal/ui/dist`,
+then `go test ./... && go vet ./...` at the repository root (`go run ./cmd/pane`).
+Existing CI additionally runs race detection and Docker build. Record any
+unavailable runtime or skipped browser checks in the PR. See [docs/repo-layout.md](docs/repo-layout.md).
 
 For UI changes, inspect the reference and affected production screen with:
 

@@ -19,6 +19,6 @@ Read [SPEC.md](SPEC.md) before changing behaviour and [DESIGN.md](DESIGN.md) bef
 - Docker discovery is opt-in and read-only. Never add Docker management endpoints or expose daemon responses wholesale.
 - Keep URL handling restricted to HTTP(S). Do not render imported HTML.
 - Use Australian English. Keep accessible names when button labels are hidden.
-- Update tests and SPEC.md when behaviour changes. Run `npm ci && npm test && npm run build` in web, then `go test ./... && go vet ./...` at the root.
+- Update tests and SPEC.md when behaviour changes. Run `npm ci && npm test && npm run build` in web, copy `web/dist` to `internal/ui/dist`, then `go test ./... && go vet ./...` at the root (`go run ./cmd/pane`). See [docs/repo-layout.md](docs/repo-layout.md).
 - Keep Docker socket access warnings prominent. Do not claim a read-only socket mount makes the Docker API read-only.
 - Do not commit runtime configuration, credentials, node_modules, generated binaries or private service URLs.

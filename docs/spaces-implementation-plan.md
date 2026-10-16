@@ -45,18 +45,18 @@ Selecting a tab never saves config. Structural edits use the existing edit autos
 | File | Existing behaviour and required adaptation |
 | --- | --- |
 | `web/src/model.ts` | Config version 3 contains one `items: Pane[]`; App embeds details and col/row. Split definitions/placements and scope geometry helpers to a space. |
-| `config.go` | Go schema and strict validation mirror the single list. Validate all spaces and references, while comparing overlaps only within each space. |
+| `internal/config` | Go schema and strict validation mirror the single list. Validate all spaces and references, while comparing overlaps only within each space. |
 | `web/src/Dashboard.tsx` | Owns the grid, responsive presentation, editors, selection, drag and glass visibility. Extract an active-space canvas; keep global background/header outside it. |
 | `web/src/layout.ts` | Grid constraints preserve Pane geometry. Reuse them. |
 | `web/src/Editors.tsx` | Edits embedded app data and uses `config.items`. Separate shared details from placement; carry space ID in editor context. |
 | `web/src/useConfig.ts` | Whole-config change API, 450 ms autosave, serialised saves and If-Match; a conflict blocks further mutation. Preserve these semantics. |
 | `web/src/Settings.tsx` | Applies dashboard/appearance from its draft over the current config. Preserve all current spaces/catalogue when applying. |
 | `web/src/ImportPanel.tsx` | Uses global items and scans panes for Docker duplicates. Destination must include space; deduplicate shared app definitions by source identity. |
-| `store.go`, `main.go` | Atomic config replacement and revision checks. Introduce version conversion at explicit load/import boundaries, not in ordinary PUT. |
-| `archive.go`, `media_types.go` | Portable backups and asset-reference collection. Keep every referenced global media asset; audit traversal as the schema evolves. |
+| `internal/config/store.go`, `cmd/pane`, `internal/api` | Atomic config replacement and revision checks. Introduce version conversion at explicit load/import boundaries, not in ordinary PUT. |
+| `internal/archive`, `internal/config/background.go` | Portable backups and asset-reference collection. Keep every referenced global media asset; audit traversal as the schema evolves. |
 | `web/src/design/components.tsx`, `controls.tsx`, `ComponentReference.tsx` | Shared entry point, Radix Tabs and reference examples. Extend shared primitives only if needed. |
 
-Current schema 3 rejects older prototype configurations. `migration.go` is only a retired stub. Import code still has legacy pane-template branches; do not assume that wrapping schema 1/2 content in a new config provides working compatibility. Include template-format reconciliation explicitly.
+Current schema 3 rejects older prototype configurations. `internal/config/migration.go` is only a retired stub. Import code still has legacy pane-template branches; do not assume that wrapping schema 1/2 content in a new config provides working compatibility. Include template-format reconciliation explicitly.
 
 No widget renderer exists today. Do not make Spaces depend on one.
 
@@ -346,7 +346,7 @@ Browser review: both themes, bundled fonts, long names, 320 px viewport, 200% zo
 
 Ask an alpha tester to create separate Apps/Work layouts and explain back what is shared, what removal deletes and when changes save. Record confusion and whether a quiet tab strip is discoverable enough. Do not substitute DOM tests for this interaction review.
 
-Update SPEC.md, DESIGN.md, AGENTS.md, component reference, import/backup docs and VERIFICATION.md with actual results. Record any unrun checks. Open a draft PR from feature/spaces with the migration decision and screenshots. Merge/release only after the exploration succeeds and the feature is explicitly accepted.
+Update SPEC.md, DESIGN.md, AGENTS.md, component reference and import/backup docs with actual results. Record any unrun checks. Open a draft PR from feature/spaces with the migration decision and screenshots. Merge/release only after the exploration succeeds and the feature is explicitly accepted.
 
 ## 6. Main risks and decisions to keep visible
 

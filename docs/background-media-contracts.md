@@ -1,7 +1,7 @@
 # Background media contracts (schema 3)
 
-Status: Phase 0 freeze for the background-media refactor.
-Agreed: 9 October 2026. Implements the decisions in [background-media-refactor-plan.md](background-media-refactor-plan.md).
+Status: active contract for schema 3 background media.
+Agreed: 9 October 2026.
 
 **Path A (prototype):** no production migration from schema 1/2 backgrounds. Schema 3 is the only supported configuration shape. Old configs fail to load with a clear error (delete or replace `pane.yaml`); missing config still creates defaults. Do not transform legacy overlays, embedded data URIs or dynamic scenes.
 
@@ -49,7 +49,7 @@ wallpapers/
 
 | Output | Role |
 | --- | --- |
-| `builtin/catalogue.json` + `builtin/media/{id}` | Embedded by the Go server (`//go:embed`) |
+| `internal/builtin/data/catalogue.json` + `internal/builtin/data/media/{id}` | Embedded by the Go server (`//go:embed`) |
 | `web/public/media/builtin/*` | Vite static copies for local browse |
 | `web/src/generated/wallpaperCatalogue.ts` | UI category/item metadata |
 

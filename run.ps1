@@ -3,5 +3,8 @@ $env:PANE_CONFIG = "./config/pane.yaml"
 cd web
 npm run build
 cd ..
+# The Go server embeds the frontend from internal/ui/dist; refresh it from the build output.
+Remove-Item -Recurse -Force internal/ui/dist -ErrorAction SilentlyContinue
+Copy-Item -Recurse -Force web/dist internal/ui/dist
 go mod download
-go run .
+go run ./cmd/pane

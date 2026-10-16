@@ -4,7 +4,7 @@
  * Videos/images get tiny WebP thumbs (ffmpeg) for chooser stills — not hand-authored.
  *
  * Outputs:
- * - ../../builtin/catalogue.json + media files (Go embed)
+ * - ../../internal/builtin/data/catalogue.json + media files (Go embed)
  * - ../public/media/builtin/* (Vite static / offline browse)
  * - ../src/generated/wallpaperCatalogue.ts (UI import)
  */
@@ -30,7 +30,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
 const repoRoot = path.resolve(webRoot, "..");
 const sourceRoot = path.join(repoRoot, "wallpapers");
-const packRoot = path.join(repoRoot, "builtin");
+const packRoot = path.join(repoRoot, "internal", "builtin", "data");
 const publicRoot = path.join(webRoot, "public", "media", "builtin");
 const tsOut = path.join(webRoot, "src", "generated", "wallpaperCatalogue.ts");
 
@@ -305,7 +305,7 @@ async function main() {
 
   const thumbs = mediaWrites.filter((m) => m.id.includes("-thumb@")).length;
   console.log(
-    `Wallpaper catalogue: ${categories.length} categories, ${Object.keys(uiItems).length} items, ${thumbs} thumbs → builtin/ + public + ${path.relative(webRoot, tsOut)}`,
+    `Wallpaper catalogue: ${categories.length} categories, ${Object.keys(uiItems).length} items, ${thumbs} thumbs → internal/builtin/data + public + ${path.relative(webRoot, tsOut)}`,
   );
 }
 

@@ -41,8 +41,11 @@ cd web
 npm ci
 npm run build
 cd ..
+cp -r web/dist internal/ui/dist
 go mod download
 ```
+
+The Go server embeds the frontend from `internal/ui/dist`, so copy the build output there after each `npm run build` (on Windows PowerShell: `Copy-Item -Recurse -Force web/dist internal/ui/dist`).
 
 Start the app using the commands for your terminal.
 
@@ -50,13 +53,13 @@ Start the app using the commands for your terminal.
 
 ```powershell
 $env:PANE_CONFIG = "./config/pane.yaml"
-go run .
+go run ./cmd/pane
 ```
 
 **macOS/Linux:**
 
 ```sh
-PANE_CONFIG=./config/pane.yaml go run .
+PANE_CONFIG=./config/pane.yaml go run ./cmd/pane
 ```
 
 Open **http://127.0.0.1:8080**. Keep the terminal running; press **Ctrl+C** to stop.
@@ -74,10 +77,10 @@ cd web
 npm run dev -- --host 127.0.0.1
 ```
 
-Open the address Vite prints, usually **http://127.0.0.1:5173**. Frontend edits refresh automatically; API requests go to the Go server on port 8080. You still need the initial frontend build above because Go embeds `web/dist` when it compiles.
+Open the address Vite prints, usually **http://127.0.0.1:5173**. Frontend edits refresh automatically; API requests go to the Go server on port 8080. You still need the initial frontend build above because Go embeds `internal/ui/dist` when it compiles.
 
-- **Go changes:** stop and restart `go run .`.
-- **Testing the built app on port 8080 after frontend changes:** run `npm run build` in `web`, then restart Go.
+- **Go changes:** stop and restart `go run ./cmd/pane`.
+- **Testing the built app on port 8080 after frontend changes:** run `npm run build` in `web`, copy `web/dist` to `internal/ui/dist`, then restart Go.
 - **Dependency changes after pulling updates:** run `npm ci` in `web` and `go mod download` at the root again.
 
 ## 4. Build and run with Docker
@@ -149,14 +152,14 @@ This update uses tile-based pane sizes and fixed 80 px icons. **Add → Pane** c
 
 | Problem | Fix |
 | --- | --- |
-| `web/dist` is missing | Run `npm ci` and `npm run build` inside `web` before running Go. |
+| `internal/ui/dist` is missing | Run `npm ci` and `npm run build` inside `web`, then copy `web/dist` to `internal/ui/dist`, before running Go. |
 | Node/npm/Go command not found | Install the prerequisites, then reopen your terminal. |
 | Port 8080 is busy | Stop the other app. For Docker, change the host mapping to `8081:8080` and open port 8081. |
-| Windows Firewall asks about `pane-dashboard.exe` | Local runs should bind loopback and not prompt. If you set `PANE_LISTEN=:8080`, Allow once for a stable `go build -o pane-dashboard.exe` path, or Cancel (app still works on this PC). `go run` rebuilds to a new temp path each time, so Allow there does not stick. |
+| Windows Firewall asks about `pane-dashboard.exe` | Local runs should bind loopback and not prompt. If you set `PANE_LISTEN=:8080`, Allow once for a stable `go build -o pane-dashboard.exe ./cmd/pane` path, or Cancel (app still works on this PC). `go run` rebuilds to a new temp path each time, so Allow there does not stick. |
 | Local permission error at `/config` | Set `PANE_CONFIG` using the local startup commands above. |
 | Frontend opens but API requests fail | Keep Go running on port 8080 alongside Vite. |
 | Docker discovery is disabled | Normal by default. See [optional Docker import](README.md#optional-docker-import) when you are ready to enable it. |
 
 Docker discovery is not required to run Pane or add apps manually. Direct Docker socket access is privileged, including with a `:ro` mount; follow the README before enabling it.
 
-For development checks, run `npm test` and `npm run build` in `web`, then `go test ./...` and `go vet ./...` at the root. See [VERIFICATION.md](VERIFICATION.md) for the remaining hands-on checks.
+For development checks, run `npm test` and `npm run build` in `web`, copy `web/dist` to `internal/ui/dist`, then `go test ./...` and `go vet ./...` at the root (`go run ./cmd/pane`). See [docs/repo-layout.md](docs/repo-layout.md).

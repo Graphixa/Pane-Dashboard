@@ -193,7 +193,6 @@ describe("settings navigation and draft safety", () => {
     expect(
       screen.getByRole("button", { name: "Mint" }).getAttribute("aria-pressed"),
     ).toBe("true");
-    expect(dialog.querySelector(".swatch-dynamic-label")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.queryByRole("dialog", { name: "Choose wallpaper" })).toBeNull();
     expect(screen.getByText("Colour")).toBeTruthy();
