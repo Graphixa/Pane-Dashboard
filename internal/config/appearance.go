@@ -60,8 +60,16 @@ func validLogo(s string) bool {
 	return validURL(s, false)
 }
 
+// Builtin header icon ids — keep in sync with web/src/brandIcons.tsx.
+var builtinHeaderIcons = []string{
+	"", "grid", "server", "panels", "house", "dashboard", "boxes", "cloud",
+	"database", "drive", "monitor", "rocket", "settings", "shield", "sparkles",
+	"star", "terminal", "wifi", "zap",
+}
+
 func validateAppearance(c Config) error {
-	if !slices.Contains([]string{"", "icon", "logo"}, c.Dashboard.Branding) || !slices.Contains([]string{"", "grid", "server", "panels"}, c.Dashboard.BuiltinIcon) || !validLogo(c.Dashboard.Logo) {
+	if !slices.Contains(builtinHeaderIcons, c.Dashboard.BuiltinIcon) ||
+		!validLogo(c.Dashboard.Logo) || !validLogo(c.Dashboard.Icon) {
 		return fmt.Errorf("invalid header branding or image")
 	}
 	if b := c.Appearance.Background; b != nil {

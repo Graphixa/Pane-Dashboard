@@ -92,9 +92,13 @@ func Handler(s *config.Store, d *docker.DockerProvider, store *media.MediaStore)
 		if store != nil {
 			protect := media.MediaGCProtect{AssetIDs: map[string]struct{}{}}
 			if c.Appearance.Background != nil {
-				protect.AssetIDs = config.CollectAssetIDs(*c.Appearance.Background, c.Dashboard.Logo)
-			} else if id, ok := config.LogoAssetID(c.Dashboard.Logo); ok {
-				protect.AssetIDs[id] = struct{}{}
+				protect.AssetIDs = config.CollectAssetIDs(*c.Appearance.Background, c.Dashboard.Logo, c.Dashboard.Icon)
+			} else {
+				for _, ref := range []string{c.Dashboard.Logo, c.Dashboard.Icon} {
+					if id, ok := config.LogoAssetID(ref); ok {
+						protect.AssetIDs[id] = struct{}{}
+					}
+				}
 			}
 			_ = store.Cleanup(protect, time.Now().UTC())
 		}

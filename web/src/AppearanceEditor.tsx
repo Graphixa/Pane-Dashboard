@@ -1,17 +1,17 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
-import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
+import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Modal, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import {
   useEffect,
   useRef,
   useState,
 } from "react";
-import { Server, LayoutGrid, PanelsTopLeft, ImagePlus } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
   defaultBackground,
   defaultGlass,
+  logoReference,
   normaliseBackground,
   normaliseGlass,
   accentPresets,
@@ -24,6 +24,11 @@ import {
   type Background as BackgroundConfig,
   type UiFont,
 } from "./appearance";
+import {
+  builtinIconIds,
+  resolveBuiltinIcon,
+  type BuiltinIconId,
+} from "./brandIcons";
 import ImageField from "./ImageField";
 import BackgroundSettings from "./BackgroundSettings";
 
@@ -77,11 +82,129 @@ function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLiv
 }) {
   const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), revert = useRef(value);
   const cancel = () => {if(busy) return; onLive(revert.current); setOpen(false);};
-  return <Popover label={title} size="image" open={open} onOpenChange={next => {if(next) {revert.current = value; setOpen(true);} else cancel();}} trigger={<Button><ImagePlus size={16} aria-hidden="true" />{triggerLabel}</Button>}>
+  return <Popover label={title} size="image" open={open} onOpenChange={next => {if(next) {revert.current = value; setOpen(true);} else cancel();}} trigger={<Button type="button">{triggerLabel}</Button>}>
     <PopoverHead title={title} closeLabel={`Close ${title.toLowerCase()} picker`} disabled={busy} onClose={cancel} />
     <ImageField label="Logo image" kind={kind} value={value} change={onLive} onBusy={v => {setBusy(v); onBusy(v);}} hint={hint} />
     <ImagePopoverActions cancel={cancel} confirm={() => {if(!busy) setOpen(false);}} />
   </Popover>;
+}
+
+function IconMarkPreview({
+  icon,
+  builtinIcon,
+}: {
+  icon: string;
+  builtinIcon?: BuiltinIconId;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [icon]);
+  const url = logoReference(icon) && icon ? icon : undefined;
+  const Builtin = resolveBuiltinIcon(builtinIcon);
+  return (
+    <div className="logo-artwork-preview" aria-hidden="true">
+      {url && !failed ? (
+        <img
+          className="logo-artwork-image"
+          src={url}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <Builtin size={22} />
+      )}
+    </div>
+  );
+}
+
+function WideLogoPreview({ logo }: { logo: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [logo]);
+  const url = logoReference(logo) && logo ? logo : undefined;
+  return (
+    <div className="logo-artwork-preview logo-artwork-preview--wide" aria-hidden="true">
+      {url && !failed ? (
+        <img
+          className="logo-artwork-image"
+          src={url}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="logo-artwork-wide-stub" />
+      )}
+    </div>
+  );
+}
+
+function IconPickerDialog({
+  builtinIcon,
+  icon,
+  onBusy,
+  onBuiltin,
+  onCustom,
+  close,
+}: {
+  builtinIcon?: BuiltinIconId;
+  icon: string;
+  onBusy: (busy: boolean) => void;
+  onBuiltin: (id: BuiltinIconId) => void;
+  onCustom: (icon: string) => void;
+  close: () => void;
+}) {
+  const selectedBuiltin = !icon ? (builtinIcon ?? "grid") : undefined;
+  return (
+    <Modal
+      title="Choose icon"
+      close={close}
+      footer={
+        <Button type="button" variant="primary" onClick={close}>
+          Done
+        </Button>
+      }
+    >
+      <div className="icon-picker-grid" role="group" aria-label="Built-in icons">
+        {builtinIconIds.map((id) => {
+          const Icon = resolveBuiltinIcon(id);
+          return (
+            <Button
+              key={id}
+              type="button"
+              variant="surface"
+              className="icon-picker-tile"
+              aria-label={id}
+              aria-pressed={selectedBuiltin === id}
+              onClick={() => onBuiltin(id)}
+            >
+              <Icon size={22} aria-hidden="true" />
+            </Button>
+          );
+        })}
+      </div>
+      <div className="icon-picker-upload">
+        <BrandImagePicker
+          title="Custom icon"
+          kind="icon"
+          value={icon}
+          triggerLabel={icon ? "Replace custom icon" : "Upload custom icon"}
+          hint="Square artwork for the header mark. PNG, JPEG or WebP, up to 8 MiB."
+          onBusy={onBusy}
+          onLive={onCustom}
+        />
+        {icon ? (
+          <Button
+            type="button"
+            variant="danger"
+            className="logo-artwork-remove"
+            onClick={() => onCustom("")}
+          >
+            Remove custom icon
+          </Button>
+        ) : null}
+      </div>
+    </Modal>
+  );
 }
 
 export default function AppearanceEditor({
@@ -157,119 +280,116 @@ export default function AppearanceEditor({
     });
   const badContrast =
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
-  const fullLogo = draft.dashboard.branding === "logo";
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const hasCustomLogo = Boolean(draft.dashboard.logo);
 
   if (section === "general")
     return (
       <>
-        <Section level="h3" className="settings-section"
-          title="Dashboard"
+        <Section
+          level="h3"
+          className="settings-section"
+          title="Page title"
           tip="Also used for the browser tab and accessible name."
         >
           <SettingsGroup>
             <SettingsRow>
               <TextField
-                label="Dashboard name"
+                label="Page title"
                 maxLength={100}
                 value={draft.dashboard.title}
                 onChange={(e) => header({ title: e.target.value })}
               />
             </SettingsRow>
+            <SwitchRow
+              label="Show page title"
+              hint={
+                hasCustomLogo
+                  ? "Custom logo replaces the page title."
+                  : "Hide the title text in the header."
+              }
+              checked={hasCustomLogo ? true : draft.dashboard.showTitle !== false}
+              disabled={hasCustomLogo}
+              onCheckedChange={(checked) => header({ showTitle: checked })}
+            />
           </SettingsGroup>
         </Section>
-        <Section level="h3" className="settings-section"
-          title="Logo"
-          tip="How your name and artwork appear in the header."
+        <Section
+          level="h3"
+          className="settings-section"
+          title="Icon"
+          tip="Square mark in the header beside the title or logo."
         >
           <SettingsGroup>
-            <SettingsRow>
-              <div
-                className="choice-row logo-choices"
-                role="group"
-                aria-label="Logo style"
-              >
-                <Button
-                  type="button"
-                  aria-pressed={!fullLogo}
-                  onClick={() => header({ branding: "icon" })}
-                >
-                  <span className="logo-choice-icon" aria-hidden="true">
-                    <LayoutGrid size={20} />
-                    <span>Name</span>
-                  </span>
-                  Icon + name
-                </Button>
-                <Button
-                  type="button"
-                  aria-pressed={fullLogo}
-                  onClick={() => header({ branding: "logo" })}
-                >
-                  <span className="logo-choice-wide" aria-hidden="true">
-                    Logo
-                  </span>
-                  Full logo
-                </Button>
+            <SettingsRow label="Icon">
+              <div className="logo-artwork">
+                <IconMarkPreview
+                  icon={draft.dashboard.icon ?? ""}
+                  builtinIcon={draft.dashboard.builtinIcon}
+                />
+                <div className="logo-artwork-actions">
+                  <Button type="button" onClick={() => setIconPickerOpen(true)}>
+                    Choose icon
+                  </Button>
+                </div>
               </div>
             </SettingsRow>
-            {!fullLogo && (
-              <SettingsRow label="Built-in icons">
-                <div
-                  className="choice-row"
-                  role="group"
-                  aria-label="Built-in icons"
-                >
-                  {(
-                    [
-                      ["grid", "Pane grid", LayoutGrid],
-                      ["server", "Server", Server],
-                      ["panels", "Panels", PanelsTopLeft],
-                    ] as const
-                  ).map(([id, label, Icon]) => (
+            <SwitchRow
+              label="Show icon"
+              hint="Hide the header mark without changing the chosen icon."
+              checked={draft.dashboard.showIcon !== false}
+              onCheckedChange={(checked) => header({ showIcon: checked })}
+            />
+          </SettingsGroup>
+        </Section>
+        <Section
+          level="h3"
+          className="settings-section"
+          title="Custom logo"
+          tip="Wide artwork that replaces the page title in the header."
+        >
+          <SettingsGroup>
+            <SettingsRow
+              label="Custom logo"
+              hint="Replaces the page title. PNG, JPEG or WebP, up to 8 MiB."
+            >
+              <div className="logo-artwork">
+                <WideLogoPreview logo={draft.dashboard.logo ?? ""} />
+                <div className="logo-artwork-actions">
+                  <BrandImagePicker
+                    title="Custom logo"
+                    kind="logo"
+                    value={draft.dashboard.logo ?? ""}
+                    triggerLabel={hasCustomLogo ? "Replace" : "Upload"}
+                    hint="Rectangular artwork replaces the page title. PNG, JPEG or WebP, up to 8 MiB."
+                    onBusy={onBusy}
+                    onLive={(logo) => header({ logo })}
+                  />
+                  {hasCustomLogo ? (
                     <Button
                       type="button"
-                      key={id}
-                      aria-pressed={
-                        !draft.dashboard.logo &&
-                        (draft.dashboard.builtinIcon ?? "grid") === id
-                      }
-                      onClick={() => header({ builtinIcon: id, logo: "" })}
+                      variant="danger"
+                      className="logo-artwork-remove"
+                      onClick={() => header({ logo: "" })}
                     >
-                      <Icon size={18} />
-                      {label}
+                      Remove
                     </Button>
-                  ))}
+                  ) : null}
                 </div>
-              </SettingsRow>
-            )}
-            <SettingsRow label={fullLogo ? "Full logo" : "Custom icon"}>
-              {fullLogo ? (
-                <BrandImagePicker
-                  title="Full logo"
-                  kind="logo"
-                  value={draft.dashboard.logo ?? ""}
-                  triggerLabel={
-                    draft.dashboard.logo ? "Edit logo image" : "Choose logo image"
-                  }
-                  hint="Rectangular artwork replaces the icon and name. PNG, JPEG or WebP, up to 8 MiB."
-                  onBusy={onBusy}
-                  onLive={(logo) => header({ logo })}
-                />
-              ) : (
-                <BrandImagePicker
-                  title="Custom icon"
-                  kind="icon"
-                  value={draft.dashboard.logo ?? ""}
-                  triggerLabel={
-                    draft.dashboard.logo ? "Edit custom image" : "Custom image"
-                  }
-                  hint="Square artwork beside the name. PNG, JPEG or WebP, up to 8 MiB."
-                  onBusy={onBusy}
-                  onLive={(logo) => header({ logo })}
-                />
-              )}
+              </div>
             </SettingsRow>
           </SettingsGroup>
         </Section>
+        {iconPickerOpen ? (
+          <IconPickerDialog
+            builtinIcon={draft.dashboard.builtinIcon}
+            icon={draft.dashboard.icon ?? ""}
+            onBusy={onBusy}
+            onBuiltin={(id) => header({ builtinIcon: id, icon: "" })}
+            onCustom={(icon) => header({ icon })}
+            close={() => setIconPickerOpen(false)}
+          />
+        ) : null}
         <Section level="h3" className="settings-section"
           title="Workspace"
           tip="Tiles keep their size. Narrow screens use a read-only layout."

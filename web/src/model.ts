@@ -8,6 +8,7 @@ import {
   uiFonts,
   validateVisuals,
 } from "./appearance";
+import { builtinIconIds, type BuiltinIconId } from "./brandIcons";
 export type Geometry = { x: number; y: number; w: number; h: number };
 export type App = {
   id: string;
@@ -30,9 +31,11 @@ export type Config = {
   version: 3;
   dashboard: {
     title: string;
+    showTitle?: boolean;
+    showIcon?: boolean;
     logo?: string;
-    branding?: "icon" | "logo";
-    builtinIcon?: "grid" | "server" | "panels";
+    icon?: string;
+    builtinIcon?: BuiltinIconId;
     widthMode: "fixed" | "full";
     width: number;
   };
@@ -124,8 +127,10 @@ export function validate(value: unknown): asserts value is Config {
   const c = value as Config;
   keys(c.dashboard, [
     "title",
+    "showTitle",
+    "showIcon",
     "logo",
-    "branding",
+    "icon",
     "builtinIcon",
     "widthMode",
     "width",
@@ -145,10 +150,13 @@ export function validate(value: unknown): asserts value is Config {
     c.version !== 3 ||
     !text(c.dashboard.title, 100) ||
     (c.dashboard.logo !== undefined && !logoReference(c.dashboard.logo)) ||
-    (c.dashboard.branding !== undefined &&
-      !["icon", "logo"].includes(c.dashboard.branding)) ||
+    (c.dashboard.icon !== undefined && !logoReference(c.dashboard.icon)) ||
+    (c.dashboard.showTitle !== undefined &&
+      typeof c.dashboard.showTitle !== "boolean") ||
+    (c.dashboard.showIcon !== undefined &&
+      typeof c.dashboard.showIcon !== "boolean") ||
     (c.dashboard.builtinIcon !== undefined &&
-      !["grid", "server", "panels"].includes(c.dashboard.builtinIcon)) ||
+      !(builtinIconIds as readonly string[]).includes(c.dashboard.builtinIcon)) ||
     !["fixed", "full"].includes(c.dashboard.widthMode)
   )
     throw Error("Unsupported version or dashboard settings.");

@@ -18,9 +18,11 @@ type Config struct {
 	Items      []Pane     `json:"items" yaml:"items"`
 }
 type Dashboard struct {
-	Branding    string `json:"branding,omitempty" yaml:"branding,omitempty"`
-	BuiltinIcon string `json:"builtinIcon,omitempty" yaml:"builtinIcon,omitempty"`
 	Title       string `json:"title" yaml:"title"`
+	ShowTitle   *bool  `json:"showTitle,omitempty" yaml:"showTitle,omitempty"`
+	ShowIcon    *bool  `json:"showIcon,omitempty" yaml:"showIcon,omitempty"`
+	BuiltinIcon string `json:"builtinIcon,omitempty" yaml:"builtinIcon,omitempty"`
+	Icon        string `json:"icon,omitempty" yaml:"icon,omitempty"`
 	Logo        string `json:"logo,omitempty" yaml:"logo,omitempty"`
 	WidthMode   string `json:"widthMode" yaml:"widthMode"`
 	Width       int    `json:"width" yaml:"width"`
@@ -67,8 +69,29 @@ type Source struct {
 var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,100}$`)
 var iconPattern = regexp.MustCompile(`^dashboard-icons:[a-z0-9][a-z0-9-]{0,100}$`)
 
+func boolPtr(v bool) *bool { return &v }
+
 func DefaultConfig() Config {
-	return Config{Version: 3, Dashboard: Dashboard{Title: "pane.", WidthMode: "fixed", Width: 960}, Appearance: Appearance{ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"}, Items: []Pane{}}
+	return Config{
+		Version: 3,
+		Dashboard: Dashboard{
+			Title:     "pane.",
+			ShowTitle: boolPtr(true),
+			ShowIcon:  boolPtr(true),
+			WidthMode: "fixed",
+			Width:     960,
+		},
+		Appearance: Appearance{ShowAppLabels: true, ShowButtonLabels: true, Theme: "dark"},
+		Items:      []Pane{},
+	}
+}
+
+// BoolOrDefault treats a missing *bool as def (used for showTitle / showIcon).
+func BoolOrDefault(p *bool, def bool) bool {
+	if p == nil {
+		return def
+	}
+	return *p
 }
 func validURL(s string, empty bool) bool {
 	if s == "" {

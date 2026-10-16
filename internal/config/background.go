@@ -118,8 +118,8 @@ func (r MediaRef) AssetRef() (string, bool) {
 }
 
 // CollectAssetIDs returns the set of durable asset IDs referenced by a
-// background and the optional logo.
-func CollectAssetIDs(b Background, logo string) map[string]struct{} {
+// background and optional header image paths (icon and/or logo).
+func CollectAssetIDs(b Background, images ...string) map[string]struct{} {
 	out := map[string]struct{}{}
 	add := func(r MediaRef) {
 		if id, ok := r.AssetRef(); ok {
@@ -132,8 +132,10 @@ func CollectAssetIDs(b Background, logo string) map[string]struct{} {
 	for _, r := range b.Library {
 		add(r)
 	}
-	if id, ok := LogoAssetID(logo); ok {
-		out[id] = struct{}{}
+	for _, image := range images {
+		if id, ok := LogoAssetID(image); ok {
+			out[id] = struct{}{}
+		}
 	}
 	return out
 }

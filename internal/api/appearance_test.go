@@ -44,7 +44,6 @@ func TestMediaBackedAppearanceRoundTrip(t *testing.T) {
 	}
 	ref := config.MediaRef{Source: "asset", AssetID: meta.ID}
 	c := s.Get()
-	c.Dashboard.Branding = "logo"
 	c.Dashboard.Logo = "/media/assets/" + meta.ID
 	bg := config.DefaultBackground()
 	bg.Wallpaper = config.Wallpaper{Kind: "image", Media: &ref, Position: "center"}

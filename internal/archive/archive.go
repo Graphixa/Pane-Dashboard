@@ -43,9 +43,13 @@ func ExportArchive(w io.Writer, c config.Config, store *media.MediaStore) error 
 
 	ids := map[string]struct{}{}
 	if c.Appearance.Background != nil {
-		ids = config.CollectAssetIDs(*c.Appearance.Background, c.Dashboard.Logo)
-	} else if id, ok := config.LogoAssetID(c.Dashboard.Logo); ok {
-		ids[id] = struct{}{}
+		ids = config.CollectAssetIDs(*c.Appearance.Background, c.Dashboard.Logo, c.Dashboard.Icon)
+	} else {
+		for _, ref := range []string{c.Dashboard.Logo, c.Dashboard.Icon} {
+			if id, ok := config.LogoAssetID(ref); ok {
+				ids[id] = struct{}{}
+			}
+		}
 	}
 	list := make([]string, 0, len(ids))
 	for id := range ids {
@@ -200,9 +204,19 @@ func ValidateConfigMedia(c config.Config, store *media.MediaStore) error {
 			return err
 		}
 	}
-	if id, ok := config.LogoAssetID(c.Dashboard.Logo); ok && store != nil {
-		if _, err := store.GetMeta(id); err != nil {
-			return fmt.Errorf("missing logo media asset")
+	if store != nil {
+		for _, ref := range []struct {
+			path string
+			name string
+		}{
+			{c.Dashboard.Logo, "logo"},
+			{c.Dashboard.Icon, "icon"},
+		} {
+			if id, ok := config.LogoAssetID(ref.path); ok {
+				if _, err := store.GetMeta(id); err != nil {
+					return fmt.Errorf("missing %s media asset", ref.name)
+				}
+			}
 		}
 	}
 	return nil

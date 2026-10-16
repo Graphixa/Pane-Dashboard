@@ -101,10 +101,10 @@ describe("interaction boundary", () => {
     ).toBeNull();
     expect(screen.queryByText(/YOUR SPACE, CONNECTED/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("Dashboard name"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
       target: { value: "Akira" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Custom image" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/logo.png" },
     });
@@ -115,17 +115,19 @@ describe("interaction boundary", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
     const brand = screen.getByRole("link", { name: "Akira home" });
-    expect(brand.querySelector("img")?.getAttribute("src")).toBe(
+    expect(brand.querySelector(".brand-logo")?.getAttribute("src")).toBe(
       "https://example.com/logo.png",
     );
+    expect(brand.querySelector(".brand-name")).toBeNull();
     expect(document.title).toBe("Akira");
     expect(
       (
         result.container.querySelector(".shell") as HTMLElement
       ).style.getPropertyValue("--pane-title-size"),
     ).toBe("20px");
-    fireEvent.error(brand.querySelector("img")!);
-    expect(brand.querySelector("img")).toBeNull();
+    fireEvent.error(brand.querySelector(".brand-logo")!);
+    expect(brand.querySelector(".brand-logo")).toBeNull();
+    expect(brand.querySelector(".brand-name")?.textContent).toBe("Akira");
     expect(brand.querySelector("svg")).not.toBeNull();
     await waitFor(() =>
       expect(

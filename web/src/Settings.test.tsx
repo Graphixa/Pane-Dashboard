@@ -61,7 +61,7 @@ const flushPreview = () =>
 describe("settings navigation and draft safety", () => {
   it("keeps a draft across sections and blocks import and backup until it is applied", () => {
     const { apply } = setup();
-    fireEvent.change(screen.getByLabelText("Dashboard name"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
       target: { value: "My server" },
     });
     page("Appearance");
@@ -84,7 +84,7 @@ describe("settings navigation and draft safety", () => {
     ).toBe(true);
     page("General");
     expect(
-      (screen.getByLabelText("Dashboard name") as HTMLInputElement).value,
+      (screen.getByRole("textbox", { name: "Page title" }) as HTMLInputElement).value,
     ).toBe("My server");
     page("About");
     page("Apply settings");
@@ -94,7 +94,7 @@ describe("settings navigation and draft safety", () => {
   });
   it("protects changed drafts from Escape, Cancel and Close", async () => {
     const { close } = setup();
-    fireEvent.change(screen.getByLabelText("Dashboard name"), {target: {value: "Changed"}});
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {target: {value: "Changed"}});
     for (const action of ["Cancel", "Close", "Escape"]) {
       if(action === "Escape") fireEvent.keyDown(document, {key: "Escape"}); else page(action);
       expect(screen.getByRole("alertdialog")).toBeTruthy();
@@ -117,6 +117,54 @@ describe("settings navigation and draft safety", () => {
     page("Apply settings");
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
+  });
+  it("composes header brand from page title, icon and custom logo switches", () => {
+    const { apply } = setup();
+    expect(screen.getByRole("textbox", { name: "Page title" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Show page title" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Choose icon" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Show icon" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("switch", { name: "Show icon" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose icon" }));
+    expect(screen.getByRole("group", { name: "Built-in icons" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "rocket" }));
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].dashboard).toMatchObject({
+      showIcon: false,
+      builtinIcon: "rocket",
+      icon: "",
+    });
+  });
+  it("uploads a custom logo that replaces the page title and clears with Remove", async () => {
+    const { apply, preview } = setup();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.change(screen.getByLabelText("Logo image URL"), {
+      target: { value: "https://example.com/wordmark.png" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+    expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "Show page title" }).hasAttribute(
+        "data-disabled",
+      ) ||
+        (
+          screen.getByRole("switch", {
+            name: "Show page title",
+          }) as HTMLButtonElement
+        ).disabled,
+    ).toBe(true);
+    await flushPreview();
+    const drafted = preview.mock.calls
+      .map((call) => call[0] as Config | null)
+      .filter(Boolean)
+      .at(-1) as Config;
+    expect(drafted.dashboard.logo).toBe("https://example.com/wordmark.png");
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    expect(screen.getByRole("button", { name: "Upload" })).toBeTruthy();
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].dashboard.logo).toBe("");
   });
   it("offers Appearance and Background pages with ordered headings and no miniature previews", { timeout: 15000 }, () => {
     const { container } = setup();
@@ -321,7 +369,7 @@ describe("settings navigation and draft safety", () => {
     let event = new Event("beforeunload", { cancelable: true });
     window.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(false);
-    fireEvent.change(screen.getByLabelText("Dashboard name"), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
       target: { value: "Changed" },
     });
     event = new Event("beforeunload", { cancelable: true });

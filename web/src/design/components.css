@@ -247,7 +247,6 @@
   justify-content: flex-end;
 }
 .ui-settings-row-control .choice-row,
-.ui-settings-row-control .logo-choices,
 .ui-settings-row-control .theme-choices,
 .ui-settings-row-control .finish-choices {
   width: 100%;

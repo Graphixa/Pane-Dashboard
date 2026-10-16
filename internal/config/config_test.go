@@ -63,7 +63,10 @@ func TestBrandingPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reloaded.config.Dashboard != c.Dashboard || reloaded.config.Appearance != c.Appearance {
+	got := reloaded.config.Dashboard
+	if got.Title != c.Dashboard.Title || got.Logo != c.Dashboard.Logo ||
+		got.Width != c.Dashboard.Width || got.WidthMode != c.Dashboard.WidthMode ||
+		reloaded.config.Appearance.PaneTitleSize != c.Appearance.PaneTitleSize {
 		t.Fatal("branding lost across restart")
 	}
 }

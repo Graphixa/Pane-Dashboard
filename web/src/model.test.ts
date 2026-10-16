@@ -148,13 +148,23 @@ describe("tile dimensions and placement", () => {
   });
 });
 describe("validation and imports", () => {
-  it("accepts optional branding and title sizes while validating image URLs", () => {
+  it("accepts optional header images and title sizes while validating image URLs", () => {
     const c = base();
     validate(c);
     c.dashboard.logo = "https://example.com/logo.png";
+    c.dashboard.icon = "https://example.com/icon.png";
+    c.dashboard.showTitle = false;
+    c.dashboard.showIcon = true;
+    c.dashboard.builtinIcon = "rocket";
     c.appearance.paneTitleSize = 22;
     validate(c);
     expect(sanitiseExport(c).dashboard.logo).toBe(c.dashboard.logo);
+    expect(() =>
+      validate({
+        ...c,
+        dashboard: { ...c.dashboard, branding: "logo" } as typeof c.dashboard,
+      }),
+    ).toThrow(/Unknown or malformed/);
     for (const logo of [
       "javascript:alert(1)",
       "data:image/svg+xml,test",
@@ -162,6 +172,9 @@ describe("validation and imports", () => {
     ]) {
       expect(() =>
         validate({ ...c, dashboard: { ...c.dashboard, logo } }),
+      ).toThrow();
+      expect(() =>
+        validate({ ...c, dashboard: { ...c.dashboard, icon: logo } }),
       ).toThrow();
     }
     for (const paneTitleSize of [0, 13, 23, 18.5]) {
