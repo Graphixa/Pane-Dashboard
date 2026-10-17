@@ -111,6 +111,8 @@ export default function ImageField({
   change,
   onBusy,
   hint,
+  onNativePick,
+  onFileCommitted,
 }: {
   label: string;
   value: string;
@@ -118,9 +120,15 @@ export default function ImageField({
   change: (s: string) => void;
   onBusy: (busy: boolean) => void;
   hint?: string;
+  /** True while the OS file dialog is open (or until focus returns after cancel). */
+  onNativePick?: (picking: boolean) => void;
+  /** After a successful file/drop upload (not URL paste); caller may auto-confirm. */
+  onFileCommitted?: (path: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null),
-    alive = useRef(true);
+    alive = useRef(true),
+    picking = useRef(false),
+    pickFocusTimer = useRef(0);
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [drag, setDrag] = useState(false);
@@ -128,8 +136,33 @@ export default function ImageField({
     alive.current = true;
     return () => {
       alive.current = false;
+      if (pickFocusTimer.current) window.clearTimeout(pickFocusTimer.current);
     };
   }, []);
+  const setPicking = (next: boolean) => {
+    picking.current = next;
+    onNativePick?.(next);
+  };
+  const endPicking = () => {
+    if (pickFocusTimer.current) {
+      window.clearTimeout(pickFocusTimer.current);
+      pickFocusTimer.current = 0;
+    }
+    if (picking.current) setPicking(false);
+  };
+  const openNativePicker = () => {
+    setPicking(true);
+    input.current?.click();
+    // Cancelled dialogs often fire no change event; clear the latch on focus return.
+    const onFocus = () => {
+      window.removeEventListener("focus", onFocus);
+      pickFocusTimer.current = window.setTimeout(() => {
+        pickFocusTimer.current = 0;
+        if (picking.current) setPicking(false);
+      }, 300);
+    };
+    window.addEventListener("focus", onFocus);
+  };
   const uploaded =
     value.startsWith("/media/assets/") || value.startsWith("/media/staging/");
   const formats =
@@ -138,20 +171,23 @@ export default function ImageField({
       ? "PNG, JPEG, WebP, WebM or MP4."
       : "PNG, JPEG or WebP, up to 12 MiB.");
   const take = async (file: File) => {
+    endPicking();
     setError("");
     setBusy(true);
     onBusy(true);
+    let committedPath = "";
     try {
       const committed = await prepareUpload(file, kind);
-      if (alive.current) change(committed.path);
+      // Draft is owned by Settings; apply even if this field unmounted mid-flight.
+      change(committed.path);
+      committedPath = committed.path;
     } catch (err) {
       if (alive.current) setError((err as Error).message);
     } finally {
-      if (alive.current) {
-        setBusy(false);
-        onBusy(false);
-      }
+      onBusy(false);
+      if (alive.current) setBusy(false);
     }
+    if (committedPath) onFileCommitted?.(committedPath);
   };
   return (
     <div className="image-field">
@@ -162,7 +198,7 @@ export default function ImageField({
         data-drag={drag ? "true" : undefined}
         aria-label={`Upload ${label.toLowerCase()}`}
         disabled={busy}
-        onClick={() => input.current?.click()}
+        onClick={() => openNativePicker()}
         onDragEnter={(e) => {
           e.preventDefault();
           setDrag(true);
@@ -206,6 +242,7 @@ export default function ImageField({
           const file = e.currentTarget.files?.[0];
           e.currentTarget.value = "";
           if (file) void take(file);
+          else endPicking();
         }}
       />
       <div className="image-or" aria-hidden="true">

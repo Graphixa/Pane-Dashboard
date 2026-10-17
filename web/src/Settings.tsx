@@ -196,7 +196,7 @@ export default function Settings({
             }}
           >
             {editable && (
-              <FieldGroup disabled={readOnly || busy}>
+              <FieldGroup disabled={readOnly}>
                 <div className="settings-sections">
                   <AppearanceEditor
                     recent={recent}

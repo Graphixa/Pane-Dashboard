@@ -96,8 +96,16 @@ function ModalContent({
 }
 export function Popover({trigger, open, onOpenChange, children, label, size = 'compact'}: {trigger: ReactElement; open: boolean; onOpenChange: (open: boolean) => void; children: ReactNode; label: string; size?: 'compact' | 'image'}) {
   const surface = useSurface();
+  // Image pickers open a native file dialog; focus/pointer "outside" must not dismiss
+  // or the field unmounts mid-upload and the draft never receives the committed path.
+  const guardNativeFilePick = size === 'image'
+    ? {
+        onPointerDownOutside: (e: Event) => e.preventDefault(),
+        onFocusOutside: (e: Event) => e.preventDefault(),
+      }
+    : undefined;
   return <PopoverPrimitive.Root open={open} onOpenChange={onOpenChange}><PopoverPrimitive.Trigger asChild>{trigger}</PopoverPrimitive.Trigger>
-    <PopoverPrimitive.Portal><PopoverPrimitive.Content {...surface} aria-label={label} className={`ui-popover ui-popover-${size} ui-overlay-surface`} sideOffset={8} align="start" collisionPadding={12} avoidCollisions sticky="partial" onEscapeKeyDown={e => e.stopPropagation()}>{children}</PopoverPrimitive.Content></PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal><PopoverPrimitive.Content {...surface} aria-label={label} className={`ui-popover ui-popover-${size} ui-overlay-surface`} sideOffset={8} align="start" collisionPadding={12} avoidCollisions sticky="partial" onEscapeKeyDown={e => e.stopPropagation()} {...guardNativeFilePick}>{children}</PopoverPrimitive.Content></PopoverPrimitive.Portal>
   </PopoverPrimitive.Root>;
 }
 

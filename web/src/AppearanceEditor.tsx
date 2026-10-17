@@ -98,13 +98,69 @@ function IntegerField({
 function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLive}: {
   title: string; kind: 'icon' | 'logo'; value: string; hint: string; triggerLabel: string; onBusy: (busy: boolean) => void; onLive: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), revert = useRef(value);
-  const cancel = () => {if(busy) return; onLive(revert.current); setOpen(false);};
-  return <Popover label={title} size="image" open={open} onOpenChange={next => {if(next) {revert.current = value; setOpen(true);} else cancel();}} trigger={<Button type="button">{triggerLabel}</Button>}>
-    <PopoverHead title={title} closeLabel={`Close ${title.toLowerCase()} picker`} disabled={busy} onClose={cancel} />
-    <ImageField label="Logo image" kind={kind} value={value} change={onLive} onBusy={v => {setBusy(v); onBusy(v);}} hint={hint} />
-    <ImagePopoverActions cancel={cancel} confirm={() => {if(!busy) setOpen(false);}} />
-  </Popover>;
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const revert = useRef(value);
+  const keepDraft = useRef(false);
+  const cancel = () => {
+    if (busy || picking) return;
+    keepDraft.current = false;
+    onLive(revert.current);
+    setOpen(false);
+  };
+  const accept = () => {
+    keepDraft.current = true;
+    setBusy(false);
+    onBusy(false);
+    setOpen(false);
+  };
+  const confirm = () => {
+    if (busy || picking) return;
+    accept();
+  };
+  return (
+    <Popover
+      label={title}
+      size="image"
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          keepDraft.current = false;
+          revert.current = value;
+          setOpen(true);
+          return;
+        }
+        // OS file dialog focus loss / mid-upload must not dismiss-and-restore.
+        if (busy || picking) return;
+        if (!keepDraft.current) onLive(revert.current);
+        keepDraft.current = false;
+        setOpen(false);
+      }}
+      trigger={<Button type="button">{triggerLabel}</Button>}
+    >
+      <PopoverHead
+        title={title}
+        closeLabel={`Close ${title.toLowerCase()} picker`}
+        disabled={busy || picking}
+        onClose={cancel}
+      />
+      <ImageField
+        label="Logo image"
+        kind={kind}
+        value={value}
+        change={onLive}
+        onBusy={(v) => {
+          setBusy(v);
+          onBusy(v);
+        }}
+        onNativePick={setPicking}
+        onFileCommitted={() => accept()}
+        hint={hint}
+      />
+      <ImagePopoverActions cancel={cancel} confirm={confirm} />
+    </Popover>
+  );
 }
 
 function IconMarkPreview({
@@ -373,8 +429,21 @@ export default function AppearanceEditor({
             <SettingsRow
               label="Custom logo"
               hint="PNG, JPEG or WebP, up to 8 MiB. Replaces the page title."
+              action={
+                hasCustomLogo ? (
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    className="settings-row-action"
+                    aria-label="Remove custom logo"
+                    onClick={() => header({ logo: "" })}
+                  >
+                    Remove
+                  </Button>
+                ) : undefined
+              }
             >
-              <div className="logo-artwork logo-artwork--row">
+              <div className="logo-artwork">
                 <WideLogoPreview logo={draft.dashboard.logo ?? ""} />
                 <div className="logo-artwork-actions">
                   <BrandImagePicker
@@ -387,16 +456,6 @@ export default function AppearanceEditor({
                     onLive={(logo) => header({ logo })}
                   />
                 </div>
-                {hasCustomLogo ? (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    className="logo-artwork-remove"
-                    onClick={() => header({ logo: "" })}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
               </div>
             </SettingsRow>
           </SettingsGroup>

@@ -267,15 +267,15 @@
   width: max-content;
   max-width: 100%;
 }
-.ui-settings-row-control .logo-artwork--row {
-  grid-template-columns: 8.75rem auto auto;
-}
 .ui-settings-row-control .logo-artwork-preview {
   justify-self: end;
 }
 .ui-settings-row-control .logo-artwork-preview--wide {
   justify-self: stretch;
   width: 100%;
+}
+.ui-settings-row-control .logo-artwork-actions {
+  align-items: stretch;
 }
 .ui-settings-row-fill .ui-settings-row-control .ui-field {
   margin: 0;
@@ -298,14 +298,10 @@
   .ui-settings-row:not(.ui-settings-row-fill) .ui-settings-row-control > .settings-split-field {
     max-width: none;
   }
-  .ui-settings-row-control .logo-artwork,
-  .ui-settings-row-control .logo-artwork--row {
+  .ui-settings-row-control .logo-artwork {
     width: 100%;
     max-width: none;
     grid-template-columns: 8.75rem minmax(0, 1fr);
-  }
-  .ui-settings-row-control .logo-artwork--row {
-    grid-template-columns: 8.75rem minmax(0, 1fr) auto;
   }
 }
 
@@ -410,7 +406,14 @@ form > .ui-field + .ui-field { margin-top: var(--space-4); }
 .ui-select > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-overlay-surface { font-family: var(--ui-font, Geist), ui-sans-serif, system-ui, sans-serif; color: var(--text); font-size: var(--type-body); line-height: var(--leading-body); }
 .ui-select-content, .ui-menu, .ui-popover {
-  z-index: var(--layer-popover); background: var(--panel); color: var(--text); border: var(--border-width) solid var(--line); border-radius: var(--radius-control); box-shadow: var(--shadow-dialog);
+  /* Portalled above Dialog; body is pointer-events:none while Settings is open. */
+  z-index: var(--layer-popover);
+  pointer-events: auto;
+  background: var(--panel);
+  color: var(--text);
+  border: var(--border-width) solid var(--line);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-dialog);
 }
 .ui-select-content { min-width: var(--radix-select-trigger-width); max-width: calc(100vw - 24px); max-height: var(--radix-select-content-available-height); overflow: hidden; }
 .ui-select-option, .ui-menu-item { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--control-height); padding: var(--space-2) var(--space-3); outline: none; cursor: pointer; font-weight: var(--weight-regular); }
