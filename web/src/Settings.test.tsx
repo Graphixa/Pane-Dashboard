@@ -118,14 +118,15 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
   });
-  it("composes header brand from page title, icon and custom logo switches", () => {
+  it("composes header brand from page title, icon and custom logo with Show/Hide", () => {
     const { apply } = setup();
     expect(screen.getByRole("textbox", { name: "Page title" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Show page title" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide page title" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose icon" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Show icon" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Upload" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("switch", { name: "Show icon" }));
+    expect(screen.getByRole("button", { name: "Hide icon" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Hide icon" }));
+    expect(screen.getByRole("button", { name: "Show icon" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Choose icon" }));
     expect(screen.getByRole("group", { name: "Built-in icons" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "rocket" }));
@@ -139,21 +140,15 @@ describe("settings navigation and draft safety", () => {
   });
   it("uploads a custom logo that replaces the page title and clears with Remove", async () => {
     const { apply, preview } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/wordmark.png" },
     });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Replace logo" })).toBeTruthy();
     expect(
-      screen.getByRole("switch", { name: "Show page title" }).hasAttribute(
-        "data-disabled",
-      ) ||
-        (
-          screen.getByRole("switch", {
-            name: "Show page title",
-          }) as HTMLButtonElement
-        ).disabled,
+      (screen.getByRole("button", { name: "Hide page title" }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
     await flushPreview();
     const drafted = preview.mock.calls
@@ -162,7 +157,7 @@ describe("settings navigation and draft safety", () => {
       .at(-1) as Config;
     expect(drafted.dashboard.logo).toBe("https://example.com/wordmark.png");
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(screen.getByRole("button", { name: "Upload" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
     page("Apply settings");
     expect(apply.mock.calls[0][0].dashboard.logo).toBe("");
   });
@@ -251,9 +246,7 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
     expect(screen.getByText("Ocean")).toBeTruthy();
     expect(screen.queryByRole("switch", { name: "Wallpaper overlay" })).toBeNull();
-    expect(
-      screen.queryByRole("switch", { name: "Show app labels" }),
-    ).toBeNull();
+    expect(screen.queryByRole("switch", { name: "App tiles" })).toBeNull();
   });
   it("restores wallpaper draft when Choose wallpaper is closed without Use wallpaper", async () => {
     setup();
@@ -304,11 +297,11 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog", { name: "Tint" })).toBeNull();
   });
-  it("keeps labels in Panes and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
+  it("keeps labels on General and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
     const { apply } = setup();
     page("Panes");
     expect(screen.queryByRole("heading", { name: "Fine tuning" })).toBeNull();
-    fireEvent.click(screen.getByRole("switch", { name: "Show app labels" }));
+    expect(screen.queryByRole("heading", { name: "Labels" })).toBeNull();
     page("Glass");
     expect(
       screen
@@ -319,15 +312,17 @@ describe("settings navigation and draft safety", () => {
     for (let i = 0; i < 55; i++) fireEvent.keyDown(screen.getByRole("slider", {name: "Opacity"}), {key: "ArrowRight"});
     page("Solid");
     page("General");
+    fireEvent.click(screen.getByRole("switch", { name: "App tiles" }));
     page("Panes");
     page("Glass");
     expect(
       screen.getByRole("slider", { name: "Opacity" }).getAttribute("aria-valuenow"),
     ).toBe("55");
+    page("General");
     expect(
       (
         screen.getByRole("switch", {
-          name: "Show app labels",
+          name: "App tiles",
         }) as HTMLInputElement
       ).getAttribute("aria-checked"),
     ).toBe("false");

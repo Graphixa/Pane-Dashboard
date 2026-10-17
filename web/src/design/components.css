@@ -253,9 +253,29 @@
   max-width: 100%;
   margin: 0;
 }
-.ui-settings-row-control .ui-select {
+.ui-settings-row-control .ui-select,
+.ui-settings-row-control > .ui-input,
+.ui-settings-row-control > .settings-split-field {
   width: 100%;
   max-width: 220px;
+}
+.ui-settings-row-control .logo-artwork {
+  display: grid;
+  grid-template-columns: 8.75rem auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  width: max-content;
+  max-width: 100%;
+}
+.ui-settings-row-control .logo-artwork--row {
+  grid-template-columns: 8.75rem auto auto;
+}
+.ui-settings-row-control .logo-artwork-preview {
+  justify-self: end;
+}
+.ui-settings-row-control .logo-artwork-preview--wide {
+  justify-self: stretch;
+  width: 100%;
 }
 .ui-settings-row-fill .ui-settings-row-control .ui-field {
   margin: 0;
@@ -273,8 +293,19 @@
     grid-column: 1;
     justify-content: stretch;
   }
-  .ui-settings-row:not(.ui-settings-row-fill) .ui-settings-row-control .ui-select {
+  .ui-settings-row:not(.ui-settings-row-fill) .ui-settings-row-control .ui-select,
+  .ui-settings-row:not(.ui-settings-row-fill) .ui-settings-row-control > .ui-input,
+  .ui-settings-row:not(.ui-settings-row-fill) .ui-settings-row-control > .settings-split-field {
     max-width: none;
+  }
+  .ui-settings-row-control .logo-artwork,
+  .ui-settings-row-control .logo-artwork--row {
+    width: 100%;
+    max-width: none;
+    grid-template-columns: 8.75rem minmax(0, 1fr);
+  }
+  .ui-settings-row-control .logo-artwork--row {
+    grid-template-columns: 8.75rem minmax(0, 1fr) auto;
   }
 }
 

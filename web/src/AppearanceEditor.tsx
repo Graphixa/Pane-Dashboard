@@ -1,11 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
 import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Modal, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -40,6 +36,7 @@ function IntegerField({
   max,
   onCommit,
   hint,
+  hideLabel = false,
 }: {
   label: string;
   value: number;
@@ -47,6 +44,8 @@ function IntegerField({
   max: number;
   onCommit: (value: number) => void;
   hint?: string;
+  /** When true, render a bare input (label lives outside, e.g. General split rows). */
+  hideLabel?: boolean;
 }) {
   const [text, setText] = useState(String(value));
   useEffect(() => setText(String(value)), [value]);
@@ -55,6 +54,32 @@ function IntegerField({
     parsed === undefined
       ? `Enter a whole number from ${min} to ${max}.`
       : undefined;
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.value;
+    setText(next);
+    const n = parseIntegerInput(next, min, max);
+    if (n !== undefined) onCommit(n);
+  };
+  const onBlur = () => {
+    if (parseIntegerInput(text, min, max) === undefined) setText(String(value));
+  };
+  if (hideLabel) {
+    return (
+      <div className={error ? "settings-split-field settings-split-field--invalid" : "settings-split-field"}>
+        <Input
+          type="number"
+          min={min}
+          max={max}
+          value={text}
+          aria-label={label}
+          aria-invalid={error ? true : undefined}
+          onChange={onChange}
+          onBlur={onBlur}
+        />
+        {error ? <span className="ui-field-error">{error}</span> : null}
+      </div>
+    );
+  }
   return (
     <TextField
       label={label}
@@ -64,15 +89,8 @@ function IntegerField({
       value={text}
       hint={hint}
       error={error}
-      onChange={(e) => {
-        const next = e.target.value;
-        setText(next);
-        const n = parseIntegerInput(next, min, max);
-        if (n !== undefined) onCommit(n);
-      }}
-      onBlur={() => {
-        if (parseIntegerInput(text, min, max) === undefined) setText(String(value));
-      }}
+      onChange={onChange}
+      onBlur={onBlur}
     />
   );
 }
@@ -282,6 +300,10 @@ export default function AppearanceEditor({
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const hasCustomLogo = Boolean(draft.dashboard.logo);
+  const titleVisible = hasCustomLogo
+    ? true
+    : draft.dashboard.showTitle !== false;
+  const iconVisible = draft.dashboard.showIcon !== false;
 
   if (section === "general")
     return (
@@ -289,39 +311,53 @@ export default function AppearanceEditor({
         <Section
           level="h3"
           className="settings-section"
-          title="Page title"
-          tip="Also used for the browser tab and accessible name."
+          title="Branding"
+          tip="Page title also sets the browser tab. Optional wide logo replaces the title."
         >
           <SettingsGroup>
-            <SettingsRow>
-              <TextField
-                label="Page title"
-                maxLength={100}
-                value={draft.dashboard.title}
-                onChange={(e) => header({ title: e.target.value })}
-              />
-            </SettingsRow>
-            <SwitchRow
-              label="Show page title"
+            <SettingsRow
+              label="Page title"
               hint={
                 hasCustomLogo
                   ? "Custom logo replaces the page title."
-                  : "Hide the title text in the header."
+                  : undefined
               }
-              checked={hasCustomLogo ? true : draft.dashboard.showTitle !== false}
-              disabled={hasCustomLogo}
-              onCheckedChange={(checked) => header({ showTitle: checked })}
-            />
-          </SettingsGroup>
-        </Section>
-        <Section
-          level="h3"
-          className="settings-section"
-          title="Icon"
-          tip="Square mark in the header beside the title or logo."
-        >
-          <SettingsGroup>
-            <SettingsRow label="Icon">
+              action={
+                <Button
+                  type="button"
+                  variant="quiet"
+                  className="settings-row-action"
+                  disabled={hasCustomLogo}
+                  aria-label={
+                    titleVisible ? "Hide page title" : "Show page title"
+                  }
+                  onClick={() => header({ showTitle: !titleVisible })}
+                >
+                  {titleVisible ? "Hide" : "Show"}
+                </Button>
+              }
+            >
+              <Input
+                maxLength={100}
+                value={draft.dashboard.title}
+                aria-label="Page title"
+                onChange={(e) => header({ title: e.target.value })}
+              />
+            </SettingsRow>
+            <SettingsRow
+              label="Icon"
+              action={
+                <Button
+                  type="button"
+                  variant="quiet"
+                  className="settings-row-action"
+                  aria-label={iconVisible ? "Hide icon" : "Show icon"}
+                  onClick={() => header({ showIcon: !iconVisible })}
+                >
+                  {iconVisible ? "Hide" : "Show"}
+                </Button>
+              }
+            >
               <div className="logo-artwork">
                 <IconMarkPreview
                   icon={draft.dashboard.icon ?? ""}
@@ -334,48 +370,33 @@ export default function AppearanceEditor({
                 </div>
               </div>
             </SettingsRow>
-            <SwitchRow
-              label="Show icon"
-              hint="Hide the header mark without changing the chosen icon."
-              checked={draft.dashboard.showIcon !== false}
-              onCheckedChange={(checked) => header({ showIcon: checked })}
-            />
-          </SettingsGroup>
-        </Section>
-        <Section
-          level="h3"
-          className="settings-section"
-          title="Custom logo"
-          tip="Wide artwork that replaces the page title in the header."
-        >
-          <SettingsGroup>
             <SettingsRow
               label="Custom logo"
-              hint="Replaces the page title. PNG, JPEG or WebP, up to 8 MiB."
+              hint="PNG, JPEG or WebP, up to 8 MiB. Replaces the page title."
             >
-              <div className="logo-artwork">
+              <div className="logo-artwork logo-artwork--row">
                 <WideLogoPreview logo={draft.dashboard.logo ?? ""} />
                 <div className="logo-artwork-actions">
                   <BrandImagePicker
                     title="Custom logo"
                     kind="logo"
                     value={draft.dashboard.logo ?? ""}
-                    triggerLabel={hasCustomLogo ? "Replace" : "Upload"}
-                    hint="Rectangular artwork replaces the page title. PNG, JPEG or WebP, up to 8 MiB."
+                    triggerLabel={hasCustomLogo ? "Replace logo" : "Upload logo"}
+                    hint="Drop a rectangular image or paste an HTTP(S) URL."
                     onBusy={onBusy}
                     onLive={(logo) => header({ logo })}
                   />
-                  {hasCustomLogo ? (
-                    <Button
-                      type="button"
-                      variant="danger"
-                      className="logo-artwork-remove"
-                      onClick={() => header({ logo: "" })}
-                    >
-                      Remove
-                    </Button>
-                  ) : null}
                 </div>
+                {hasCustomLogo ? (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    className="logo-artwork-remove"
+                    onClick={() => header({ logo: "" })}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
               </div>
             </SettingsRow>
           </SettingsGroup>
@@ -390,13 +411,39 @@ export default function AppearanceEditor({
             close={() => setIconPickerOpen(false)}
           />
         ) : null}
-        <Section level="h3" className="settings-section"
+        <Section
+          level="h3"
+          className="settings-section"
+          title="Labels"
+          tip="Show or hide text beside header actions and under app icons."
+        >
+          <SettingsGroup>
+            <SwitchRow
+              label="Header buttons"
+              checked={a.showButtonLabels}
+              onCheckedChange={(checked) =>
+                appearance({ showButtonLabels: checked })
+              }
+            />
+            <SwitchRow
+              label="App tiles"
+              checked={a.showAppLabels}
+              onCheckedChange={(checked) =>
+                appearance({ showAppLabels: checked })
+              }
+            />
+          </SettingsGroup>
+        </Section>
+        <Section
+          level="h3"
+          className="settings-section"
           title="Workspace"
           tip="Tiles keep their size. Narrow screens use a read-only layout."
         >
           <SettingsGroup>
             <SettingsRow label="Dashboard width">
               <Select
+                aria-label="Dashboard width"
                 value={
                   draft.dashboard.widthMode === "full"
                     ? "full"
@@ -421,30 +468,25 @@ export default function AppearanceEditor({
                 <SelectOption value="custom">Custom</SelectOption>
               </Select>
             </SettingsRow>
-            <SettingsRow>
+            <SettingsRow
+              label={
+                draft.dashboard.widthMode === "full" ? "Saved width" : "Width"
+              }
+              hint="Whole pixels from 768 to 3840."
+            >
               <IntegerField
                 label={
                   draft.dashboard.widthMode === "full"
                     ? "Saved workspace width (px)"
                     : "Width (px)"
                 }
+                hideLabel
                 min={768}
                 max={3840}
                 value={draft.dashboard.width}
                 onCommit={(width) => header({ width })}
               />
             </SettingsRow>
-          </SettingsGroup>
-        </Section>
-        <Section level="h3" className="settings-section" title="Navigation">
-          <SettingsGroup>
-            <SwitchRow
-              label="Show button labels"
-              checked={a.showButtonLabels}
-              onCheckedChange={(checked) =>
-                appearance({ showButtonLabels: checked })
-              }
-            />
           </SettingsGroup>
         </Section>
       </>
@@ -527,15 +569,6 @@ export default function AppearanceEditor({
             </SettingsGroup>
           </Section>
         )}
-        <Section level="h3" className="settings-section" title="Labels" tip="Show names beneath app icons.">
-          <SettingsGroup>
-            <SwitchRow
-              label="Show app labels"
-              checked={a.showAppLabels}
-              onCheckedChange={(checked) => appearance({ showAppLabels: checked })}
-            />
-          </SettingsGroup>
-        </Section>
       </>
     );
 

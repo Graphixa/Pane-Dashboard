@@ -53,6 +53,30 @@
   margin: 0;
   min-width: 0;
 }
+/* Quiet under-label action (Show/Hide, Customise). */
+.settings-row-action {
+  justify-self: start;
+  min-height: auto;
+  padding: 0;
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+}
+.settings-row-action:disabled {
+  color: var(--muted);
+  opacity: 0.7;
+}
+/* Bare integer field when the SettingsRow owns the visible label. */
+.settings-split-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  width: 100%;
+}
+.settings-split-field .ui-field-error {
+  color: var(--danger-text);
+  font-size: var(--type-support);
+}
 .settings-dialog .hint {
   margin-top: var(--space-2);
 }
