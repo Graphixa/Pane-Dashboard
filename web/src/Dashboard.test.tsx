@@ -104,7 +104,7 @@ describe("interaction boundary", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
       target: { value: "Akira" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
+    fireEvent.click(screen.getByRole("button", { name: "From URL" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/logo.png" },
     });

@@ -124,7 +124,8 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("button", { name: "Hide page title" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose icon" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hide icon" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload custom logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "From URL" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Hide icon" }));
     expect(screen.getByRole("button", { name: "Show icon" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Choose icon" }));
@@ -138,14 +139,15 @@ describe("settings navigation and draft safety", () => {
       icon: "",
     });
   });
-  it("uploads a custom logo that replaces the page title and clears with Remove", async () => {
+  it("uploads a custom logo from URL and clears with Remove", async () => {
     const { apply, preview } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
+    fireEvent.click(screen.getByRole("button", { name: "From URL" }));
     fireEvent.change(screen.getByLabelText("Logo image URL"), {
       target: { value: "https://example.com/wordmark.png" },
     });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(screen.getByRole("button", { name: "Replace logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Replace custom logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove custom logo" })).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "Hide page title" }) as HTMLButtonElement)
         .disabled,
@@ -157,11 +159,11 @@ describe("settings navigation and draft safety", () => {
       .at(-1) as Config;
     expect(drafted.dashboard.logo).toBe("https://example.com/wordmark.png");
     fireEvent.click(screen.getByRole("button", { name: "Remove custom logo" }));
-    expect(screen.getByRole("button", { name: "Upload logo" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload custom logo" })).toBeTruthy();
     page("Apply settings");
     expect(apply.mock.calls[0][0].dashboard.logo).toBe("");
   });
-  it("auto-confirms a staged file logo after a successful upload", async () => {
+  it("applies a file logo from the inline drop target", async () => {
     const { preview } = setup();
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
       const url = String(input);
@@ -193,15 +195,14 @@ describe("settings navigation and draft safety", () => {
       }
       return new Response("{}", { status: 404 });
     });
-    fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
     const file = new File([new Uint8Array([1, 2, 3])], "mark.png", {
       type: "image/png",
     });
-    fireEvent.change(screen.getByLabelText("Logo image file"), {
+    fireEvent.change(screen.getByLabelText("Custom logo file"), {
       target: { files: [file] },
     });
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Replace logo" })).toBeTruthy(),
+      expect(screen.getByRole("button", { name: "Replace custom logo" })).toBeTruthy(),
     );
     await flushPreview();
     const drafted = preview.mock.calls
@@ -210,7 +211,7 @@ describe("settings navigation and draft safety", () => {
       .at(-1) as Config;
     expect(drafted.dashboard.logo).toBe("/media/assets/logo-asset-1");
   });
-  it("keeps a file logo when dismiss fires during native pick or upload", async () => {
+  it("keeps an inline file logo when upload finishes after a mid-flight wait", async () => {
     const { preview } = setup();
     let finishCommit!: (value: Response) => void;
     const commitGate = new Promise<Response>((resolve) => {
@@ -240,30 +241,15 @@ describe("settings navigation and draft safety", () => {
       }
       return new Response("{}", { status: 404 });
     });
-    fireEvent.click(screen.getByRole("button", { name: "Upload logo" }));
-    // Opening the OS picker latches picking; Escape must not restore the empty logo.
-    fireEvent.click(screen.getByRole("button", { name: "Upload logo image" }));
-    fireEvent.keyDown(document.activeElement ?? document.body, {
-      key: "Escape",
-      code: "Escape",
-    });
-    expect(screen.getByLabelText("Logo image file")).toBeTruthy();
-
     const file = new File([new Uint8Array([1, 2, 3])], "mark.png", {
       type: "image/png",
     });
-    fireEvent.change(screen.getByLabelText("Logo image file"), {
+    fireEvent.change(screen.getByLabelText("Custom logo file"), {
       target: { files: [file] },
     });
     await waitFor(() =>
       expect(screen.getByText("Uploading…")).toBeTruthy(),
     );
-    // Mid-upload dismiss must not wipe the in-flight commit from the draft.
-    fireEvent.keyDown(document.activeElement ?? document.body, {
-      key: "Escape",
-      code: "Escape",
-    });
-    expect(screen.getByText("Uploading…")).toBeTruthy();
 
     finishCommit(
       new Response(
@@ -275,7 +261,7 @@ describe("settings navigation and draft safety", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Replace logo" })).toBeTruthy(),
+      expect(screen.getByRole("button", { name: "Replace custom logo" })).toBeTruthy(),
     );
     await flushPreview();
     const drafted = preview.mock.calls

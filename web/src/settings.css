@@ -66,6 +66,11 @@
   color: var(--muted);
   opacity: 0.7;
 }
+.settings-row-actions {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
 /* Bare integer field when the SettingsRow owns the visible label. */
 .settings-split-field {
   display: grid;
@@ -239,6 +244,40 @@
   border-radius: 4px;
   background: var(--panel-high);
   border: 1px solid var(--line);
+}
+.logo-drop-field {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: end;
+  min-width: 0;
+  max-width: 100%;
+}
+.logo-drop-target {
+  width: 140px;
+  height: 48px;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.logo-drop-target[data-empty="true"] {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--panel-high) 80%, transparent);
+}
+.logo-drop-target[data-drag="true"] {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.logo-drop-cue {
+  font-size: var(--type-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--muted);
+  line-height: 1.2;
+  text-align: center;
+  padding: 0 var(--space-2);
+}
+.logo-drop-target:disabled .logo-drop-cue {
+  color: var(--text);
 }
 .logo-artwork-actions {
   display: flex;

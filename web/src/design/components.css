@@ -274,6 +274,13 @@
   justify-self: stretch;
   width: 100%;
 }
+.ui-settings-row-control .logo-drop-field {
+  justify-self: end;
+  width: 8.75rem;
+}
+.ui-settings-row-control .logo-drop-target {
+  width: 100%;
+}
 .ui-settings-row-control .logo-artwork-actions {
   align-items: stretch;
 }

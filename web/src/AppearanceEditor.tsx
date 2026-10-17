@@ -25,7 +25,7 @@ import {
   resolveBuiltinIcon,
   type BuiltinIconId,
 } from "./brandIcons";
-import ImageField from "./ImageField";
+import ImageField, { prepareUpload } from "./ImageField";
 import BackgroundSettings from "./BackgroundSettings";
 
 /** Keep invalid keystrokes out of the draft; only commit in-range integers. */
@@ -95,6 +95,7 @@ function IntegerField({
   );
 }
 
+/** Full image picker (file + URL) for surfaces that still need both, e.g. custom icon. */
 function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLive}: {
   title: string; kind: 'icon' | 'logo'; value: string; hint: string; triggerLabel: string; onBusy: (busy: boolean) => void; onLive: (value: string) => void;
 }) {
@@ -163,6 +164,177 @@ function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLiv
   );
 }
 
+/** URL-only popover for Custom logo; file upload uses the inline drop target. */
+function BrandUrlPicker({
+  value,
+  onLive,
+}: {
+  value: string;
+  onLive: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const revert = useRef(value);
+  const keepDraft = useRef(false);
+  const uploaded =
+    value.startsWith("/media/assets/") || value.startsWith("/media/staging/");
+  const cancel = () => {
+    keepDraft.current = false;
+    onLive(revert.current);
+    setOpen(false);
+  };
+  const confirm = () => {
+    keepDraft.current = true;
+    setOpen(false);
+  };
+  return (
+    <Popover
+      label="Paste logo URL"
+      size="image"
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          keepDraft.current = false;
+          revert.current = value;
+          setOpen(true);
+          return;
+        }
+        if (!keepDraft.current) onLive(revert.current);
+        keepDraft.current = false;
+        setOpen(false);
+      }}
+      trigger={
+        <Button type="button" variant="quiet" className="settings-row-action">
+          From URL
+        </Button>
+      }
+    >
+      <PopoverHead
+        title="Custom logo"
+        closeLabel="Close custom logo URL picker"
+        onClose={cancel}
+      />
+      <Label className="image-url-field">
+        <span>From URL</span>
+        <Input
+          type="url"
+          maxLength={2048}
+          placeholder="https://example.com/image.png"
+          aria-label="Logo image URL"
+          value={uploaded ? "" : value}
+          onChange={(e) => onLive(e.target.value)}
+        />
+      </Label>
+      {value && !logoReference(value) && !uploaded ? (
+        <Notice tone="error">Enter a valid HTTP(S) image URL.</Notice>
+      ) : null}
+      <p className="hint">
+        Remote URLs stay as links; file drops on the preview become local media assets.
+      </p>
+      <ImagePopoverActions cancel={cancel} confirm={confirm} />
+    </Popover>
+  );
+}
+
+/** Compact click/drop target that replaces the Custom logo preview inset. */
+function LogoDropTarget({
+  logo,
+  onLive,
+  onBusy,
+}: {
+  logo: string;
+  onLive: (logo: string) => void;
+  onBusy: (busy: boolean) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const alive = useRef(true);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [drag, setDrag] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  useEffect(() => setFailed(false), [logo]);
+  const take = async (file: File) => {
+    setError("");
+    setBusy(true);
+    onBusy(true);
+    try {
+      const committed = await prepareUpload(file, "logo");
+      onLive(committed.path);
+    } catch (err) {
+      if (alive.current) setError((err as Error).message);
+    } finally {
+      onBusy(false);
+      if (alive.current) setBusy(false);
+    }
+  };
+  const url = logoReference(logo) && logo ? logo : undefined;
+  const showArt = Boolean(url && !failed && !busy);
+  return (
+    <div className="logo-drop-field">
+      <Button
+        type="button"
+        variant="surface"
+        className="logo-artwork-preview logo-artwork-preview--wide logo-drop-target"
+        data-drag={drag ? "true" : undefined}
+        data-empty={showArt ? undefined : "true"}
+        aria-label={logo ? "Replace custom logo" : "Upload custom logo"}
+        disabled={busy}
+        onClick={() => input.current?.click()}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          setDrag(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDrag(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDrag(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDrag(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) void take(file);
+        }}
+      >
+        {busy ? (
+          <span className="logo-drop-cue">Uploading…</span>
+        ) : showArt ? (
+          <img
+            className="logo-artwork-image"
+            src={url}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <span className="logo-drop-cue">Drop or click</span>
+        )}
+      </Button>
+      <Input
+        ref={input}
+        className="file-picker"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label="Custom logo file"
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (file) void take(file);
+        }}
+      />
+      {error ? <Notice tone="error">{error}</Notice> : null}
+    </div>
+  );
+}
+
 function IconMarkPreview({
   icon,
   builtinIcon,
@@ -186,27 +358,6 @@ function IconMarkPreview({
         />
       ) : (
         <Builtin size={22} />
-      )}
-    </div>
-  );
-}
-
-function WideLogoPreview({ logo }: { logo: string }) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [logo]);
-  const url = logoReference(logo) && logo ? logo : undefined;
-  return (
-    <div className="logo-artwork-preview logo-artwork-preview--wide" aria-hidden="true">
-      {url && !failed ? (
-        <img
-          className="logo-artwork-image"
-          src={url}
-          alt=""
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <span className="logo-artwork-wide-stub" />
       )}
     </div>
   );
@@ -430,33 +581,30 @@ export default function AppearanceEditor({
               label="Custom logo"
               hint="PNG, JPEG or WebP, up to 8 MiB. Replaces the page title."
               action={
-                hasCustomLogo ? (
-                  <Button
-                    type="button"
-                    variant="quiet"
-                    className="settings-row-action"
-                    aria-label="Remove custom logo"
-                    onClick={() => header({ logo: "" })}
-                  >
-                    Remove
-                  </Button>
-                ) : undefined
-              }
-            >
-              <div className="logo-artwork">
-                <WideLogoPreview logo={draft.dashboard.logo ?? ""} />
-                <div className="logo-artwork-actions">
-                  <BrandImagePicker
-                    title="Custom logo"
-                    kind="logo"
+                <div className="settings-row-actions">
+                  {hasCustomLogo ? (
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      className="settings-row-action"
+                      aria-label="Remove custom logo"
+                      onClick={() => header({ logo: "" })}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                  <BrandUrlPicker
                     value={draft.dashboard.logo ?? ""}
-                    triggerLabel={hasCustomLogo ? "Replace logo" : "Upload logo"}
-                    hint="Drop a rectangular image or paste an HTTP(S) URL."
-                    onBusy={onBusy}
                     onLive={(logo) => header({ logo })}
                   />
                 </div>
-              </div>
+              }
+            >
+              <LogoDropTarget
+                logo={draft.dashboard.logo ?? ""}
+                onBusy={onBusy}
+                onLive={(logo) => header({ logo })}
+              />
             </SettingsRow>
           </SettingsGroup>
         </Section>
