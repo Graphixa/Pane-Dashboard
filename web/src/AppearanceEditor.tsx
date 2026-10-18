@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
 import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Modal, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import { useEffect, useRef, useState } from "react";
+import { Upload } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -235,7 +236,7 @@ function BrandUrlPicker({
   );
 }
 
-/** Compact click/drop target that replaces the Custom logo preview inset. */
+/** ImageField-style dropzone in the Custom logo control column. */
 function LogoDropTarget({
   logo,
   onLive,
@@ -273,15 +274,14 @@ function LogoDropTarget({
     }
   };
   const url = logoReference(logo) && logo ? logo : undefined;
-  const showArt = Boolean(url && !failed && !busy);
+  const showArt = Boolean(url && !failed);
   return (
     <div className="logo-drop-field">
       <Button
         type="button"
         variant="surface"
-        className="logo-artwork-preview logo-artwork-preview--wide logo-drop-target"
+        className="image-dropzone logo-drop-target"
         data-drag={drag ? "true" : undefined}
-        data-empty={showArt ? undefined : "true"}
         aria-label={logo ? "Replace custom logo" : "Upload custom logo"}
         disabled={busy}
         onClick={() => input.current?.click()}
@@ -305,17 +305,33 @@ function LogoDropTarget({
         }}
       >
         {busy ? (
-          <span className="logo-drop-cue">Uploading…</span>
+          <span className="image-dropzone-title">Uploading…</span>
         ) : showArt ? (
-          <img
-            className="logo-artwork-image"
-            src={url}
-            alt=""
-            referrerPolicy="no-referrer"
-            onError={() => setFailed(true)}
-          />
+          <>
+            <img
+              className="logo-drop-preview"
+              src={url}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={() => setFailed(true)}
+            />
+            <span className="image-dropzone-title">
+              Drop to replace, or click to browse
+            </span>
+            <span className="image-dropzone-hint">
+              PNG, JPEG or WebP, up to 8 MiB.
+            </span>
+          </>
         ) : (
-          <span className="logo-drop-cue">Drop or click</span>
+          <>
+            <Upload size={28} aria-hidden="true" />
+            <span className="image-dropzone-title">
+              Drop an image here, or click to browse
+            </span>
+            <span className="image-dropzone-hint">
+              PNG, JPEG or WebP, up to 8 MiB.
+            </span>
+          </>
         )}
       </Button>
       <Input
@@ -578,6 +594,7 @@ export default function AppearanceEditor({
               </div>
             </SettingsRow>
             <SettingsRow
+              className="logo-drop-row"
               label="Custom logo"
               hint="PNG, JPEG or WebP, up to 8 MiB. Replaces the page title."
               action={
