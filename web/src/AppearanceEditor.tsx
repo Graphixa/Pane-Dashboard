@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
-import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Modal, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
+import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import { useEffect, useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { ImagePlus, Upload } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -22,11 +22,11 @@ import {
   type UiFont,
 } from "./appearance";
 import {
-  builtinIconIds,
+  inlineBuiltinIconIds,
   resolveBuiltinIcon,
   type BuiltinIconId,
 } from "./brandIcons";
-import ImageField, { prepareUpload } from "./ImageField";
+import { prepareUpload } from "./ImageField";
 import BackgroundSettings from "./BackgroundSettings";
 
 /** Keep invalid keystrokes out of the draft; only commit in-range integers. */
@@ -93,75 +93,6 @@ function IntegerField({
       onChange={onChange}
       onBlur={onBlur}
     />
-  );
-}
-
-/** Full image picker (file + URL) for surfaces that still need both, e.g. custom icon. */
-function BrandImagePicker({title, kind, value, hint, triggerLabel, onBusy, onLive}: {
-  title: string; kind: 'icon' | 'logo'; value: string; hint: string; triggerLabel: string; onBusy: (busy: boolean) => void; onLive: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [picking, setPicking] = useState(false);
-  const revert = useRef(value);
-  const keepDraft = useRef(false);
-  const cancel = () => {
-    if (busy || picking) return;
-    keepDraft.current = false;
-    onLive(revert.current);
-    setOpen(false);
-  };
-  const accept = () => {
-    keepDraft.current = true;
-    setBusy(false);
-    onBusy(false);
-    setOpen(false);
-  };
-  const confirm = () => {
-    if (busy || picking) return;
-    accept();
-  };
-  return (
-    <Popover
-      label={title}
-      size="image"
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          keepDraft.current = false;
-          revert.current = value;
-          setOpen(true);
-          return;
-        }
-        // OS file dialog focus loss / mid-upload must not dismiss-and-restore.
-        if (busy || picking) return;
-        if (!keepDraft.current) onLive(revert.current);
-        keepDraft.current = false;
-        setOpen(false);
-      }}
-      trigger={<Button type="button">{triggerLabel}</Button>}
-    >
-      <PopoverHead
-        title={title}
-        closeLabel={`Close ${title.toLowerCase()} picker`}
-        disabled={busy || picking}
-        onClose={cancel}
-      />
-      <ImageField
-        label="Logo image"
-        kind={kind}
-        value={value}
-        change={onLive}
-        onBusy={(v) => {
-          setBusy(v);
-          onBusy(v);
-        }}
-        onNativePick={setPicking}
-        onFileCommitted={() => accept()}
-        hint={hint}
-      />
-      <ImagePopoverActions cancel={cancel} confirm={confirm} />
-    </Popover>
   );
 }
 
@@ -351,62 +282,58 @@ function LogoDropTarget({
   );
 }
 
-function IconMarkPreview({
-  icon,
-  builtinIcon,
-}: {
-  icon: string;
-  builtinIcon?: BuiltinIconId;
-}) {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [icon]);
-  const url = logoReference(icon) && icon ? icon : undefined;
-  const Builtin = resolveBuiltinIcon(builtinIcon);
-  return (
-    <div className="logo-artwork-preview" aria-hidden="true">
-      {url && !failed ? (
-        <img
-          className="logo-artwork-image"
-          src={url}
-          alt=""
-          referrerPolicy="no-referrer"
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <Builtin size={22} />
-      )}
-    </div>
-  );
-}
-
-function IconPickerDialog({
+/** Inline 2×6: eleven builtins + one custom-upload tile (no separate dropzone). */
+function IconBrandControl({
   builtinIcon,
   icon,
-  onBusy,
   onBuiltin,
   onCustom,
-  close,
+  onBusy,
 }: {
   builtinIcon?: BuiltinIconId;
   icon: string;
-  onBusy: (busy: boolean) => void;
   onBuiltin: (id: BuiltinIconId) => void;
-  onCustom: (icon: string) => void;
-  close: () => void;
+  onCustom: (path: string) => void;
+  onBusy: (busy: boolean) => void;
 }) {
+  const input = useRef<HTMLInputElement>(null);
+  const alive = useRef(true);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [drag, setDrag] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  useEffect(() => setFailed(false), [icon]);
+  const take = async (file: File) => {
+    setError("");
+    setBusy(true);
+    onBusy(true);
+    try {
+      const committed = await prepareUpload(file, "icon");
+      onCustom(committed.path);
+    } catch (err) {
+      if (alive.current) setError((err as Error).message);
+    } finally {
+      onBusy(false);
+      if (alive.current) setBusy(false);
+    }
+  };
+  const url = logoReference(icon) && icon ? icon : undefined;
+  const showArt = Boolean(url && !failed);
   const selectedBuiltin = !icon ? (builtinIcon ?? "grid") : undefined;
   return (
-    <Modal
-      title="Choose icon"
-      close={close}
-      footer={
-        <Button type="button" variant="primary" onClick={close}>
-          Done
-        </Button>
-      }
-    >
-      <div className="icon-picker-grid" role="group" aria-label="Built-in icons">
-        {builtinIconIds.map((id) => {
+    <div className="icon-brand-control">
+      <div
+        className="icon-picker-grid icon-picker-grid--inline"
+        role="group"
+        aria-label="Built-in icons"
+      >
+        {inlineBuiltinIconIds.map((id) => {
           const Icon = resolveBuiltinIcon(id);
           return (
             <Button
@@ -418,33 +345,73 @@ function IconPickerDialog({
               aria-pressed={selectedBuiltin === id}
               onClick={() => onBuiltin(id)}
             >
-              <Icon size={22} aria-hidden="true" />
+              <Icon size={18} aria-hidden="true" />
             </Button>
           );
         })}
+        <Button
+          type="button"
+          variant="surface"
+          className="icon-picker-tile icon-picker-tile--upload"
+          data-drag={drag ? "true" : undefined}
+          aria-label={
+            busy
+              ? "Uploading custom icon"
+              : showArt
+                ? "Replace custom icon"
+                : "Upload custom icon"
+          }
+          aria-pressed={showArt}
+          disabled={busy}
+          onClick={() => input.current?.click()}
+          onDragEnter={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDrag(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            setDrag(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) void take(file);
+          }}
+        >
+          {busy ? (
+            <span className="icon-picker-upload-cue">…</span>
+          ) : showArt ? (
+            <img
+              className="icon-picker-custom-preview"
+              src={url}
+              alt=""
+              referrerPolicy="no-referrer"
+              onError={() => setFailed(true)}
+            />
+          ) : (
+            <ImagePlus size={18} aria-hidden="true" />
+          )}
+        </Button>
       </div>
-      <div className="icon-picker-upload">
-        <BrandImagePicker
-          title="Custom icon"
-          kind="icon"
-          value={icon}
-          triggerLabel={icon ? "Replace custom icon" : "Upload custom icon"}
-          hint="Square artwork for the header mark. PNG, JPEG or WebP, up to 8 MiB."
-          onBusy={onBusy}
-          onLive={onCustom}
-        />
-        {icon ? (
-          <Button
-            type="button"
-            variant="danger"
-            className="logo-artwork-remove"
-            onClick={() => onCustom("")}
-          >
-            Remove custom icon
-          </Button>
-        ) : null}
-      </div>
-    </Modal>
+      <Input
+        ref={input}
+        className="file-picker"
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        aria-label="Custom icon file"
+        onChange={(e) => {
+          const file = e.currentTarget.files?.[0];
+          e.currentTarget.value = "";
+          if (file) void take(file);
+        }}
+      />
+      {error ? <Notice tone="error">{error}</Notice> : null}
+    </div>
   );
 }
 
@@ -521,8 +488,8 @@ export default function AppearanceEditor({
     });
   const badContrast =
     contrast(p.text, p.surface) < 4.5 || contrast(p.text, p.background) < 4.5;
-  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const hasCustomLogo = Boolean(draft.dashboard.logo);
+  const hasCustomIcon = Boolean(draft.dashboard.icon);
   const titleVisible = hasCustomLogo
     ? true
     : draft.dashboard.showTitle !== false;
@@ -568,30 +535,40 @@ export default function AppearanceEditor({
               />
             </SettingsRow>
             <SettingsRow
+              className="icon-brand-row"
               label="Icon"
               action={
-                <Button
-                  type="button"
-                  variant="quiet"
-                  className="settings-row-action"
-                  aria-label={iconVisible ? "Hide icon" : "Show icon"}
-                  onClick={() => header({ showIcon: !iconVisible })}
-                >
-                  {iconVisible ? "Hide" : "Show"}
-                </Button>
+                <div className="settings-row-actions">
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    className="settings-row-action"
+                    aria-label={iconVisible ? "Hide icon" : "Show icon"}
+                    onClick={() => header({ showIcon: !iconVisible })}
+                  >
+                    {iconVisible ? "Hide" : "Show"}
+                  </Button>
+                  {hasCustomIcon ? (
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      className="settings-row-action"
+                      aria-label="Remove custom icon"
+                      onClick={() => header({ icon: "" })}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
               }
             >
-              <div className="logo-artwork">
-                <IconMarkPreview
-                  icon={draft.dashboard.icon ?? ""}
-                  builtinIcon={draft.dashboard.builtinIcon}
-                />
-                <div className="logo-artwork-actions">
-                  <Button type="button" onClick={() => setIconPickerOpen(true)}>
-                    Choose icon
-                  </Button>
-                </div>
-              </div>
+              <IconBrandControl
+                builtinIcon={draft.dashboard.builtinIcon}
+                icon={draft.dashboard.icon ?? ""}
+                onBusy={onBusy}
+                onBuiltin={(id) => header({ builtinIcon: id, icon: "" })}
+                onCustom={(icon) => header({ icon })}
+              />
             </SettingsRow>
             <SettingsRow
               className="logo-drop-row"
@@ -625,16 +602,6 @@ export default function AppearanceEditor({
             </SettingsRow>
           </SettingsGroup>
         </Section>
-        {iconPickerOpen ? (
-          <IconPickerDialog
-            builtinIcon={draft.dashboard.builtinIcon}
-            icon={draft.dashboard.icon ?? ""}
-            onBusy={onBusy}
-            onBuiltin={(id) => header({ builtinIcon: id, icon: "" })}
-            onCustom={(icon) => header({ icon })}
-            close={() => setIconPickerOpen(false)}
-          />
-        ) : null}
         <Section
           level="h3"
           className="settings-section"

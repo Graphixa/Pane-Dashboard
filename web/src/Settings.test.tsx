@@ -122,22 +122,72 @@ describe("settings navigation and draft safety", () => {
     const { apply } = setup();
     expect(screen.getByRole("textbox", { name: "Page title" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hide page title" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Choose icon" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Built-in icons" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hide icon" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Upload custom icon" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Upload custom logo" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "From URL" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Hide icon" }));
     expect(screen.getByRole("button", { name: "Show icon" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Choose icon" }));
-    expect(screen.getByRole("group", { name: "Built-in icons" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "rocket" }));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     page("Apply settings");
     expect(apply.mock.calls[0][0].dashboard).toMatchObject({
       showIcon: false,
       builtinIcon: "rocket",
       icon: "",
     });
+  });
+  it("uploads a custom icon from the grid tile and clears with Remove", async () => {
+    const { apply, preview } = setup();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/media/upload") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            sessionId: "sess-icon",
+            previewUrl: "/media/staging/sess-icon",
+            meta: {
+              kind: "image",
+              mime: "image/png",
+              width: 64,
+              height: 64,
+              name: "mark.png",
+              bytes: 12,
+            },
+          }),
+          { status: 200 },
+        );
+      }
+      if (url.includes("/api/media/commit")) {
+        return new Response(
+          JSON.stringify({
+            assetId: "icon-asset-1",
+            meta: { kind: "image", name: "mark.png" },
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response("{}", { status: 404 });
+    });
+    const file = new File([new Uint8Array([1, 2, 3])], "mark.png", {
+      type: "image/png",
+    });
+    fireEvent.change(screen.getByLabelText("Custom icon file"), {
+      target: { files: [file] },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Replace custom icon" })).toBeTruthy(),
+    );
+    expect(screen.getByRole("button", { name: "Remove custom icon" })).toBeTruthy();
+    await flushPreview();
+    const drafted = preview.mock.calls
+      .map((call) => call[0] as Config | null)
+      .filter(Boolean)
+      .at(-1) as Config;
+    expect(drafted.dashboard.icon).toBe("/media/assets/icon-asset-1");
+    fireEvent.click(screen.getByRole("button", { name: "Remove custom icon" }));
+    page("Apply settings");
+    expect(apply.mock.calls[0][0].dashboard.icon).toBe("");
   });
   it("uploads a custom logo from URL and clears with Remove", async () => {
     const { apply, preview } = setup();

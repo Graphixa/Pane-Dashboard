@@ -20,7 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 
-/** Built-in header mark ids (6×3 picker). Keep in sync with Go allow-list. */
+/** Built-in header mark ids. Keep in sync with Go allow-list. */
 export const builtinIconIds = [
   "grid",
   "server",
@@ -43,6 +43,13 @@ export const builtinIconIds = [
 ] as const;
 
 export type BuiltinIconId = (typeof builtinIconIds)[number];
+
+/**
+ * Icons shown in Settings Branding (2×6 with a custom-upload tile = 11 builtins).
+ * Full `builtinIconIds` stay valid for existing configs and resolution.
+ */
+export const inlineBuiltinIconIds: readonly BuiltinIconId[] =
+  builtinIconIds.slice(0, 11);
 
 const icons: Record<BuiltinIconId, LucideIcon> = {
   grid: LayoutGrid,

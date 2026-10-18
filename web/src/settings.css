@@ -315,11 +315,49 @@
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--text);
 }
-.icon-picker-upload {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
+.ui-settings-group > .icon-brand-row {
+  align-items: start;
+  min-height: 0;
+}
+.icon-brand-control {
+  display: grid;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 22rem;
+  min-width: 0;
+  justify-self: end;
+}
+.icon-picker-grid--inline {
+  margin-bottom: 0;
+  gap: var(--space-1);
+  width: 100%;
+}
+.icon-picker-grid--inline .icon-picker-tile {
+  padding: var(--space-1);
+  min-height: 2rem;
+}
+.icon-picker-tile--upload {
+  border-style: dashed;
+  color: var(--muted);
+}
+.icon-picker-tile--upload[data-drag="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.icon-picker-tile--upload[aria-pressed="true"] {
+  border-style: solid;
+  color: var(--text);
+}
+.icon-picker-custom-preview {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+.icon-picker-upload-cue {
+  font-size: var(--type-support);
+  font-weight: var(--weight-semibold);
+  line-height: 1;
 }
 .theme-thumbnail {
   display: flex;
