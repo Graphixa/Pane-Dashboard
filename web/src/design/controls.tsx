@@ -109,9 +109,17 @@ export function Range({
     </div>
   );
 }
-export function Disclosure({title, children, defaultOpen = false}: {title: string; children: ReactNode; defaultOpen?: boolean}) {
+export function Disclosure({title, children, defaultOpen = false, open, onOpenChange}: {
+  title: string; children: ReactNode; defaultOpen?: boolean; open?: boolean; onOpenChange?: (open: boolean) => void;
+}) {
   const disabled = useContext(DisabledContext);
-  return <CollapsiblePrimitive.Root defaultOpen={defaultOpen} disabled={disabled} className="ui-disclosure">
+  return <CollapsiblePrimitive.Root
+    defaultOpen={open === undefined ? defaultOpen : undefined}
+    open={open}
+    onOpenChange={onOpenChange}
+    disabled={disabled}
+    className="ui-disclosure"
+  >
     <CollapsiblePrimitive.Trigger className="ui-disclosure-trigger">{title}<ChevronDown size={16} aria-hidden="true" /></CollapsiblePrimitive.Trigger>
     <CollapsiblePrimitive.Content className="ui-disclosure-content">{children}</CollapsiblePrimitive.Content>
   </CollapsiblePrimitive.Root>;

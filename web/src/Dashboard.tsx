@@ -97,6 +97,8 @@ export default function Dashboard() {
 function DashboardView({
   config,
   change,
+  commitSettings,
+  discardSettings,
   status,
   error,
   retry,
@@ -625,7 +627,8 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
       {editor?.type === "settings" && (
         <Settings
           config={config}
-          apply={apply}
+          commitSettings={commitSettings}
+          discardSettings={discardSettings}
           imported={(c, id) => {
             apply(c);
             setEdit(true);

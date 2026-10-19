@@ -36,22 +36,55 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+const setPaletteColour = (label: string, hex: string) => {
+  fireEvent.click(screen.getByRole("button", { name: label }));
+  const field = screen.getByLabelText(`${label} hex`);
+  fireEvent.change(field, { target: { value: hex } });
+  fireEvent.blur(field);
+  fireEvent.click(screen.getByRole("button", { name: `Close ${label} picker` }));
+};
 const setup = (cfg: Config = config()) => {
   const apply = vi.fn(),
     close = vi.fn(),
     imported = vi.fn(),
-    preview = vi.fn();
+    preview = vi.fn(),
+    discardSettings = vi.fn();
+  const commitSettings = vi.fn(
+    async (settings: {
+      dashboard: Config["dashboard"];
+      appearance: Config["appearance"];
+    }) => {
+      const prior = apply.mock.calls.at(-1)?.[0] as Config | undefined;
+      const merged = {
+        ...(prior ?? cfg),
+        dashboard: settings.dashboard,
+        appearance: settings.appearance,
+      };
+      apply(merged);
+      return { status: "saved" as const, config: merged };
+    },
+  );
   const result = render(
     <Settings
       config={cfg}
-      apply={apply}
+      commitSettings={commitSettings}
+      discardSettings={discardSettings}
       close={close}
       imported={imported}
       onPreview={preview}
       readOnly={false}
     />,
   );
-  return { ...result, container: document.body, apply, close, imported, preview };
+  return {
+    ...result,
+    container: document.body,
+    apply,
+    commitSettings,
+    discardSettings,
+    close,
+    imported,
+    preview,
+  };
 };
 const page = (name: string) =>
   fireEvent.click(screen.getByRole("button", { name }));
@@ -59,7 +92,7 @@ const page = (name: string) =>
 const flushPreview = () =>
   new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 describe("settings navigation and draft safety", () => {
-  it("keeps a draft across sections and blocks import and backup until it is applied", () => {
+  it("keeps a draft across sections and blocks import and backup until it is applied", async () => {
     const { apply } = setup();
     fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
       target: { value: "My server" },
@@ -71,10 +104,16 @@ describe("settings navigation and draft safety", () => {
     fireEvent.keyDown(screen.getByRole("combobox", {name: "Font"}), {key: "ArrowDown"});
     fireEvent.click(screen.getByRole("option", {name: "Oxanium"}));
     page("Import & backup");
-    expect(screen.queryByText("Confirm import")).toBeNull();
-    expect(screen.getByRole("button", { name: "About Import" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "About Import" }));
-    expect(screen.getByText(/Apply your settings first/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Apply or discard your settings changes before importing or exporting/i,
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Import source" })).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Layout file" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
     expect(
       (
         screen.getByRole("button", {
@@ -88,6 +127,7 @@ describe("settings navigation and draft safety", () => {
     ).toBe("My server");
     page("About");
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].dashboard.title).toBe("My server");
     expect(apply.mock.calls[0][0].appearance.paneTitleSize).toBe(20);
     expect(apply.mock.calls[0][0].appearance.fontFamily).toBe("oxanium");
@@ -104,21 +144,35 @@ describe("settings navigation and draft safety", () => {
     page("Cancel"); page("Discard");
     await waitFor(() => expect(close).toHaveBeenCalledOnce());
   });
-  it("validates hidden sections before applying", () => {
+  it("validates hidden sections before applying", async () => {
     const { apply } = setup();
     page("Appearance");
     fireEvent.click(
       screen.getByRole("button", {name: "Custom palette"}),
     );
-    fireEvent.change(screen.getByLabelText("Text", { exact: true }), {
-      target: { value: "#111720" },
-    });
+    setPaletteColour("Text", "#111720");
     page("General");
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert").textContent).toMatch(/contrast/i);
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("navigation", { name: "Settings sections" })
+          .querySelector('[aria-current="page"]')?.textContent,
+      ).toMatch(/Appearance/i),
+    );
+    expect(
+      screen.getByRole("button", { name: "Custom palette" }).getAttribute("aria-expanded"),
+    ).toBe("true");
+    expect(
+      screen.getAllByRole("alert").some((el) => /contrast/i.test(el.textContent || "")),
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "Text" }).getAttribute("aria-invalid")).toBe(
+      "true",
+    );
   });
-  it("composes header brand from page title, icon and custom logo with Show/Hide", () => {
+  it("composes header brand from page title, icon and custom logo with Show/Hide", async () => {
     const { apply } = setup();
     expect(screen.getByRole("textbox", { name: "Page title" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hide page title" })).toBeTruthy();
@@ -131,6 +185,7 @@ describe("settings navigation and draft safety", () => {
     expect(screen.getByRole("button", { name: "Show icon" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "rocket" }));
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].dashboard).toMatchObject({
       showIcon: false,
       builtinIcon: "rocket",
@@ -187,6 +242,7 @@ describe("settings navigation and draft safety", () => {
     expect(drafted.dashboard.icon).toBe("/media/assets/icon-asset-1");
     fireEvent.click(screen.getByRole("button", { name: "Remove custom icon" }));
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].dashboard.icon).toBe("");
   });
   it("uploads a custom logo from URL and clears with Remove", async () => {
@@ -211,6 +267,7 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove custom logo" }));
     expect(screen.getByRole("button", { name: "Upload custom logo" })).toBeTruthy();
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].dashboard.logo).toBe("");
   });
   it("applies a file logo from the inline drop target", async () => {
@@ -320,7 +377,7 @@ describe("settings navigation and draft safety", () => {
       .at(-1) as Config;
     expect(drafted.dashboard.logo).toBe("/media/assets/logo-asset-dismiss");
   });
-  it("offers Appearance and Background pages with ordered headings and no miniature previews", { timeout: 15000 }, () => {
+  it("offers Appearance and Background pages with ordered headings and no miniature previews", { timeout: 15000 }, async () => {
     const { container } = setup();
     for (const name of [
       "General",
@@ -456,7 +513,7 @@ describe("settings navigation and draft safety", () => {
     fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog", { name: "Tint" })).toBeNull();
   });
-  it("keeps labels on General and retains glass tuning across finish and page changes", { timeout: 10000 }, () => {
+  it("keeps labels on General and retains glass tuning across finish and page changes", { timeout: 10000 }, async () => {
     const { apply } = setup();
     page("Panes");
     expect(screen.queryByRole("heading", { name: "Fine tuning" })).toBeNull();
@@ -486,12 +543,13 @@ describe("settings navigation and draft safety", () => {
       ).getAttribute("aria-checked"),
     ).toBe("false");
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].appearance).toMatchObject({
       showAppLabels: false,
       glass: { mode: "glass", opacity: 55 },
     });
   });
-  it("keeps accent choices independent of the custom palette disclosure", () => {
+  it("keeps accent choices independent of the custom palette disclosure", async () => {
     const { apply, container } = setup();
     page("Appearance");
     page("Blue");
@@ -502,9 +560,10 @@ describe("settings navigation and draft safety", () => {
       screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
     ).toBe("true");
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].appearance.palette.accent).toBe("#7db7ff");
   });
-  it("remaps named accent chips when the theme changes", () => {
+  it("remaps named accent chips when the theme changes", async () => {
     const { apply } = setup();
     page("Appearance");
     page("Blue");
@@ -513,6 +572,7 @@ describe("settings navigation and draft safety", () => {
       screen.getByRole("button", { name: "Blue" }).getAttribute("aria-pressed"),
     ).toBe("true");
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply.mock.calls[0][0].appearance).toMatchObject({
       theme: "light",
       palette: { accent: "#1d4f91" },
@@ -544,6 +604,7 @@ describe("settings navigation and draft safety", () => {
     expect(live.appearance.theme).toBe("light");
     expect(live.items).toEqual([]);
     page("Apply settings");
+    await act(async () => { await Promise.resolve(); });
     expect(apply).toHaveBeenCalledOnce();
     expect(apply.mock.calls[0][0].appearance.theme).toBe("light");
   });
@@ -744,6 +805,7 @@ it("late missing-file checks preserve the latest selection and Cancel snapshot",
   expect(screen.getByRole("button", { name: "Ocean" }).getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(screen.getByRole("button", { name: "Use wallpaper" }));
   fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+  await act(async () => { await Promise.resolve(); });
   const saved = apply.mock.calls[0][0];
   expect(saved.appearance.background.wallpaper).toEqual({ kind: "gradient", preset: "ocean" });
   expect(saved.appearance.background.library).toEqual([]);
@@ -755,7 +817,7 @@ it("updates selected uploads immediately, survives navigation, and saves the ent
   const cfg = config();
   cfg.appearance.background = {wallpaper:{kind:"none"},library:[first,second],photoMotion:{style:"none",intensity:40},themeOverlayOpacity:25};
   vi.spyOn(globalThis,"fetch").mockImplementation(async (input) => new Response(JSON.stringify({kind:"image",name:String(input).includes("first") ? "First" : "Second"}),{status:200}));
-  const {apply} = setup(cfg);
+  const {apply, close} = setup(cfg);
   page("Background");
   fireEvent.click(screen.getByRole("button",{name:"Change wallpaper"}));
   fireEvent.click(screen.getByRole("button",{name:"My media"}));
@@ -773,9 +835,9 @@ it("updates selected uploads immediately, survives navigation, and saves the ent
   expect(within(strip).getAllByRole("button")).toHaveLength(2);
   fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
   fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
-  expect(loadRecentWallpapers()).toEqual([]);
-  flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
+  await act(async () => { await Promise.resolve(); });
   expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["image:asset:second","image:asset:first"]);
+  await waitFor(() => expect(close).toHaveBeenCalled());
 });
 
 it("restores history on chooser discard and leaves saved history unchanged on Settings Cancel", async () => {
@@ -819,7 +881,119 @@ it("tracks built-ins immediately and recognises history-only changes", async () 
   expect(screen.getByRole("alertdialog",{name:"Discard wallpaper changes?"})).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Keep editing"}));
   fireEvent.click(screen.getByRole("button",{name:"Use wallpaper"}));
-  fireEvent.click(screen.getByRole("button",{name:"Apply settings"}));
+  fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+  await act(async () => { await Promise.resolve(); });
   flushPendingRecentWallpaper(apply.mock.calls[0][0].appearance.background);
   expect(loadRecentWallpapers().map(e=>e.key)).toEqual(["video:builtin:aurora@v1","video:builtin:neon-wave@v1"]);
+});
+
+
+describe("settings apply lifecycle", () => {
+  it("keeps the dialog open until commitSettings acknowledges the snapshot", async () => {
+    let finish!: (value: { status: "saved"; config: Config }) => void;
+    const gate = new Promise<{ status: "saved"; config: Config }>((resolve) => {
+      finish = resolve;
+    });
+    const close = vi.fn();
+    const cfg = config();
+    const commitSettings = vi.fn(async (settings: {
+      dashboard: Config["dashboard"];
+      appearance: Config["appearance"];
+    }) => {
+      const merged = { ...cfg, ...settings };
+      await gate;
+      return { status: "saved" as const, config: merged };
+    });
+    render(
+      <Settings
+        config={cfg}
+        commitSettings={commitSettings}
+        discardSettings={vi.fn()}
+        close={close}
+        imported={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
+      target: { value: "Saved later" },
+    });
+    page("Apply settings");
+    expect(screen.getByText(/Saving settings/i)).toBeTruthy();
+    expect(close).not.toHaveBeenCalled();
+    page("Cancel");
+    expect(close).not.toHaveBeenCalled();
+    await act(async () => {
+      finish({
+        status: "saved",
+        config: {
+          ...cfg,
+          dashboard: { ...cfg.dashboard, title: "Saved later" },
+        },
+      });
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  });
+
+  it("offers Retry after a failed save and discards abandoned drafts on Cancel", async () => {
+    const discardSettings = vi.fn();
+    const close = vi.fn();
+    const cfg = config();
+    const commitSettings = vi
+      .fn()
+      .mockResolvedValueOnce({ status: "failed", error: "Save failed" })
+      .mockResolvedValueOnce({
+        status: "saved",
+        config: { ...cfg, dashboard: { ...cfg.dashboard, title: "Retried" } },
+      });
+    render(
+      <Settings
+        config={cfg}
+        commitSettings={commitSettings}
+        discardSettings={discardSettings}
+        close={close}
+        imported={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
+      target: { value: "Retried" },
+    });
+    page("Apply settings");
+    await waitFor(() => expect(screen.getByText(/Save failed/i)).toBeTruthy());
+    expect(close).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry save" }));
+    await waitFor(() => expect(commitSettings).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
+  });
+
+  it("offers Reload on conflict without closing the draft", async () => {
+    const close = vi.fn();
+    const cfg = config();
+    render(
+      <Settings
+        config={cfg}
+        commitSettings={vi.fn(async () => ({
+          status: "conflict" as const,
+          error: "Configuration changed elsewhere.",
+        }))}
+        discardSettings={vi.fn()}
+        close={close}
+        imported={vi.fn()}
+        readOnly={false}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Page title" }), {
+      target: { value: "Conflicted" },
+    });
+    page("Apply settings");
+    await waitFor(() =>
+      expect(screen.getByText(/Configuration changed elsewhere/i)).toBeTruthy(),
+    );
+    expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+    expect(close).not.toHaveBeenCalled();
+    expect(
+      (screen.getByRole("textbox", { name: "Page title" }) as HTMLInputElement).value,
+    ).toBe("Conflicted");
+  });
 });

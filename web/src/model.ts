@@ -9,6 +9,7 @@ import {
   validateVisuals,
 } from "./appearance";
 import { builtinIconIds, type BuiltinIconId } from "./brandIcons";
+import { fail } from "./validation";
 export type Geometry = { x: number; y: number; w: number; h: number };
 export type App = {
   id: string;
@@ -116,7 +117,7 @@ const keys = (v: unknown, allowed: string[]) => {
     Array.isArray(v) ||
     Object.keys(v).some((k) => !allowed.includes(k))
   )
-    throw Error("Unknown or malformed configuration fields.");
+    fail("", "unknown_fields", "Unknown or malformed configuration fields.");
 };
 const integer = (v: unknown, min: number, max: number) =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
@@ -159,29 +160,29 @@ export function validate(value: unknown): asserts value is Config {
       !(builtinIconIds as readonly string[]).includes(c.dashboard.builtinIcon)) ||
     !["fixed", "full"].includes(c.dashboard.widthMode)
   )
-    throw Error("Unsupported version or dashboard settings.");
+    fail("dashboard", "unsupported_dashboard", "Unsupported version or dashboard settings.");
   if (!integer(c.dashboard.width, 768, 3840))
-    throw Error("Dashboard width must be a whole number from 768 to 3840.");
+    fail("dashboard.width", "invalid_width", "Dashboard width must be a whole number from 768 to 3840.");
   if (!["dark", "light"].includes(c.appearance.theme))
-    throw Error("Invalid appearance settings.");
+    fail("appearance", "invalid_appearance", "Invalid appearance settings.");
   if (
     c.appearance.paneTitleSize !== undefined &&
     !integer(c.appearance.paneTitleSize, 14, 22)
   )
-    throw Error("Pane title size must be a whole number from 14 to 22.");
+    fail("appearance.paneTitleSize", "invalid_pane_title_size", "Pane title size must be a whole number from 14 to 22.");
   if (
     c.appearance.fontFamily !== undefined &&
     !uiFonts.some((f) => f.id === c.appearance.fontFamily)
   )
-    throw Error("Choose Geist, Rubik or Oxanium.");
+    fail("appearance.fontFamily", "invalid_font", "Choose Geist, Rubik or Oxanium.");
   if (
     typeof c.appearance.showAppLabels !== "boolean" ||
     typeof c.appearance.showButtonLabels !== "boolean"
   )
-    throw Error("Invalid appearance settings.");
+    fail("appearance", "invalid_appearance", "Invalid appearance settings.");
   validateVisuals(c.appearance);
   if (!Array.isArray(c.items) || c.items.length > 100)
-    throw Error("At most 100 panes are supported.");
+    fail("items", "too_many_panes", "At most 100 panes are supported.");
   const ids = new Set<string>();
   let total = 0;
   for (const [i, p] of c.items.entries()) {
@@ -194,7 +195,7 @@ export function validate(value: unknown): asserts value is Config {
       p.type !== "pane" ||
       !text(p.title, 100)
     )
-      throw Error("Invalid pane identity or title.");
+      fail("items", "invalid_pane", "Invalid pane identity or title.");
     ids.add(p.id);
     const g = p.layout;
     if (
@@ -206,15 +207,15 @@ export function validate(value: unknown): asserts value is Config {
       g.y + frame(g).h > MAX_ROWS ||
       c.items.slice(0, i).some((p) => overlaps(frame(p.layout), frame(g)))
     )
-      throw Error("Panes must stay within the grid and cannot overlap.");
+      fail("items", "invalid_layout", "Panes must stay within the grid and cannot overlap.");
     if (
       !Array.isArray(p.apps) ||
       p.apps.length > 500 ||
       (total += p.apps.length) > 2000
     )
-      throw Error("Too many apps.");
+      fail("items", "too_many_apps", "Too many apps.");
     if (g.w < 1 || g.h < 1)
-      throw Error("Pane is too small for an app cell.");
+      fail("items", "pane_too_small", "Pane is too small for an app cell.");
     const slots = new Set<string>();
     for (const a of p.apps) {
       keys(a, [
@@ -235,7 +236,7 @@ export function validate(value: unknown): asserts value is Config {
         !a.name ||
         typeof a.openInNewTab !== "boolean"
       )
-        throw Error("Invalid app identity or name.");
+        fail("items", "invalid_app", "Invalid app identity or name.");
       ids.add(a.id);
       if (
         !text(a.url, 2048) ||
@@ -245,14 +246,16 @@ export function validate(value: unknown): asserts value is Config {
           !/^dashboard-icons:[a-z0-9][a-z0-9-]{0,100}$/.test(a.icon) &&
           !validURL(a.icon, false))
       )
-        throw Error("Use HTTP(S) addresses without credentials.");
+        fail("items", "invalid_url", "Use HTTP(S) addresses without credentials.");
       const slot = `${a.col}:${a.row}`;
       if (
         !integer(a.col, 0, g.w - 1) ||
         !integer(a.row, 0, g.h - 1) ||
         slots.has(slot)
       )
-        throw Error(
+        fail(
+          "items",
+          "occupied_slot",
           "A pane would clip an app or has an occupied slot. Move apps or enlarge the pane first.",
         );
       slots.add(slot);
@@ -263,7 +266,7 @@ export function validate(value: unknown): asserts value is Config {
           !text(a.source.id, 500) ||
           !a.source.id
         )
-          throw Error("Invalid source identity.");
+          fail("items", "invalid_source", "Invalid source identity.");
       }
     }
   }

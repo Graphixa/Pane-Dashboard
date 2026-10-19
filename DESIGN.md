@@ -186,6 +186,9 @@ interaction/accessibility tests, then migrate its consumers.
   never dismiss or discard them as a side effect of a size calculation.
 - Settings preview remains temporary; Cancel restores applied appearance. Reference
   examples never save. Preserve revision protection and user-visible save failures.
+- Settings Apply keeps the dialog open with a busy Saving control until the submitted
+  snapshot is acknowledged; field errors use `aria-invalid` / `aria-describedby` and
+  Custom palette uses `ColourField`.
 - At narrow widths and increased zoom, forms and action groups wrap. Keep important
   actions reachable. Desktop dashboard coordinates remain canonical; mobile stays
   read-only and never writes presentation coordinates.

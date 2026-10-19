@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
-import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
+import { Button, ColourField, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import type { Config } from "./model";
@@ -429,6 +429,9 @@ export default function AppearanceEditor({
   onPreviewAdjust,
   recent,
   setRecent,
+  fieldErrors = {},
+  openDisclosures = [],
+  onDisclosureOpen,
 }: {
   section: "general" | "appearance" | "background" | "panes";
   draft: Config;
@@ -437,6 +440,9 @@ export default function AppearanceEditor({
   onPreviewAdjust?: (active: boolean) => void;
   recent: RecentWallpaperEntry[];
   setRecent: Dispatch<SetStateAction<RecentWallpaperEntry[]>>;
+  fieldErrors?: Record<string, string>;
+  openDisclosures?: string[];
+  onDisclosureOpen?: (title: string, open: boolean) => void;
 }) {
   const a = draft.appearance,
     b = normaliseBackground(a.background ?? defaultBackground),
@@ -533,12 +539,30 @@ export default function AppearanceEditor({
                 </Button>
               }
             >
-              <Input
-                maxLength={100}
-                value={draft.dashboard.title}
-                aria-label="Page title"
-                onChange={(e) => header({ title: e.target.value })}
-              />
+              <>
+                <Input
+                  maxLength={100}
+                  value={draft.dashboard.title}
+                  aria-label="Page title"
+                  data-settings-field="dashboard.title"
+                  aria-invalid={fieldErrors["dashboard.title"] ? true : undefined}
+                  aria-describedby={
+                    fieldErrors["dashboard.title"]
+                      ? "dashboard.title-error"
+                      : undefined
+                  }
+                  onChange={(e) => header({ title: e.target.value })}
+                />
+                {fieldErrors["dashboard.title"] && (
+                  <p
+                    className="ui-field-error"
+                    id="dashboard.title-error"
+                    role="alert"
+                  >
+                    {fieldErrors["dashboard.title"]}
+                  </p>
+                )}
+              </>
             </SettingsRow>
             <SettingsRow
               className="icon-brand-row"
@@ -842,33 +866,44 @@ export default function AppearanceEditor({
               ))}
             </div>
           </SettingsRow>
-          <Disclosure title="Custom palette">
-            <div className="colour-grid">
-              {(
-                [
-                  ["background", "Page"],
-                  ["surface", "Pane surface"],
-                  ["text", "Text"],
-                  ["accent", "Accent"],
-                ] as const
-              ).map(([key, label]) => (
-                <Label key={key}>
-                  {label}
-                  <Input
-                    type="color"
-                    value={p[key]}
-                    onChange={(e) =>
-                      appearance({ palette: { ...p, [key]: e.target.value } })
-                    }
-                  />
-                </Label>
-              ))}
-            </div>
+          <Disclosure
+            title="Custom palette"
+            open={openDisclosures.includes("Custom palette")}
+            onOpenChange={(open) => onDisclosureOpen?.("Custom palette", open)}
+          >
+            {(
+              [
+                ["background", "Page"],
+                ["surface", "Pane surface"],
+                ["text", "Text"],
+                ["accent", "Accent"],
+              ] as const
+            ).map(([key, label]) => (
+              <ColourField
+                key={key}
+                label={label}
+                colour={p[key]}
+                fieldPath={`appearance.palette.${key}`}
+                error={
+                  key === "text"
+                    ? fieldErrors["appearance.palette.text"]
+                    : fieldErrors[`appearance.palette.${key}`]
+                }
+                onColour={(colour) =>
+                  appearance({ palette: { ...p, [key]: colour } })
+                }
+              />
+            ))}
           </Disclosure>
-          {badContrast && (
+          {badContrast && !fieldErrors["appearance.palette.text"] && (
             <SettingsRow>
               <Notice tone="error">
-                Increase text contrast before applying.
+                {! (contrast(p.text, p.surface) >= 4.5) &&
+                !(contrast(p.text, p.background) >= 4.5)
+                  ? "Text needs at least 4.5:1 contrast against the page and pane colours."
+                  : !(contrast(p.text, p.surface) >= 4.5)
+                    ? "Text needs at least 4.5:1 contrast against the pane surface colour."
+                    : "Text needs at least 4.5:1 contrast against the page colour."}
               </Notice>
             </SettingsRow>
           )}

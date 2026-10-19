@@ -114,6 +114,9 @@ describe("interaction boundary", () => {
       target: { value: "20" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Apply settings" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Settings" })).toBeNull(),
+    );
     const brand = screen.getByRole("link", { name: "Akira home" });
     expect(brand.querySelector(".brand-logo")?.getAttribute("src")).toBe(
       "https://example.com/logo.png",

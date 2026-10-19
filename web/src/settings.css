@@ -751,3 +751,24 @@
   }
 }
 
+
+.settings-error-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settings-error-links {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.settings-error-link {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+}

@@ -370,12 +370,17 @@ export function ColourField({
   onColour,
   paintLive,
   hint,
+  error,
+  fieldPath,
 }: {
   label: string;
   colour: string;
   onColour: (colour: string) => void;
   paintLive?: (colour: string) => void;
   hint?: string;
+  error?: string;
+  /** Stable Settings field path for focus routing after validation. */
+  fieldPath?: string;
 }) {
   const [open, setOpen] = useState(false);
   const { live, hex, setHex, noteInput, applyHex, flush } = useDeferredColour({
@@ -389,46 +394,57 @@ export function ColourField({
   };
   const picking = open && live.toLowerCase() !== colour.toLowerCase();
   const shown = picking ? live : colour;
+  const errorId = fieldPath ? `${fieldPath}-error` : undefined;
   return (
     <SettingsRow label={label} hint={hint}>
-      <Popover
-        label={label}
-        open={open}
-        onOpenChange={(next) => {
-          if (!next) flush();
-          setOpen(next);
-        }}
-        trigger={
-          <Button
-            variant="surface"
-            type="button"
-            className="colour-field-trigger"
-            aria-label={label}
+      <div className="colour-field">
+        <Popover
+          label={label}
+          open={open}
+          onOpenChange={(next) => {
+            if (!next) flush();
+            setOpen(next);
+          }}
+          trigger={
+            <Button
+              variant="surface"
+              type="button"
+              className="colour-field-trigger"
+              aria-label={label}
+              title={label}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={error ? errorId : undefined}
+              data-settings-field={fieldPath}
+            >
+              <span
+                className="colour-field-swatch"
+                style={{ background: shown }}
+                aria-hidden="true"
+              />
+              <span className="colour-field-hex">{shown}</span>
+            </Button>
+          }
+        >
+          <PopoverHead
             title={label}
-          >
-            <span
-              className="colour-field-swatch"
-              style={{ background: shown }}
-              aria-hidden="true"
-            />
-            <span className="colour-field-hex">{shown}</span>
-          </Button>
-        }
-      >
-        <PopoverHead
-          title={label}
-          closeLabel={`Close ${label} picker`}
-          onClose={close}
-        />
-        <ColourPopoverFields
-          pickerLabel={label}
-          swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : colour}
-          hex={hex}
-          onHexChange={setHex}
-          onSwatchChange={noteInput}
-          onHexCommit={applyHex}
-        />
-      </Popover>
+            closeLabel={`Close ${label} picker`}
+            onClose={close}
+          />
+          <ColourPopoverFields
+            pickerLabel={label}
+            swatchValue={/^#[0-9a-f]{6}$/.test(live) ? live : colour}
+            hex={hex}
+            onHexChange={setHex}
+            onSwatchChange={noteInput}
+            onHexCommit={applyHex}
+          />
+        </Popover>
+        {error && (
+          <p className="ui-field-error" id={errorId} role="alert">
+            {error}
+          </p>
+        )}
+      </div>
     </SettingsRow>
   );
 }

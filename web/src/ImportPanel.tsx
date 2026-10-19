@@ -1,5 +1,5 @@
 import { useConfirmation } from "./design/components";
-import { Button, Label, Input, Checkbox, Select, SelectOption, Notice, Text, TextField, SelectField } from "./design/components";
+import { Button, FieldGroup, Label, Input, Checkbox, Select, SelectOption, Notice, Text, TextField, SelectField } from "./design/components";
 import { useState } from "react";
 import { parse } from "yaml";
 import {
@@ -40,9 +40,11 @@ function address(host: string, port: number) {
 export default function ImportPanel({
   config,
   imported,
+  disabled = false,
 }: {
   config: Config;
   imported: (c: Config, id?: string) => void;
+  disabled?: boolean;
 }) {
   const { confirm, confirmation } = useConfirmation();
 const [source, setSource] = useState("file"),
@@ -80,7 +82,7 @@ const [source, setSource] = useState("file"),
   const patch = (i: number, update: Partial<Selection>) =>
     setApps(apps.map((a, j) => (j === i ? { ...a, ...update } : a)));
   return (
-    <> {confirmation} <div className="import-panel">
+    <> {confirmation} <FieldGroup disabled={disabled}><div className="import-panel">
       <div
         className="choice-row finish-choices import-source"
         role="group"
@@ -404,6 +406,6 @@ const [source, setSource] = useState("file"),
       {error && (
         <Notice tone="error">{error}</Notice>
       )}
-    </div> </>
+    </div></FieldGroup> </>
   );
 }

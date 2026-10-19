@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { fail } from "./validation";
 
 export type MediaRef =
   | { source: "asset"; assetId: string }
@@ -495,7 +496,7 @@ function fields(value: unknown, allowed: string[]) {
     Array.isArray(value) ||
     Object.keys(value).some((k) => !allowed.includes(k))
   )
-    throw Error("Unknown appearance fields.");
+    fail("appearance", "unknown_fields", "Unknown appearance fields.");
 }
 export function validateVisuals(a: AppearanceOptions) {
   if (a.background !== undefined) {
@@ -517,22 +518,22 @@ export function validateVisuals(a: AppearanceOptions) {
       b.library.length > maxLibraryEntries ||
       b.library.some((e) => !isMediaRef(e))
     )
-      throw Error("Invalid background settings.");
+      fail("appearance.background", "invalid_background", "Invalid background settings.");
     const w = b.wallpaper;
     if (
       (w.kind === "image" || w.kind === "video") &&
       w.media.source !== "builtin" &&
       !b.library.some((e) => mediaRefEqual(e, w.media))
     )
-      throw Error("Active wallpaper must be present in the media library.");
+      fail("appearance.background.wallpaper", "wallpaper_not_in_library", "Active wallpaper must be present in the media library.");
     if (b.effect && !effectIds.includes(b.effect.id))
-      throw Error("Invalid background effect.");
+      fail("appearance.background.effect", "invalid_effect", "Invalid background effect.");
     if (
       b.tint &&
       (!/^#[a-fA-F0-9]{6}$/.test(b.tint.colour) ||
         !within(b.tint.opacity, 0, 80))
     )
-      throw Error("Invalid creative tint.");
+      fail("appearance.background.tint", "invalid_tint", "Invalid creative tint.");
   }
   if (a.glass !== undefined) {
     a.glass = normaliseGlass(a.glass);
@@ -552,7 +553,7 @@ export function validateVisuals(a: AppearanceOptions) {
       !within(a.glass.aberration, 0, 100) ||
       !within(a.glass.saturation, 0, 100)
     )
-      throw Error("Invalid global glass settings.");
+      fail("appearance.glass", "invalid_glass", "Invalid global glass settings.");
   }
   if (a.palette !== undefined) {
     fields(a.palette, ["background", "surface", "text", "accent"]);
@@ -562,13 +563,26 @@ export function validateVisuals(a: AppearanceOptions) {
         (v) => typeof v === "string" && /^#[a-fA-F0-9]{6}$/.test(v),
       )
     )
-      throw Error("Use six-digit hex colours.");
-    if (
-      contrast(p.text, p.surface) < 4.5 ||
-      contrast(p.text, p.background) < 4.5
-    )
-      throw Error(
+      fail("appearance.palette", "invalid_hex", "Use six-digit hex colours.");
+    const surfaceOk = contrast(p.text, p.surface) >= 4.5;
+    const pageOk = contrast(p.text, p.background) >= 4.5;
+    if (!surfaceOk && !pageOk)
+      fail(
+        "appearance.palette.text",
+        "contrast",
         "Text needs at least 4.5:1 contrast against the page and pane colours.",
+      );
+    if (!surfaceOk)
+      fail(
+        "appearance.palette.text",
+        "contrast_surface",
+        "Text needs at least 4.5:1 contrast against the pane surface colour.",
+      );
+    if (!pageOk)
+      fail(
+        "appearance.palette.text",
+        "contrast_page",
+        "Text needs at least 4.5:1 contrast against the page colour.",
       );
   }
 }

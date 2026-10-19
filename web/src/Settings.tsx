@@ -24,7 +24,19 @@ import {
 import { download } from "./Editors";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
-import { loadRecentDraft, queueRecentWallpaperOnSave } from "./wallpaperRecent";
+import {
+  flushPendingRecentWallpaper,
+  loadRecentDraft,
+  queueRecentWallpaperOnSave,
+} from "./wallpaperRecent";
+import type { SaveOutcome } from "./useConfig";
+import {
+  ConfigValidationError,
+  firstSettingsIssue,
+  settingsTarget,
+  type SettingsPage,
+  type ValidationIssue,
+} from "./validation";
 
 const pages = [
   ["general", "General", Settings2],
@@ -38,16 +50,23 @@ type Page = (typeof pages)[number][0];
 const settingsValue = (c: Config) =>
   JSON.stringify([c.dashboard, c.appearance]);
 
+type ApplyPhase = "idle" | "saving" | "failed" | "conflict";
+
 export default function Settings({
   config,
-  apply,
+  commitSettings,
+  discardSettings,
   imported,
   close,
   readOnly,
   onPreview,
 }: {
   config: Config;
-  apply: (c: Config) => void;
+  commitSettings: (settings: {
+    dashboard: Config["dashboard"];
+    appearance: Config["appearance"];
+  }) => Promise<SaveOutcome>;
+  discardSettings: () => void;
   imported: (c: Config, id?: string) => void;
   close: () => void;
   readOnly: boolean;
@@ -56,9 +75,16 @@ export default function Settings({
   const { confirm, confirmation } = useConfirmation();
   const [page, setPage] = useState<Page>("general");
   const [draft, setDraft] = useState(() => clone(config));
-  const [recent, setRecent] = useState(() => loadRecentDraft(config.appearance.background));
+  const [recent, setRecent] = useState(() =>
+    loadRecentDraft(config.appearance.background),
+  );
   const initialRecent = useRef(JSON.stringify(recent));
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [issues, setIssues] = useState<ValidationIssue[]>([]);
+  const [focusPath, setFocusPath] = useState<string | null>(null);
+  const [openDisclosures, setOpenDisclosures] = useState<string[]>([]);
+  const [phase, setPhase] = useState<ApplyPhase>("idle");
   const [busy, setBusy] = useState(false);
   const [previewAdjust, setPreviewAdjust] = useState(false);
   const initial = useRef(settingsValue(config));
@@ -67,9 +93,16 @@ export default function Settings({
   const previewFrame = useRef(0);
   const onPreviewRef = useRef(onPreview);
   const configRef = useRef(config);
+  const session = useRef(0);
+  const submittedBody = useRef<string | null>(null);
   onPreviewRef.current = onPreview;
   configRef.current = config;
-  const dirty = settingsValue(draft) !== initial.current || JSON.stringify(recent) !== initialRecent.current;
+  const dirty =
+    settingsValue(draft) !== initial.current ||
+    JSON.stringify(recent) !== initialRecent.current;
+  const blocked = dirty || phase === "saving" || phase === "failed" || phase === "conflict";
+  const mutationsFrozen = phase === "saving" || busy;
+
   const flushPreview = () => {
     previewFrame.current = 0;
     const next = pendingPreview.current;
@@ -88,29 +121,52 @@ export default function Settings({
     if (previewFrame.current) return;
     previewFrame.current = requestAnimationFrame(flushPreview);
   };
+  const clearValidation = () => {
+    setFormError("");
+    setFieldErrors({});
+    setIssues([]);
+    setFocusPath(null);
+  };
+  const updateRecent: typeof setRecent = (value) => {
+    if (phase === "saving") return;
+    setRecent(value);
+    clearValidation();
+    if (phase === "failed" || phase === "conflict") setPhase("idle");
+  };
   const updateDraft = (c: Config | ((prev: Config) => Config)) => {
+    if (phase === "saving") return;
     setDraft((prev) => {
       const next = typeof c === "function" ? c(prev) : c;
-      setError("");
+      clearValidation();
+      if (phase === "failed" || phase === "conflict") setPhase("idle");
       previewFrom(next);
       return next;
     });
   };
+  const restoreAndClose = () => {
+    queueRecentWallpaperOnSave(undefined);
+    // Drop any optimistic settings snapshot left by a failed Apply.
+    if (phase === "failed" || phase === "conflict" || dirty)
+      discardSettings();
+    close();
+  };
   const requestClose = async () => {
+    if (phase === "saving") return;
     if (
-      (!dirty && !busy) ||
-      await confirm({
+      (!dirty && !busy && phase === "idle") ||
+      (await confirm({
         title: "Discard changes?",
         description: "Discard unsaved settings changes?",
         cancelLabel: "Keep changes",
         actionLabel: "Discard",
-      })
+      }))
     )
-      close();
+      restoreAndClose();
   };
   useEffect(() => {
     previewFrom(draft);
     return () => {
+      session.current += 1;
       if (previewFrame.current) cancelAnimationFrame(previewFrame.current);
       previewFrame.current = 0;
       // Publish the latest pending snapshot before unmount; Dashboard clears on close.
@@ -118,38 +174,208 @@ export default function Settings({
     };
   }, []);
   useEffect(() => {
-    if (!dirty && !busy) return;
+    if (!dirty && !busy && phase === "idle") return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, busy]);
+  }, [dirty, busy, phase]);
   useEffect(() => {
     if (content.current) content.current.scrollTop = 0;
   }, [page]);
-  const submit = () => {
-    if (busy || readOnly) return;
-    try {
-      const next = {
-        ...config,
-        dashboard: draft.dashboard,
-        appearance: draft.appearance,
-      };
-      validate(next);
-      apply(next);
-      queueRecentWallpaperOnSave(next.appearance.background, recent);
-      close();
-    } catch (e) {
-      setError((e as Error).message);
+  useEffect(() => {
+    if (!focusPath) return;
+    const id = window.setTimeout(() => {
+      const el = content.current?.querySelector<HTMLElement>(
+        `[data-settings-field="${focusPath}"]`,
+      );
+      el?.focus();
+      setFocusPath(null);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [focusPath, page, openDisclosures]);
+
+  const routeValidation = (nextIssues: ValidationIssue[]) => {
+    setIssues(nextIssues);
+    const map: Record<string, string> = {};
+    for (const issue of nextIssues) {
+      if (issue.path && !map[issue.path]) map[issue.path] = issue.message;
     }
+    setFieldErrors(map);
+    const primary = firstSettingsIssue(nextIssues);
+    if (!primary) {
+      setFormError(nextIssues[0]?.message || "Invalid configuration.");
+      return;
+    }
+    const target = settingsTarget(primary);
+    if (target.page) setPage(target.page as SettingsPage);
+    if (target.disclosure)
+      setOpenDisclosures((prev) =>
+        prev.includes(target.disclosure!) ? prev : [...prev, target.disclosure!],
+      );
+    setFocusPath(primary.path);
+    setFormError("");
   };
+
+  const submit = async () => {
+    if (mutationsFrozen || readOnly) return;
+    const next = {
+      ...configRef.current,
+      dashboard: draft.dashboard,
+      appearance: draft.appearance,
+    };
+    try {
+      validate(next);
+    } catch (e) {
+      if (e instanceof ConfigValidationError) routeValidation(e.issues);
+      else setFormError((e as Error).message);
+      setPhase("failed");
+      return;
+    }
+    clearValidation();
+    const mySession = session.current;
+    const body = JSON.stringify(next);
+    submittedBody.current = body;
+    setPhase("saving");
+    const outcome = await commitSettings({
+      dashboard: draft.dashboard,
+      appearance: draft.appearance,
+    });
+    if (mySession !== session.current || submittedBody.current !== body) return;
+    if (outcome.status === "saved") {
+      // Queue after the matching ack so an older autosave cannot flush history.
+      queueRecentWallpaperOnSave(outcome.config.appearance.background, recent);
+      flushPendingRecentWallpaper(outcome.config.appearance.background);
+      setPhase("idle");
+      close();
+      return;
+    }
+    if (outcome.status === "conflict") {
+      setPhase("conflict");
+      setFormError(
+        outcome.error ||
+          "Configuration changed elsewhere. Reload to continue, or keep editing this draft.",
+      );
+      return;
+    }
+    setPhase("failed");
+    setFormError(outcome.error || "Could not save settings.");
+  };
+
+  const reloadConflict = async () => {
+    if (
+      await confirm({
+        title: "Reload dashboard?",
+        description:
+          "Reload and discard unsaved settings changes from this session?",
+        cancelLabel: "Keep draft",
+        actionLabel: "Reload",
+      })
+    )
+      window.location.reload();
+  };
+
   const editable =
     page === "general" ||
     page === "appearance" ||
     page === "background" ||
     page === "panes";
+
+  const statusMessage = () => {
+    if (phase === "saving") return "Saving settings…";
+    if (formError)
+      return (
+        <Notice tone="error">
+          <div className="settings-error-stack">
+            <span>{formError}</span>
+            {phase === "conflict" && (
+              <div className="ui-actions">
+                <Button type="button" onClick={() => void reloadConflict()}>
+                  Reload
+                </Button>
+              </div>
+            )}
+            {phase === "failed" && (
+              <div className="ui-actions">
+                <Button type="button" onClick={() => void submit()}>
+                  Retry save
+                </Button>
+              </div>
+            )}
+            {issues.length > 1 && (
+              <ul className="settings-error-links">
+                {issues.map((issue) => {
+                  const target = settingsTarget(issue);
+                  if (!target.page) return null;
+                  return (
+                    <li key={`${issue.path}:${issue.code}`}>
+                      <button
+                        type="button"
+                        className="settings-error-link"
+                        onClick={() => {
+                          setPage(target.page as SettingsPage);
+                          if (target.disclosure)
+                            setOpenDisclosures((prev) =>
+                              prev.includes(target.disclosure!)
+                                ? prev
+                                : [...prev, target.disclosure!],
+                            );
+                          setFocusPath(issue.path);
+                        }}
+                      >
+                        {issue.message}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </Notice>
+      );
+    if (Object.keys(fieldErrors).length)
+      return (
+        <Notice tone="error">
+          <div className="settings-error-stack">
+            <span>{Object.values(fieldErrors)[0]}</span>
+            {issues.length > 1 && (
+              <ul className="settings-error-links">
+                {issues.slice(1).map((issue) => {
+                  const target = settingsTarget(issue);
+                  if (!target.page) return null;
+                  return (
+                    <li key={`${issue.path}:${issue.code}`}>
+                      <button
+                        type="button"
+                        className="settings-error-link"
+                        onClick={() => {
+                          setPage(target.page as SettingsPage);
+                          if (target.disclosure)
+                            setOpenDisclosures((prev) =>
+                              prev.includes(target.disclosure!)
+                                ? prev
+                                : [...prev, target.disclosure!],
+                            );
+                          setFocusPath(issue.path);
+                        }}
+                      >
+                        {issue.message}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </Notice>
+      );
+    if (busy) return "Preparing image…";
+    if (dirty) return "Unsaved changes";
+    return "Settings are up to date";
+  };
+
   return (
     <Modal
       title="Settings"
@@ -168,7 +394,7 @@ export default function Settings({
               type="button"
               key={id}
               className="ui-settings-nav"
-              disabled={busy}
+              disabled={mutationsFrozen}
               aria-current={page === id ? "page" : undefined}
               onClick={() => setPage(id)}
             >
@@ -192,20 +418,31 @@ export default function Settings({
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              submit();
+              void submit();
             }}
           >
             {editable && (
-              <FieldGroup disabled={readOnly}>
+              <FieldGroup disabled={readOnly || phase === "saving"}>
                 <div className="settings-sections">
                   <AppearanceEditor
                     recent={recent}
-                    setRecent={setRecent}
+                    setRecent={updateRecent}
                     draft={draft}
                     change={updateDraft}
                     onBusy={setBusy}
                     section={page}
                     onPreviewAdjust={setPreviewAdjust}
+                    fieldErrors={fieldErrors}
+                    openDisclosures={openDisclosures}
+                    onDisclosureOpen={(title, open) =>
+                      setOpenDisclosures((prev) =>
+                        open
+                          ? prev.includes(title)
+                            ? prev
+                            : [...prev, title]
+                          : prev.filter((t) => t !== title),
+                      )
+                    }
                   />
                 </div>
               </FieldGroup>
@@ -213,15 +450,17 @@ export default function Settings({
           </form>
           {page === "backup" && (
             <>
+              {blocked && !readOnly && (
+                <Notice>
+                  Apply or discard your settings changes before importing or
+                  exporting.
+                </Notice>
+              )}
               <Section
                 level="h3"
                 className="settings-section"
                 title="Export"
-                tip={
-                  dirty
-                    ? "Apply or discard pending changes before downloading."
-                    : "Downloads use your saved dashboard."
-                }
+                tip="Downloads use your saved dashboard."
               >
                 <SettingsGroup>
                   <SettingsRow
@@ -230,7 +469,7 @@ export default function Settings({
                   >
                     <Button
                       type="button"
-                      disabled={dirty || busy}
+                      disabled={blocked || busy}
                       onClick={() => download("pane-backup.yaml", config)}
                     >
                       Download full backup
@@ -242,7 +481,7 @@ export default function Settings({
                   >
                     <Button
                       type="button"
-                      disabled={dirty || busy}
+                      disabled={blocked || busy}
                       onClick={() =>
                         download("pane-layout.yaml", sanitiseExport(config))
                       }
@@ -252,21 +491,18 @@ export default function Settings({
                   </SettingsRow>
                 </SettingsGroup>
               </Section>
-              <Section
-                level="h3"
-                className="settings-section"
-                title="Import"
-                tip={
-                  dirty
-                    ? "Apply your settings first, or cancel and reopen Settings before importing."
-                    : undefined
-                }
-              >
-                {!dirty && !readOnly && (
+              <Section level="h3" className="settings-section" title="Import">
+                {readOnly ? (
+                  <Notice>
+                    Use a wider desktop screen to import. Saved backups remain
+                    available when you can edit.
+                  </Notice>
+                ) : (
                   <SettingsGroup>
                     <SettingsRow>
                       <ImportPanel
                         config={config}
+                        disabled={blocked || busy}
                         imported={(c, id) => {
                           imported(c, id);
                           close();
@@ -307,30 +543,24 @@ export default function Settings({
         </div>
       </div>
       <div className="settings-footer">
-        <div className="settings-status" aria-live="polite">
-          {error ? (
-            <Notice tone="error">{error}</Notice>
-          ) : busy ? (
-            "Preparing image…"
-          ) : dirty ? (
-            "Unsaved changes"
-          ) : (
-            "Settings are up to date"
-          )}
+        <div className="settings-status" aria-live="polite" aria-busy={phase === "saving" || undefined}>
+          {statusMessage()}
         </div>
         <div className="ui-actions settings-footer-actions">
-          <Button onClick={requestClose}>Cancel</Button>
+          <Button onClick={() => void requestClose()} disabled={phase === "saving"}>
+            Cancel
+          </Button>
           <Button
             type="submit"
             form="settings-form"
             variant="primary"
-            disabled={readOnly || busy}
+            busy={phase === "saving"}
+            disabled={readOnly || busy || phase === "saving"}
           >
-            Apply settings
+            {phase === "saving" ? "Saving…" : "Apply settings"}
           </Button>
         </div>
       </div>
     </Modal>
   );
 }
-
