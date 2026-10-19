@@ -3,10 +3,10 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
-import { Config } from "./model";
-import { LIVE_HOVER_PREVIEW_MS } from "./wallpaperChooser";
-import { RECENT_WALLPAPER_KEY, recordRecentWallpaper, loadRecentWallpapers, flushPendingRecentWallpaper, queueRecentWallpaperOnSave } from "./wallpaperRecent";
-import { clearVideoStillCache } from "./videoStillCache";
+import { Config } from "../../model";
+import { LIVE_HOVER_PREVIEW_MS } from "../../wallpaperChooser";
+import { RECENT_WALLPAPER_KEY, recordRecentWallpaper, loadRecentWallpapers, flushPendingRecentWallpaper, queueRecentWallpaperOnSave } from "../../wallpaperRecent";
+import { clearVideoStillCache } from "../../videoStillCache";
 const config = (): Config => ({
   version: 3,
   dashboard: { title: "Akira", widthMode: "fixed", width: 960 },

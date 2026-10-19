@@ -1,52 +1,45 @@
 import { useEffect, useRef, useState } from "react";
+import { Config, clone, validate } from "../../model";
 import {
-  Settings2,
-  Palette,
-  Image as ImageIcon,
-  PanelsTopLeft,
-  Archive,
-  Info,
-} from "lucide-react";
-import { Config, clone, sanitiseExport, validate } from "./model";
-import { appearanceStyle } from "./appearance";
-import AppearanceEditor from "./AppearanceEditor";
+  appearanceStyle,
+  defaultBackground,
+  normaliseBackground,
+} from "../../appearance";
 import {
   Button,
   FieldGroup,
   Modal,
   Notice,
-  Section,
-  SettingsGroup,
-  SettingsRow,
   Text,
   useConfirmation,
-} from "./design/components";
-import { download } from "./utils/download";
-import ImportPanel from "./ImportPanel";
-import { version } from "../package.json";
+} from "../../design/components";
 import {
   flushPendingRecentWallpaper,
   loadRecentDraft,
   queueRecentWallpaperOnSave,
-} from "./wallpaperRecent";
-import type { SaveOutcome } from "./useConfig";
+} from "../../wallpaperRecent";
+import type { SaveOutcome } from "../../useConfig";
 import {
   ConfigValidationError,
   firstSettingsIssue,
   settingsTarget,
   type SettingsPage,
   type ValidationIssue,
-} from "./validation";
+} from "../../validation";
+import {
+  SettingsNavigation,
+  settingsPages,
+  type SettingsNavPage,
+} from "./SettingsNavigation";
+import { SettingsFooter } from "./SettingsFooter";
+import GeneralSettings from "./GeneralSettings";
+import AppearanceSettings from "./AppearanceSettings";
+import PaneFinishSettings from "./PaneFinishSettings";
+import ImportBackupSettings from "./ImportBackupSettings";
+import AboutSettings from "./AboutSettings";
+import BackgroundSettings from "./background/BackgroundSettings";
+import { useAppearanceDraftHelpers } from "./draftHelpers";
 
-const pages = [
-  ["general", "General", Settings2],
-  ["appearance", "Appearance", Palette],
-  ["background", "Background", ImageIcon],
-  ["panes", "Panes", PanelsTopLeft],
-  ["backup", "Import & backup", Archive],
-  ["about", "About", Info],
-] as const;
-type Page = (typeof pages)[number][0];
 const settingsValue = (c: Config) =>
   JSON.stringify([c.dashboard, c.appearance]);
 
@@ -73,7 +66,7 @@ export default function Settings({
   onPreview?: (draft: Config | null) => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-  const [page, setPage] = useState<Page>("general");
+  const [page, setPage] = useState<SettingsNavPage>("general");
   const [draft, setDraft] = useState(() => clone(config));
   const [recent, setRecent] = useState(() =>
     loadRecentDraft(config.appearance.background),
@@ -376,6 +369,11 @@ export default function Settings({
     return "Settings are up to date";
   };
 
+  const { background } = useAppearanceDraftHelpers(updateDraft);
+  const backgroundSettings = normaliseBackground(
+    draft.appearance.background ?? defaultBackground,
+  );
+
   return (
     <Modal
       title="Settings"
@@ -388,24 +386,14 @@ export default function Settings({
     >
       {confirmation}
       <div className="settings-body">
-        <nav className="settings-sidebar" aria-label="Settings sections">
-          {pages.map(([id, label, Icon]) => (
-            <Button
-              type="button"
-              key={id}
-              className="ui-settings-nav"
-              disabled={mutationsFrozen}
-              aria-current={page === id ? "page" : undefined}
-              onClick={() => setPage(id)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </Button>
-          ))}
-        </nav>
+        <SettingsNavigation
+          page={page}
+          disabled={mutationsFrozen}
+          onNavigate={setPage}
+        />
         <div className="settings-content" ref={content}>
           <Text as="h2" variant="title" className="settings-page-title">
-            {pages.find(([id]) => id === page)?.[1]}
+            {settingsPages.find(([id]) => id === page)?.[1]}
           </Text>
           {readOnly && (
             <Notice>
@@ -424,143 +412,68 @@ export default function Settings({
             {editable && (
               <FieldGroup disabled={readOnly || phase === "saving"}>
                 <div className="settings-sections">
-                  <AppearanceEditor
-                    recent={recent}
-                    setRecent={updateRecent}
-                    draft={draft}
-                    change={updateDraft}
-                    onBusy={setBusy}
-                    section={page}
-                    onPreviewAdjust={setPreviewAdjust}
-                    fieldErrors={fieldErrors}
-                    openDisclosures={openDisclosures}
-                    onDisclosureOpen={(title, open) =>
-                      setOpenDisclosures((prev) =>
-                        open
-                          ? prev.includes(title)
-                            ? prev
-                            : [...prev, title]
-                          : prev.filter((t) => t !== title),
-                      )
-                    }
-                  />
+                  {page === "general" && (
+                    <GeneralSettings
+                      draft={draft}
+                      change={updateDraft}
+                      onBusy={setBusy}
+                      fieldErrors={fieldErrors}
+                    />
+                  )}
+                  {page === "appearance" && (
+                    <AppearanceSettings
+                      draft={draft}
+                      change={updateDraft}
+                      fieldErrors={fieldErrors}
+                      openDisclosures={openDisclosures}
+                      onDisclosureOpen={(title, open) =>
+                        setOpenDisclosures((prev) =>
+                          open
+                            ? prev.includes(title)
+                              ? prev
+                              : [...prev, title]
+                            : prev.filter((t) => t !== title),
+                        )
+                      }
+                    />
+                  )}
+                  {page === "background" && (
+                    <BackgroundSettings
+                      recent={recent}
+                      setRecent={updateRecent}
+                      settings={backgroundSettings}
+                      theme={draft.appearance.theme}
+                      onBusy={setBusy}
+                      background={background}
+                      onPreviewAdjust={setPreviewAdjust}
+                    />
+                  )}
+                  {page === "panes" && (
+                    <PaneFinishSettings draft={draft} change={updateDraft} />
+                  )}
                 </div>
               </FieldGroup>
             )}
           </form>
           {page === "backup" && (
-            <>
-              {blocked && !readOnly && (
-                <Notice>
-                  Apply or discard your settings changes before importing or
-                  exporting.
-                </Notice>
-              )}
-              <Section
-                level="h3"
-                className="settings-section"
-                title="Export"
-                tip="Downloads use your saved dashboard."
-              >
-                <SettingsGroup>
-                  <SettingsRow
-                    label="Private backup"
-                    hint="Includes app addresses, Docker identities and uploaded images."
-                  >
-                    <Button
-                      type="button"
-                      disabled={blocked || busy}
-                      onClick={() => download("pane-backup.yaml", config)}
-                    >
-                      Download full backup
-                    </Button>
-                  </SettingsRow>
-                  <SettingsRow
-                    label="Share a layout"
-                    hint="Omits app addresses and Docker identities. Review images before sharing."
-                  >
-                    <Button
-                      type="button"
-                      disabled={blocked || busy}
-                      onClick={() =>
-                        download("pane-layout.yaml", sanitiseExport(config))
-                      }
-                    >
-                      Export shareable layout
-                    </Button>
-                  </SettingsRow>
-                </SettingsGroup>
-              </Section>
-              <Section level="h3" className="settings-section" title="Import">
-                {readOnly ? (
-                  <Notice>
-                    Use a wider desktop screen to import. Saved backups remain
-                    available when you can edit.
-                  </Notice>
-                ) : (
-                  <SettingsGroup>
-                    <SettingsRow>
-                      <ImportPanel
-                        config={config}
-                        disabled={blocked || busy}
-                        imported={(c, id) => {
-                          imported(c, id);
-                          close();
-                        }}
-                      />
-                    </SettingsRow>
-                  </SettingsGroup>
-                )}
-              </Section>
-            </>
+            <ImportBackupSettings
+              config={config}
+              blocked={blocked}
+              busy={busy}
+              readOnly={readOnly}
+              imported={imported}
+              close={close}
+            />
           )}
-          {page === "about" && (
-            <Section
-              level="h3"
-              className="settings-section"
-              title="Pane"
-              description={`Version ${version}`}
-            >
-              <Text>A self-hosted dashboard for your apps.</Text>
-              <div className="about-links">
-                <a
-                  href="https://github.com/Graphixa/Pane-Dashboard"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  GitHub
-                </a>
-                <a
-                  href="https://github.com/Graphixa/Pane-Dashboard/issues"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Report an issue
-                </a>
-              </div>
-            </Section>
-          )}
+          {page === "about" && <AboutSettings />}
         </div>
       </div>
-      <div className="settings-footer">
-        <div className="settings-status" aria-live="polite" aria-busy={phase === "saving" || undefined}>
-          {statusMessage()}
-        </div>
-        <div className="ui-actions settings-footer-actions">
-          <Button onClick={() => void requestClose()} disabled={phase === "saving"}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form="settings-form"
-            variant="primary"
-            busy={phase === "saving"}
-            disabled={readOnly || busy || phase === "saving"}
-          >
-            {phase === "saving" ? "Saving…" : "Apply settings"}
-          </Button>
-        </div>
-      </div>
+      <SettingsFooter
+        status={statusMessage()}
+        saving={phase === "saving"}
+        applyDisabled={readOnly || busy || phase === "saving"}
+        onCancel={() => void requestClose()}
+      />
     </Modal>
   );
 }

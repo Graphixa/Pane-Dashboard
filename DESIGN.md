@@ -17,6 +17,13 @@ conventions. Do not resolve conflicts by silently changing either document.
 | Radix-backed interaction primitives and focus containment | [controls.tsx](web/src/design/controls.tsx), [overlays.tsx](web/src/design/overlays.tsx) |
 | Interactive component reference | [ComponentReference.tsx](web/src/design/ComponentReference.tsx) |
 | Fixed dashboard geometry | [model.ts](web/src/model.ts), [SPEC.md](SPEC.md#measurements) |
+| Feature ownership and import layering | [repo-layout.md](docs/repo-layout.md#react-feature-ownership) |
+
+Feature screens (Settings pages, app/pane editors, wallpaper UI) must import shared
+interactive primitives only through [components.tsx](web/src/design/components.tsx).
+Do not import `design/controls`, `design/overlays` or other internal design modules
+from feature code. Feature-only components stay under `web/src/features/` and do not
+need to become global primitives unless they earn a Component Reference example.
 
 Run `npm ci` and `npm run dev` from `web`, then open
 `http://localhost:5173/design-system.html` (use Vite's printed port if different).

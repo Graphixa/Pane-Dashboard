@@ -45,7 +45,7 @@ import { iconURL } from "./features/apps/appCatalogue";
 import { useConfig } from "./useConfig";
 import { AppEditor } from "./features/apps/AppEditor";
 import { PaneEditor } from "./features/panes/PaneEditor";
-import Settings from "./Settings";
+import Settings from "./features/settings/Settings";
 import GlassPaneLayers from "./GlassPaneLayers";
 import { useGlassQuality } from "./useGlassQuality";
 import { flushPendingRecentWallpaper, reconcileRecentWallpapers } from "./wallpaperRecent";
