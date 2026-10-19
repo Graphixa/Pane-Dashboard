@@ -231,6 +231,18 @@ live preview use the same shared still-first helper. Uploaded images use lazy, b
 wallpapers before live ones. Prefer the Component Reference Modal example with
 `onBack` / `headerActions` when extending this pattern.
 
+## Add / Edit app icon browser
+
+The Add/Edit app dialog uses `Modal` with a fixed `footer` (Cancel plus Add app or
+Save changes). The searchable catalogue browser (`AppIconPicker`) sits above Name and
+Address: a selected-app summary outside the scrollport, responsive tile grid inside a
+shared `ScrollArea`, accent border plus checkmark and `aria-pressed` on the chosen tile,
+and a quiet “Skip to app details” control so keyboard users need not traverse every
+result. Custom icon and Placement are `Disclosure` sections. Picker artwork is about
+40 px with reserved dimensions and a letter fallback; dashboard app icons remain the
+fixed 80 px artwork. Do not add a Load more button or a second component library for
+this browser.
+
 ## Verification and adoption
 
 Run `npm ci && npm test && npm run build` in `web`, copy `web/dist` to `internal/ui/dist`,

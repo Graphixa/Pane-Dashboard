@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendRevealCount,
   applyCatalogueTileSelection,
   catalogue,
   catalogueEntries,
   catalogueEntry,
   catalogueMatchesQuery,
+  filterCatalogueEntries,
   iconURL,
+  initialRevealCount,
+  normalizeCatalogueSearch,
   suggestIcon,
 } from "./icons";
 
@@ -32,6 +36,37 @@ describe("catalogue metadata", () => {
     expect(catalogueMatchesQuery(catalogueEntry("pihole")!, "pi-hole")).toBe(
       true,
     );
+  });
+
+  it("normalises whitespace and separators for the same entry", () => {
+    const adguard = catalogueEntry("adguard-home")!;
+    expect(normalizeCatalogueSearch("AdGuard Home")).toBe("adguardhome");
+    expect(normalizeCatalogueSearch("adguard-home")).toBe("adguardhome");
+    expect(catalogueMatchesQuery(adguard, "AdGuard Home")).toBe(true);
+    expect(catalogueMatchesQuery(adguard, "adguard-home")).toBe(true);
+    expect(catalogueMatchesQuery(adguard, "adguardhome")).toBe(true);
+    expect(catalogueMatchesQuery(adguard, "ad_guard home")).toBe(true);
+  });
+
+  it("filters the full catalogue in deterministic order", () => {
+    const empty = filterCatalogueEntries(catalogueEntries, "");
+    expect(empty.map((e) => e.slug)).toEqual(catalogue);
+    const home = filterCatalogueEntries(catalogueEntries, "home");
+    expect(home.map((e) => e.slug)).toEqual(
+      catalogueEntries
+        .filter((e) => catalogueMatchesQuery(e, "home"))
+        .map((e) => e.slug),
+    );
+    expect(filterCatalogueEntries(catalogueEntries, "zzz-no-match")).toEqual(
+      [],
+    );
+  });
+
+  it("computes reveal budgets without skipping or reordering", () => {
+    expect(initialRevealCount(100, 4, 3)).toBe(24);
+    expect(initialRevealCount(10, 4, 3)).toBe(10);
+    expect(appendRevealCount(24, 100, 4, 3)).toBe(36);
+    expect(appendRevealCount(96, 100, 4, 3)).toBe(100);
   });
 });
 

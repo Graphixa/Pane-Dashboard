@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AppEditor } from "./Editors";
 import { Config } from "./model";
 
@@ -47,21 +47,43 @@ beforeEach(() => {
       this.open = false;
     },
   });
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    },
+  );
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
-function searchAndSelect(displayName: string, query = displayName) {
-  fireEvent.change(screen.getByLabelText("Search icons"), {
+async function searchAndSelect(displayName: string, query = displayName) {
+  fireEvent.change(screen.getByLabelText("Search apps"), {
     target: { value: query },
   });
-  fireEvent.click(screen.getByRole("button", { name: displayName }));
+  const tile = await screen.findByRole("button", { name: displayName });
+  fireEvent.click(tile);
+}
+
+async function openCustomIcon() {
+  fireEvent.click(screen.getByRole("button", { name: "Custom icon" }));
+  await waitFor(() =>
+    expect(
+      screen.getByLabelText("Icon reference or custom URL"),
+    ).toBeTruthy(),
+  );
 }
 
 describe("AppEditor catalogue name autofill", () => {
-  it("fills a blank name from the selected tile and leaves other fields alone", () => {
+  it("fills a blank name from the selected tile and leaves other fields alone", async () => {
     const apply = vi.fn();
     const close = vi.fn();
     render(
@@ -76,11 +98,12 @@ describe("AppEditor catalogue name autofill", () => {
     );
 
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "");
-    searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("AdGuard Home", "adguard");
     expect(screen.getByLabelText("Name")).toHaveProperty(
       "value",
       "AdGuard Home",
     );
+    await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
       "value",
       "dashboard-icons:adguard-home",
@@ -91,7 +114,7 @@ describe("AppEditor catalogue name autofill", () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  it("preserves an edited name when selecting another tile", () => {
+  it("preserves an edited name when selecting another tile", async () => {
     const apply = vi.fn();
     render(
       <AppEditor
@@ -104,19 +127,20 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
-    searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("AdGuard Home", "adguard");
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "My DNS" },
     });
-    searchAndSelect("Plex", "plex");
+    await searchAndSelect("Plex", "plex");
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "My DNS");
+    await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
       "value",
       "dashboard-icons:plex",
     );
   });
 
-  it("does not overwrite a typed name, then autofills again after clear", () => {
+  it("does not overwrite a typed name, then autofills again after clear", async () => {
     render(
       <AppEditor
         config={baseConfig()}
@@ -131,18 +155,18 @@ describe("AppEditor catalogue name autofill", () => {
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "Custom" },
     });
-    searchAndSelect("Plex", "plex");
+    await searchAndSelect("Plex", "plex");
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "Custom");
 
     fireEvent.change(screen.getByLabelText("Name"), { target: { value: "" } });
-    searchAndSelect("Home Assistant", "home-assistant");
+    await searchAndSelect("Home Assistant", "home-assistant");
     expect(screen.getByLabelText("Name")).toHaveProperty(
       "value",
       "Home Assistant",
     );
   });
 
-  it("supports keyboard activation of a catalogue tile", () => {
+  it("supports keyboard activation of a catalogue tile", async () => {
     render(
       <AppEditor
         config={baseConfig()}
@@ -154,21 +178,22 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Search icons"), {
+    fireEvent.change(screen.getByLabelText("Search apps"), {
       target: { value: "pihole" },
     });
-    const tile = screen.getByRole("button", { name: "Pi-hole" });
+    const tile = await screen.findByRole("button", { name: "Pi-hole" });
     tile.focus();
     fireEvent.keyDown(tile, { key: "Enter" });
     fireEvent.click(tile);
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "Pi-hole");
+    await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
       "value",
       "dashboard-icons:pihole",
     );
   });
 
-  it("does not infer a name from custom icon reference typing", () => {
+  it("does not infer a name from custom icon reference typing", async () => {
     render(
       <AppEditor
         config={baseConfig()}
@@ -180,13 +205,14 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
+    await openCustomIcon();
     fireEvent.change(screen.getByLabelText("Icon reference or custom URL"), {
       target: { value: "dashboard-icons:sonarr" },
     });
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "");
   });
 
-  it("preserves a loaded Edit app name when changing icon tile", () => {
+  it("preserves a loaded Edit app name when changing icon tile", async () => {
     const apply = vi.fn();
     const close = vi.fn();
     const config = baseConfig();
@@ -205,8 +231,9 @@ describe("AppEditor catalogue name autofill", () => {
 
     expect(screen.getByRole("dialog", { name: "Edit app" })).toBeTruthy();
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "Plex");
-    searchAndSelect("Sonarr", "sonarr");
+    await searchAndSelect("Sonarr", "sonarr");
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "Plex");
+    await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
       "value",
       "dashboard-icons:sonarr",
@@ -217,11 +244,15 @@ describe("AppEditor catalogue name autofill", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(close).toHaveBeenCalled();
+    expect(
+      await screen.findByRole("alertdialog", { name: "Discard changes?" }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(close).toHaveBeenCalledOnce());
     expect(apply).not.toHaveBeenCalled();
   });
 
-  it("saves the autofilled name and icon through the ordinary path", () => {
+  it("saves the autofilled name and icon through the ordinary path", async () => {
     const apply = vi.fn();
     render(
       <AppEditor
@@ -234,11 +265,11 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
-    searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("AdGuard Home", "adguard");
     fireEvent.change(screen.getByLabelText("Address"), {
       target: { value: "https://dns.example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save app" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add app" }));
 
     expect(apply).toHaveBeenCalledTimes(1);
     const saved = apply.mock.calls[0][0] as Config;
@@ -250,5 +281,117 @@ describe("AppEditor catalogue name autofill", () => {
       col: 1,
       row: 0,
     });
+  });
+});
+
+describe("AppEditor workflow", () => {
+  it("keeps placement and custom icon collapsed and preserves the clicked slot", async () => {
+    const apply = vi.fn();
+    render(
+      <AppEditor
+        config={baseConfig()}
+        paneId="media"
+        col={2}
+        row={0}
+        apply={apply}
+        close={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByLabelText("Icon reference or custom URL"),
+    ).toBeNull();
+    expect(screen.queryByLabelText("Column (1-based)")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Placement" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Column (1-based)")).toBeTruthy(),
+    );
+    expect(screen.getByText(/Media · column 3, row 1/)).toBeTruthy();
+    expect(screen.getByLabelText("Column (1-based)")).toHaveProperty(
+      "value",
+      "3",
+    );
+
+    await searchAndSelect("Plex", "plex");
+    fireEvent.change(screen.getByLabelText("Address"), {
+      target: { value: "https://plex.local" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Add app" }));
+    const saved = apply.mock.calls[0][0] as Config;
+    const added = saved.items[0].apps.find((a) => a.url === "https://plex.local");
+    expect(added).toMatchObject({ col: 2, row: 0, icon: "dashboard-icons:plex" });
+  });
+
+  it("does not prompt discard when only searching or scrolling", async () => {
+    const close = vi.fn();
+    render(
+      <AppEditor
+        config={baseConfig()}
+        paneId="media"
+        col={1}
+        row={0}
+        apply={vi.fn()}
+        close={close}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Search apps"), {
+      target: { value: "plex" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(close).toHaveBeenCalled();
+  });
+
+  it("prompts discard when the draft changed, and Save changes updates an existing app", async () => {
+    const apply = vi.fn();
+    const close = vi.fn();
+    const config = baseConfig();
+    const app = config.items[0].apps[0];
+    render(
+      <AppEditor
+        config={config}
+        paneId="media"
+        app={app}
+        col={app.col}
+        row={app.row}
+        apply={apply}
+        close={close}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Address"), {
+      target: { value: "https://plex.changed" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(await screen.findByRole("alertdialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(close).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(apply).toHaveBeenCalledTimes(1);
+    expect(apply.mock.calls[0][0].items[0].apps[0].url).toBe(
+      "https://plex.changed",
+    );
+  });
+
+  it("keeps delete separate from the primary save action", () => {
+    const config = baseConfig();
+    const app = config.items[0].apps[0];
+    render(
+      <AppEditor
+        config={config}
+        paneId="media"
+        app={app}
+        col={app.col}
+        row={app.row}
+        apply={vi.fn()}
+        close={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Delete app" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save app" })).toBeNull();
   });
 });

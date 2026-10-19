@@ -101,6 +101,15 @@ export function catalogueEntry(slug: string): CatalogueEntry | undefined {
   return catalogueEntries.find((entry) => entry.slug === slug);
 }
 
+/** Strip case, whitespace and common separators for separator-insensitive matching. */
+export function normalizeCatalogueSearch(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_\-./]+/g, "");
+}
+
+/**
+ * Match displayName, slug and aliases case-insensitively, including normalised
+ * forms so “AdGuard Home”, “adguard-home” and “adguardhome” hit the same entry.
+ */
 export function catalogueMatchesQuery(
   entry: CatalogueEntry,
   query: string,
@@ -110,7 +119,48 @@ export function catalogueMatchesQuery(
   if (entry.slug.includes(q) || entry.displayName.toLowerCase().includes(q)) {
     return true;
   }
-  return Boolean(entry.aliases?.some((alias) => alias.toLowerCase().includes(q)));
+  if (entry.aliases?.some((alias) => alias.toLowerCase().includes(q))) {
+    return true;
+  }
+  const normalised = normalizeCatalogueSearch(query);
+  if (!normalised) return true;
+  const haystacks = [
+    normalizeCatalogueSearch(entry.slug),
+    normalizeCatalogueSearch(entry.displayName),
+    ...(entry.aliases?.map(normalizeCatalogueSearch) ?? []),
+  ];
+  return haystacks.some((haystack) => haystack.includes(normalised));
+}
+
+/** Filter the full catalogue in deterministic order; callers then limit rendered rows. */
+export function filterCatalogueEntries(
+  entries: readonly CatalogueEntry[],
+  query: string,
+): CatalogueEntry[] {
+  return entries.filter((entry) => catalogueMatchesQuery(entry, query));
+}
+
+/** Rows to cover the scrollport plus approximately one viewport ahead. */
+export function initialRevealCount(
+  matchCount: number,
+  columns: number,
+  rowsPerViewport: number,
+): number {
+  const cols = Math.max(1, columns);
+  const rows = Math.max(1, rowsPerViewport) * 2;
+  return Math.min(matchCount, Math.max(cols, rows * cols));
+}
+
+/** Append approximately one viewport of complete rows. */
+export function appendRevealCount(
+  current: number,
+  matchCount: number,
+  columns: number,
+  rowsPerViewport: number,
+): number {
+  const cols = Math.max(1, columns);
+  const batch = cols * Math.max(1, rowsPerViewport);
+  return Math.min(matchCount, current + batch);
 }
 
 /**

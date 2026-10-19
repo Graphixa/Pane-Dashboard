@@ -668,8 +668,8 @@ fieldset {
   .fields {
     flex-wrap: wrap;
   }
-  .ui-icon-picker {
-    grid-template-columns: repeat(4, 1fr);
+  .ui-icon-picker-grid {
+    grid-template-columns: repeat(auto-fill, minmax(4.25rem, 1fr));
   }
   .discovery-fields {
     grid-template-columns: 1fr;

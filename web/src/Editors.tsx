@@ -1,16 +1,21 @@
-import { useConfirmation } from "./design/components";
-import { SelectOption, SwitchRow } from "./design/components";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { stringify } from "yaml";
-import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
+import { AppIconPicker } from "./AppIconPicker";
 import {
-  applyCatalogueTileSelection,
-  catalogueEntries,
-  catalogueMatchesQuery,
-  iconURL,
-} from "./icons";
-import { Modal } from "./design/components";
-import { Button, TextField, SelectField, Notice } from "./design/components";
+  Button,
+  Disclosure,
+  Modal,
+  Notice,
+  SelectField,
+  SelectOption,
+  SwitchRow,
+  Text,
+  TextField,
+  useConfirmation,
+} from "./design/components";
+import { applyCatalogueTileSelection } from "./icons";
+import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
+
 export function download(name: string, value: unknown) {
   const url = URL.createObjectURL(
     new Blob([stringify(value)], { type: "application/yaml" }),
@@ -21,6 +26,9 @@ export function download(name: string, value: unknown) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+const APP_DETAILS_NAME_ID = "app-editor-name";
+
 export function AppEditor({
   config,
   paneId,
@@ -39,22 +47,43 @@ export function AppEditor({
   close: () => void;
 }) {
   const { confirm, confirmation } = useConfirmation();
-  const [draft, setDraft] = useState<App>(
-      app
-        ? clone(app)
-        : {
-            id: uid(),
-            name: "",
-            url: "",
-            icon: "",
-            col,
-            row,
-            openInNewTab: true,
-          },
-    ),
-    [destination, setDestination] = useState(paneId),
-    [search, setSearch] = useState(""),
-    [error, setError] = useState("");
+  const initialDraft = useRef<App>(
+    app
+      ? clone(app)
+      : {
+          id: uid(),
+          name: "",
+          url: "",
+          icon: "",
+          col,
+          row,
+          openInNewTab: true,
+        },
+  );
+  const initialDestination = useRef(paneId);
+  const [draft, setDraft] = useState<App>(() => clone(initialDraft.current));
+  const [destination, setDestination] = useState(paneId);
+  const [error, setError] = useState("");
+  const formId = "app-editor-form";
+
+  const dirty =
+    JSON.stringify(draft) !== JSON.stringify(initialDraft.current) ||
+    destination !== initialDestination.current;
+
+  const requestClose = async () => {
+    if (
+      !dirty ||
+      (await confirm({
+        title: "Discard changes?",
+        description: "Discard unsaved app changes?",
+        cancelLabel: "Keep editing",
+        actionLabel: "Discard",
+      }))
+    ) {
+      close();
+    }
+  };
+
   const save = () => {
     try {
       let n = clone(config);
@@ -73,28 +102,57 @@ export function AppEditor({
       setError((e as Error).message);
     }
   };
+
+  const destinationPane = config.items.find((p) => p.id === destination);
+  const placementSummary = `${destinationPane?.title || "Untitled pane"} · column ${draft.col + 1}, row ${draft.row + 1}`;
+
   return (
-    <Modal title={app ? "Edit app" : "Add app"} close={close}>
+    <Modal
+      title={app ? "Edit app" : "Add app"}
+      close={requestClose}
+      footer={
+        <div className="ui-actions">
+          <Button type="button" onClick={() => void requestClose()}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form={formId}>
+            {app ? "Save changes" : "Add app"}
+          </Button>
+        </div>
+      }
+    >
       {confirmation}
       <form
+        id={formId}
         onSubmit={(e) => {
           e.preventDefault();
           save();
         }}
       >
-        <TextField label="Name"
-            required
-            maxLength={100}
-            autoFocus
-            value={draft.name}
-            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-          />
-        <TextField label="Address"
-            hint="Leave blank for a template. Only HTTP(S) addresses are supported."
-            placeholder="https://service.example.com"
-            value={draft.url}
-            onChange={(e) => setDraft({ ...draft, url: e.target.value })}
-          />
+        <AppIconPicker
+          selectedIcon={draft.icon}
+          detailsTargetId={APP_DETAILS_NAME_ID}
+          autoFocusSearch={!app}
+          onSelect={(entry) =>
+            setDraft((prev) => applyCatalogueTileSelection(prev, entry))
+          }
+        />
+        <TextField
+          id={APP_DETAILS_NAME_ID}
+          label="Name"
+          required
+          maxLength={100}
+          autoFocus={Boolean(app)}
+          value={draft.name}
+          onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+        />
+        <TextField
+          label="Address"
+          hint="Leave blank for a template. Only HTTP(S) addresses are supported."
+          placeholder="https://service.example.com"
+          value={draft.url}
+          onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+        />
         <SwitchRow
           label="Open in a new tab"
           checked={draft.openInNewTab}
@@ -102,95 +160,67 @@ export function AppEditor({
             setDraft({ ...draft, openInNewTab: checked })
           }
         />
-        <TextField
-          label="Icon reference or custom URL"
-          value={draft.icon}
-          onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
-          placeholder="dashboard-icons:plex"
-        />
-        <TextField
-          label="Search icons"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search the local catalogue"
-        />
-        <div className="ui-icon-picker">
-          {catalogueEntries
-            .filter((entry) => catalogueMatchesQuery(entry, search))
-            .slice(0, 24)
-            .map((entry) => (
-              <Button
-                variant="surface"
-                type="button"
-                key={entry.slug}
-                title={entry.displayName}
-                aria-pressed={draft.icon === `dashboard-icons:${entry.slug}`}
-                className={
-                  draft.icon === `dashboard-icons:${entry.slug}`
-                    ? "selected"
-                    : ""
-                }
-                onClick={() =>
-                  setDraft((prev) => applyCatalogueTileSelection(prev, entry))
-                }
-              >
-                <img
-                  loading="lazy"
-                  src={iconURL(`dashboard-icons:${entry.slug}`)}
-                  alt=""
-                />
-                <span>{entry.displayName}</span>
-              </Button>
-            ))}
-        </div>
-        <div className="fields">
-          <SelectField
-            label="Pane"
-            value={destination}
-            onValueChange={(value) => setDestination(value)}
-          >
-            {config.items.map((p) => (
-              <SelectOption key={p.id} value={p.id}>
-                {p.title || "Untitled pane"}
-              </SelectOption>
-            ))}
-          </SelectField>
+        <Disclosure title="Custom icon">
           <TextField
-            label="Column (1-based)"
-            type="number"
-            min={1}
-            required
-            value={draft.col + 1}
-            onChange={(e) =>
-              setDraft({ ...draft, col: Number(e.target.value) - 1 })
-            }
+            label="Icon reference or custom URL"
+            value={draft.icon}
+            onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
+            placeholder="dashboard-icons:plex"
           />
-          <TextField
-            label="Row (1-based)"
-            type="number"
-            min={1}
-            required
-            value={draft.row + 1}
-            onChange={(e) =>
-              setDraft({ ...draft, row: Number(e.target.value) - 1 })
-            }
-          />
-        </div>
-        {error && (
-          <Notice tone="error">{error}</Notice>
-        )}
-        <div className="ui-actions">
-          {app && (
+        </Disclosure>
+        <Disclosure title="Placement">
+          <Text as="p" variant="support" className="ui-app-placement-summary">
+            {placementSummary}
+          </Text>
+          <div className="fields">
+            <SelectField
+              label="Pane"
+              value={destination}
+              onValueChange={(value) => setDestination(value)}
+            >
+              {config.items.map((p) => (
+                <SelectOption key={p.id} value={p.id}>
+                  {p.title || "Untitled pane"}
+                </SelectOption>
+              ))}
+            </SelectField>
+            <TextField
+              label="Column (1-based)"
+              type="number"
+              min={1}
+              required
+              value={draft.col + 1}
+              onChange={(e) =>
+                setDraft({ ...draft, col: Number(e.target.value) - 1 })
+              }
+            />
+            <TextField
+              label="Row (1-based)"
+              type="number"
+              min={1}
+              required
+              value={draft.row + 1}
+              onChange={(e) =>
+                setDraft({ ...draft, row: Number(e.target.value) - 1 })
+              }
+            />
+          </div>
+        </Disclosure>
+        {error && <Notice tone="error">{error}</Notice>}
+        {app && (
+          <div className="ui-app-editor-danger">
             <Button
               type="button"
               variant="danger"
               onClick={async () => {
-                if (await confirm({
-                  title: "Delete app?",
-                  description: `Delete ${app.name}? This removes it from the pane and cannot be undone.`,
-                  cancelLabel: "Cancel",
-                  actionLabel: "Delete app",
-                })) {
+                if (
+                  await confirm({
+                    title: "Delete app?",
+                    description: `Delete ${app.name}? This removes it from the pane and cannot be undone.`,
+                    cancelLabel: "Cancel",
+                    actionLabel: "Delete app",
+                  })
+                ) {
                   const n = clone(config);
                   n.items.find((p) => p.id === paneId)!.apps = n.items
                     .find((p) => p.id === paneId)!
@@ -202,18 +232,13 @@ export function AppEditor({
             >
               Delete app
             </Button>
-          )}
-          <Button type="button" onClick={close}>
-            Cancel
-          </Button>
-          <Button variant="primary" type="submit">
-            Save app
-          </Button>
-        </div>
+          </div>
+        )}
       </form>
     </Modal>
   );
 }
+
 export function PaneEditor({
   config,
   pane,
@@ -272,9 +297,7 @@ export function PaneEditor({
             />
           ))}
         </div>
-        {error && (
-          <Notice tone="error">{error}</Notice>
-        )}
+        {error && <Notice tone="error">{error}</Notice>}
         <div className="ui-actions">
           <Button
             type="button"
@@ -298,12 +321,14 @@ export function PaneEditor({
             type="button"
             variant="danger"
             onClick={async () => {
-              if (await confirm({
-                title: "Delete pane?",
-                description: `Delete this pane and its ${pane.apps.length} apps? This cannot be undone.`,
-                cancelLabel: "Cancel",
-                actionLabel: "Delete pane",
-              })) {
+              if (
+                await confirm({
+                  title: "Delete pane?",
+                  description: `Delete this pane and its ${pane.apps.length} apps? This cannot be undone.`,
+                  cancelLabel: "Cancel",
+                  actionLabel: "Delete pane",
+                })
+              ) {
                 apply({
                   ...config,
                   items: config.items.filter((p) => p.id !== pane.id),
