@@ -1,31 +1,17 @@
 import { useRef, useState } from "react";
-import { stringify } from "yaml";
 import { AppIconPicker } from "./AppIconPicker";
+import { AppPlacementFields } from "./AppPlacementFields";
 import {
   Button,
   Disclosure,
   Modal,
   Notice,
-  SelectField,
-  SelectOption,
   SwitchRow,
-  Text,
   TextField,
   useConfirmation,
-} from "./design/components";
-import { applyCatalogueTileSelection } from "./icons";
-import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
-
-export function download(name: string, value: unknown) {
-  const url = URL.createObjectURL(
-    new Blob([stringify(value)], { type: "application/yaml" }),
-  );
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
+} from "../../design/components";
+import { applyCatalogueTileSelection } from "./appCatalogue";
+import { App, Config, clone, moveApp, uid, validate } from "../../model";
 
 const APP_DETAILS_NAME_ID = "app-editor-name";
 
@@ -103,9 +89,6 @@ export function AppEditor({
     }
   };
 
-  const destinationPane = config.items.find((p) => p.id === destination);
-  const placementSummary = `${destinationPane?.title || "Untitled pane"} · column ${draft.col + 1}, row ${draft.row + 1}`;
-
   return (
     <Modal
       title={app ? "Edit app" : "Add app"}
@@ -169,42 +152,15 @@ export function AppEditor({
           />
         </Disclosure>
         <Disclosure title="Placement">
-          <Text as="p" variant="support" className="ui-app-placement-summary">
-            {placementSummary}
-          </Text>
-          <div className="fields">
-            <SelectField
-              label="Pane"
-              value={destination}
-              onValueChange={(value) => setDestination(value)}
-            >
-              {config.items.map((p) => (
-                <SelectOption key={p.id} value={p.id}>
-                  {p.title || "Untitled pane"}
-                </SelectOption>
-              ))}
-            </SelectField>
-            <TextField
-              label="Column (1-based)"
-              type="number"
-              min={1}
-              required
-              value={draft.col + 1}
-              onChange={(e) =>
-                setDraft({ ...draft, col: Number(e.target.value) - 1 })
-              }
-            />
-            <TextField
-              label="Row (1-based)"
-              type="number"
-              min={1}
-              required
-              value={draft.row + 1}
-              onChange={(e) =>
-                setDraft({ ...draft, row: Number(e.target.value) - 1 })
-              }
-            />
-          </div>
+          <AppPlacementFields
+            config={config}
+            destination={destination}
+            col={draft.col}
+            row={draft.row}
+            onDestinationChange={setDestination}
+            onColChange={(nextCol) => setDraft({ ...draft, col: nextCol })}
+            onRowChange={(nextRow) => setDraft({ ...draft, row: nextRow })}
+          />
         </Disclosure>
         {error && <Notice tone="error">{error}</Notice>}
         {app && (
@@ -234,115 +190,6 @@ export function AppEditor({
             </Button>
           </div>
         )}
-      </form>
-    </Modal>
-  );
-}
-
-export function PaneEditor({
-  config,
-  pane,
-  apply,
-  close,
-}: {
-  config: Config;
-  pane: Pane;
-  apply: (c: Config) => void;
-  close: () => void;
-}) {
-  const { confirm, confirmation } = useConfirmation();
-  const [draft, setDraft] = useState(clone(pane)),
-    [error, setError] = useState("");
-  return (
-    <Modal title="Edit pane" close={close}>
-      {confirmation}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          try {
-            const n = clone(config);
-            n.items = n.items.map((p) => (p.id === pane.id ? draft : p));
-            validate(n);
-            apply(n);
-            close();
-          } catch (e) {
-            setError((e as Error).message);
-          }
-        }}
-      >
-        <TextField
-          label="Title (optional)"
-          autoFocus
-          maxLength={100}
-          value={draft.title}
-          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-          hint="Resize in whole app slots. Occupied slots and neighbouring panes are protected."
-        />
-        <div className="fields">
-          {(["w", "h"] as const).map((k) => (
-            <TextField
-              key={k}
-              label={{ w: "Columns", h: "Rows" }[k]}
-              type="number"
-              required
-              min={1}
-              max={32}
-              value={draft.layout[k]}
-              onChange={(e) =>
-                setDraft({
-                  ...draft,
-                  layout: { ...draft.layout, [k]: Number(e.target.value) },
-                })
-              }
-            />
-          ))}
-        </div>
-        {error && <Notice tone="error">{error}</Notice>}
-        <div className="ui-actions">
-          <Button
-            type="button"
-            onClick={() => {
-              const p = clone(draft);
-              p.apps.forEach((a) => {
-                a.url = "";
-                delete a.source;
-              });
-              download("pane-template.yaml", {
-                type: "pane-layout",
-                version: 3,
-                pane: p,
-                width: config.dashboard.width,
-              });
-            }}
-          >
-            Export template
-          </Button>
-          <Button
-            type="button"
-            variant="danger"
-            onClick={async () => {
-              if (
-                await confirm({
-                  title: "Delete pane?",
-                  description: `Delete this pane and its ${pane.apps.length} apps? This cannot be undone.`,
-                  cancelLabel: "Cancel",
-                  actionLabel: "Delete pane",
-                })
-              ) {
-                apply({
-                  ...config,
-                  items: config.items.filter((p) => p.id !== pane.id),
-                });
-                close();
-              }
-            }}
-          >
-            Delete pane
-          </Button>
-          <Button variant="primary" type="submit">
-            Save pane
-          </Button>
-        </div>
       </form>
     </Modal>
   );

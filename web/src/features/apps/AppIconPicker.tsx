@@ -11,7 +11,7 @@ import {
   ScrollArea,
   Text,
   TextField,
-} from "./design/components";
+} from "../../design/components";
 import {
   appendRevealCount,
   catalogueEntries,
@@ -19,7 +19,7 @@ import {
   iconURL,
   initialRevealCount,
   type CatalogueEntry,
-} from "./icons";
+} from "./appCatalogue";
 
 const DEFAULT_COLUMNS = 4;
 const DEFAULT_ROWS = 3;

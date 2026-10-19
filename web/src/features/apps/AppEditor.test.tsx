@@ -2,8 +2,8 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AppEditor } from "./Editors";
-import { Config } from "./model";
+import { AppEditor } from "./AppEditor";
+import { Config } from "../../model";
 
 const baseConfig = (): Config => ({
   version: 3,

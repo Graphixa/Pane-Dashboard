@@ -12,7 +12,7 @@ import {
   uid,
   validate,
 } from "./model";
-import { suggestIcon } from "./icons";
+import { suggestIcon } from "./features/apps/appCatalogue";
 type Candidate = {
   id: string;
   name: string;

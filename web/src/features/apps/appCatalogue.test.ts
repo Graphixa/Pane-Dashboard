@@ -11,7 +11,7 @@ import {
   initialRevealCount,
   normalizeCatalogueSearch,
   suggestIcon,
-} from "./icons";
+} from "./appCatalogue";
 
 describe("catalogue metadata", () => {
   it("keeps slug list aligned with curated entries", () => {

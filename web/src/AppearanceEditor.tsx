@@ -26,7 +26,7 @@ import {
   resolveBuiltinIcon,
   type BuiltinIconId,
 } from "./brandIcons";
-import { prepareUpload } from "./ImageField";
+import { prepareUpload } from "./services/media";
 import BackgroundSettings from "./BackgroundSettings";
 
 /** Keep invalid keystrokes out of the draft; only commit in-range integers. */

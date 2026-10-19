@@ -21,7 +21,7 @@ import {
   Text,
   useConfirmation,
 } from "./design/components";
-import { download } from "./Editors";
+import { download } from "./utils/download";
 import ImportPanel from "./ImportPanel";
 import { version } from "../package.json";
 import {

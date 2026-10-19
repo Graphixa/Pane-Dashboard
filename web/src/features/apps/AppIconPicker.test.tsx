@@ -10,7 +10,7 @@ import {
 } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AppIconPicker } from "./AppIconPicker";
-import type { CatalogueEntry } from "./icons";
+import type { CatalogueEntry } from "./appCatalogue";
 
 const longCatalogue: CatalogueEntry[] = Array.from({ length: 60 }, (_, i) => ({
   slug: `app-${String(i).padStart(2, "0")}`,

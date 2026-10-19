@@ -12,7 +12,7 @@ const slugs = (await readdir(resolve(root, "svg")))
   .sort();
 if (!slugs.length) throw new Error("No SVG icons found.");
 
-const target = new URL("../src/icons.ts", import.meta.url);
+const target = new URL("../src/features/apps/appCatalogue.ts", import.meta.url);
 const current = await readFile(target, "utf8");
 
 const existing = new Map();
@@ -51,7 +51,7 @@ const block = `export const catalogueEntries: readonly CatalogueEntry[] = [\n${e
   .join("\n")}\n];`;
 
 if (!/export const catalogueEntries: readonly CatalogueEntry\[\] = \[[\s\S]*?\];/.test(current)) {
-  throw new Error("Could not locate catalogueEntries in icons.ts");
+  throw new Error("Could not locate catalogueEntries in appCatalogue.ts");
 }
 
 await writeFile(

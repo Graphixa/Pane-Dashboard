@@ -16,7 +16,7 @@ import {
   Text,
   useConfirmation,
 } from "./design/components";
-import { prepareUpload } from "./ImageField";
+import { prepareUpload } from "./services/media";
 import {
   accentPresets,
   defaultBackground,
