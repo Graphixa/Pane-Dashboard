@@ -16,6 +16,7 @@ import {
   accentPresets,
   effectIds,
   effectLabels,
+  gradients,
   mediaDisplayName,
   mediaRefEqual,
   mediaSrc,
