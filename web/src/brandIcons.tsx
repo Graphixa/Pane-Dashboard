@@ -45,11 +45,11 @@ export const builtinIconIds = [
 export type BuiltinIconId = (typeof builtinIconIds)[number];
 
 /**
- * Icons shown in Settings Branding (2×6 with a custom-upload tile = 11 builtins).
+ * Icons shown in Settings Branding (2×6 grid). Custom upload is a sibling square.
  * Full `builtinIconIds` stay valid for existing configs and resolution.
  */
 export const inlineBuiltinIconIds: readonly BuiltinIconId[] =
-  builtinIconIds.slice(0, 11);
+  builtinIconIds.slice(0, 12);
 
 const icons: Record<BuiltinIconId, LucideIcon> = {
   grid: LayoutGrid,

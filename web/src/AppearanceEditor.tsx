@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { RecentWallpaperEntry } from "./wallpaperRecent";
 import { Button, Label, Input, Select, SelectOption, Popover, PopoverHead, ImagePopoverActions, Section, Range, Disclosure, Notice, TextField, SwitchRow, SettingsGroup, SettingsRow } from "./design/components";
 import { useEffect, useRef, useState } from "react";
-import { ImagePlus, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import type { Config } from "./model";
 import {
   contrast,
@@ -282,7 +282,7 @@ function LogoDropTarget({
   );
 }
 
-/** Inline 2×6: eleven builtins + one custom-upload tile (no separate dropzone). */
+/** Inline 2×6 builtins with a square custom-upload drop matching the grid height. */
 function IconBrandControl({
   builtinIcon,
   icon,
@@ -328,32 +328,35 @@ function IconBrandControl({
   const selectedBuiltin = !icon ? (builtinIcon ?? "grid") : undefined;
   return (
     <div className="icon-brand-control">
-      <div
-        className="icon-picker-grid icon-picker-grid--inline"
-        role="group"
-        aria-label="Built-in icons"
-      >
-        {inlineBuiltinIconIds.map((id) => {
-          const Icon = resolveBuiltinIcon(id);
-          return (
-            <Button
-              key={id}
-              type="button"
-              variant="surface"
-              className="icon-picker-tile"
-              aria-label={id}
-              aria-pressed={selectedBuiltin === id}
-              onClick={() => onBuiltin(id)}
-            >
-              <Icon size={18} aria-hidden="true" />
-            </Button>
-          );
-        })}
+      <div className="icon-brand-main">
+        <div
+          className="icon-picker-grid icon-picker-grid--inline"
+          role="group"
+          aria-label="Built-in icons"
+        >
+          {inlineBuiltinIconIds.map((id) => {
+            const Icon = resolveBuiltinIcon(id);
+            return (
+              <Button
+                key={id}
+                type="button"
+                variant="surface"
+                className="icon-picker-tile"
+                aria-label={id}
+                aria-pressed={selectedBuiltin === id}
+                onClick={() => onBuiltin(id)}
+              >
+                <Icon size={18} aria-hidden="true" />
+              </Button>
+            );
+          })}
+        </div>
         <Button
           type="button"
           variant="surface"
-          className="icon-picker-tile icon-picker-tile--upload"
+          className="icon-custom-square"
           data-drag={drag ? "true" : undefined}
+          data-filled={showArt ? "true" : undefined}
           aria-label={
             busy
               ? "Uploading custom icon"
@@ -384,17 +387,20 @@ function IconBrandControl({
           }}
         >
           {busy ? (
-            <span className="icon-picker-upload-cue">…</span>
+            <span className="icon-custom-square-label">Uploading…</span>
           ) : showArt ? (
             <img
-              className="icon-picker-custom-preview"
+              className="icon-custom-square-preview"
               src={url}
               alt=""
               referrerPolicy="no-referrer"
               onError={() => setFailed(true)}
             />
           ) : (
-            <ImagePlus size={18} aria-hidden="true" />
+            <>
+              <Upload size={20} aria-hidden="true" />
+              <span className="icon-custom-square-label">Your own</span>
+            </>
           )}
         </Button>
       </div>
