@@ -3,7 +3,12 @@ import { SelectOption, SwitchRow } from "./design/components";
 import { useState } from "react";
 import { stringify } from "yaml";
 import { App, Config, Pane, clone, moveApp, uid, validate } from "./model";
-import { catalogue, iconURL } from "./icons";
+import {
+  applyCatalogueTileSelection,
+  catalogueEntries,
+  catalogueMatchesQuery,
+  iconURL,
+} from "./icons";
 import { Modal } from "./design/components";
 import { Button, TextField, SelectField, Notice } from "./design/components";
 export function download(name: string, value: unknown) {
@@ -110,27 +115,31 @@ export function AppEditor({
           placeholder="Search the local catalogue"
         />
         <div className="ui-icon-picker">
-          {catalogue
-            .filter((s) => s.includes(search.toLowerCase()))
+          {catalogueEntries
+            .filter((entry) => catalogueMatchesQuery(entry, search))
             .slice(0, 24)
-            .map((s) => (
-              <Button variant="surface"
+            .map((entry) => (
+              <Button
+                variant="surface"
                 type="button"
-                key={s}
-                title={s}
+                key={entry.slug}
+                title={entry.displayName}
+                aria-pressed={draft.icon === `dashboard-icons:${entry.slug}`}
                 className={
-                  draft.icon === `dashboard-icons:${s}` ? "selected" : ""
+                  draft.icon === `dashboard-icons:${entry.slug}`
+                    ? "selected"
+                    : ""
                 }
                 onClick={() =>
-                  setDraft({ ...draft, icon: `dashboard-icons:${s}` })
+                  setDraft((prev) => applyCatalogueTileSelection(prev, entry))
                 }
               >
                 <img
                   loading="lazy"
-                  src={iconURL(`dashboard-icons:${s}`)}
+                  src={iconURL(`dashboard-icons:${entry.slug}`)}
                   alt=""
                 />
-                <span>{s}</span>
+                <span>{entry.displayName}</span>
               </Button>
             ))}
         </div>

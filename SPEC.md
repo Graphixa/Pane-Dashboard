@@ -91,7 +91,9 @@ Names derive from Compose service, container name and image repository. Exact ic
 
 ## Icons and extensibility
 
-Search a bundled local catalogue of Dashboard Icons slugs; custom HTTP(S) icon URLs are supported. Artwork loads directly in the browser from jsDelivr or the supplied URL, with a letter fallback. The initial catalogue is curated, not a claim to include every upstream icon. An update script can generate the catalogue from a checked-out upstream repository. Future widgets share dashboard geometry but do not reuse app-pane content.
+Search a bundled local catalogue of Dashboard Icons entries (stable slug, curated display name, optional search aliases); custom HTTP(S) icon URLs are supported. Artwork loads directly in the browser from jsDelivr or the supplied URL, with a letter fallback. The initial catalogue is curated, not a claim to include every upstream icon. An update script can generate the catalogue from a checked-out upstream repository while preserving curated display names. Stored icon references remain `dashboard-icons:<slug>`. Future widgets share dashboard geometry but do not reuse app-pane content.
+
+In Add/Edit app, selecting a catalogue tile sets the icon reference and, when Name is empty or whitespace-only, fills Name with that entry’s curated display name in the same draft update. Any non-blank Name is preserved exactly (typed, loaded or previously auto-filled). Clearing Name re-enables autofill on the next tile selection. Typing or pasting a custom icon reference/URL does not infer a name. Selection does not save, close the dialog or change address, destination, placement or open-in-new-tab.
 
 ## Acceptance and verification
 
