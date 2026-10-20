@@ -234,7 +234,6 @@ async function main() {
 
   const catalogue = {
     version: 1,
-    generatedAt: new Date().toISOString(),
     categories,
     items: [...itemsById.values()],
   };
