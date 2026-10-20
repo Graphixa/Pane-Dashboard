@@ -102,7 +102,7 @@ Environment variables:
 | `PANE_LISTEN` | `127.0.0.1:8080` | HTTP listen address (loopback by default; use `:8080` for all interfaces — Docker image sets this) |
 | `PANE_DOCKER_ENDPOINT` | unset | Opt-in Docker socket/proxy |
 
-The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. Icons are fetched directly from the [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) catalogue through jsDelivr, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. Trademarks belong to their owners. No icon artwork is bundled.
+The frontend uses React Grid Layout 2.2.4 for outer geometry and CSS Grid for app slots. A full native [Dashboard Icons](https://github.com/homarr-labs/dashboard-icons) index is bundled for search; artwork is fetched from a pinned jsDelivr ref, or a user-specified HTTP(S) URL. Icon availability requires connectivity; letter fallbacks work offline. The upstream project is Apache-2.0; trademarks belong to their owners. No icon artwork is bundled.
 
 The root [SPEC.md](SPEC.md) defines behaviour and scope. [AGENTS.md](AGENTS.md) gives coding-agent instructions. Widgets, mobile editing, accounts and multi-dashboard support are intentionally outside v1. Full width adds workspace without stretching tiles. Narrow screens show a read-only layout without changing saved positions.
 

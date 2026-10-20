@@ -116,8 +116,10 @@ export function AppEditor({
           selectedIcon={draft.icon}
           detailsTargetId={APP_DETAILS_NAME_ID}
           autoFocusSearch={!app}
-          onSelect={(entry) =>
-            setDraft((prev) => applyCatalogueTileSelection(prev, entry))
+          onSelect={({ entry, artworkSlug }) =>
+            setDraft((prev) =>
+              applyCatalogueTileSelection(prev, entry, artworkSlug),
+            )
           }
         />
         <TextField

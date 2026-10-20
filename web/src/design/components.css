@@ -104,10 +104,33 @@
 }
 .ui-icon-picker-toolbar {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ui-icon-picker-variants {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.ui-icon-picker-variant {
+  font-size: var(--type-caption);
+  min-height: 1.75rem;
+  padding-inline: var(--space-2);
+}
+.ui-icon-picker-variant.selected,
+.ui-icon-picker-variant[aria-checked="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 .ui-icon-picker-skip {
   font-size: var(--type-caption);
+}
+.ui-icon-picker-catalogue-status {
+  margin: 0;
+  color: var(--muted);
 }
 .ui-icon-picker-scroll {
   max-height: min(12.5rem, 30dvh);

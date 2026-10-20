@@ -12,7 +12,10 @@ import {
   uid,
   validate,
 } from "./model";
-import { suggestIcon } from "./features/apps/appCatalogue";
+import {
+  ensureFullCatalogue,
+  suggestIcon,
+} from "./features/apps/appCatalogue";
 type Candidate = {
   id: string;
   name: string;
@@ -65,6 +68,11 @@ const [source, setSource] = useState("file"),
       const body = await r.json();
       if (!r.ok) throw Error(body.error);
       setEnabled(body.enabled);
+      try {
+        await ensureFullCatalogue();
+      } catch {
+        /* Seed catalogue still allows common icon suggestions. */
+      }
       setApps(
         body.apps.map((a: Candidate) => ({
           ...a,

@@ -34,6 +34,14 @@ docs/                     Contracts and plans
 
 `go test ./...` expects a staged `internal/ui/dist` (same as local run). CI builds the frontend and copies it before Go tests.
 
+### App icon catalogue
+
+- Pin lives in `web/src/features/apps/catalogue.meta.json` (`ref` = upstream git SHA).
+- `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json`, `catalogue.seed.json` (popular pins only), and updates `generatedAt` in the meta file. Commit those artefacts.
+- The dashboard entry chunk imports only the seed + helpers. Add/Edit app calls `ensureFullCatalogue()` to dynamically import `catalogueFull.ts` (full JSON). Docker import awaits the same helper before suggesting icons.
+- To bump icons: set a new `ref`, run `npm run icons`, commit. Artwork URLs use `cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@<ref>/svg/…`.
+- Empty-query pin order is `web/src/features/apps/popularSlugs.ts` (drives seed generation order).
+
 ## Package boundaries
 
 ### Go
@@ -46,7 +54,7 @@ docs/                     Contracts and plans
 
 - **Settings** (`features/settings/Settings.tsx`) is the single owner of the settings draft, current page, initial snapshot, recent wallpaper draft/history and session lifetime. Pages receive narrow values/callbacks; they must not create divergent full-config copies or save themselves. `SettingsFooter` presents status and calls supplied actions only.
 - **Wallpaper chooser** may own local UI state (category, scroll/focus, opening snapshot). Authoritative wallpaper selection and recent history stay in the Settings-owned draft.
-- **AppEditor** owns its draft and destination. **AppIconPicker** owns browsing/query/render-budget state and emits a catalogue entry. Catalogue metadata lives in `features/apps/appCatalogue.ts` (no React UI imports).
+- **AppEditor** owns its draft and destination. **AppIconPicker** owns browsing/query/render-budget/variant state and emits `{ entry, artworkSlug }`. Catalogue metadata lives in `features/apps/appCatalogue.ts` plus generated JSON (no React UI imports).
 - **PaneEditor** does not import AppEditor internals. Shared YAML download lives in `utils/download.ts`.
 - Media stage/commit HTTP helpers live in `services/media.ts` and must not import feature UI.
 

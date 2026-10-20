@@ -98,10 +98,10 @@ describe("AppEditor catalogue name autofill", () => {
     );
 
     expect(screen.getByLabelText("Name")).toHaveProperty("value", "");
-    await searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("Adguard Home", "adguard");
     expect(screen.getByLabelText("Name")).toHaveProperty(
       "value",
-      "AdGuard Home",
+      "Adguard Home",
     );
     await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
@@ -127,7 +127,7 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
-    await searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("Adguard Home", "adguard");
     fireEvent.change(screen.getByLabelText("Name"), {
       target: { value: "My DNS" },
     });
@@ -181,15 +181,15 @@ describe("AppEditor catalogue name autofill", () => {
     fireEvent.change(screen.getByLabelText("Search apps"), {
       target: { value: "pihole" },
     });
-    const tile = await screen.findByRole("button", { name: "Pi-hole" });
+    const tile = await screen.findByRole("button", { name: "Pi Hole" });
     tile.focus();
     fireEvent.keyDown(tile, { key: "Enter" });
     fireEvent.click(tile);
-    expect(screen.getByLabelText("Name")).toHaveProperty("value", "Pi-hole");
+    expect(screen.getByLabelText("Name")).toHaveProperty("value", "Pi Hole");
     await openCustomIcon();
     expect(screen.getByLabelText("Icon reference or custom URL")).toHaveProperty(
       "value",
-      "dashboard-icons:pihole",
+      "dashboard-icons:pi-hole",
     );
   });
 
@@ -265,7 +265,7 @@ describe("AppEditor catalogue name autofill", () => {
       />,
     );
 
-    await searchAndSelect("AdGuard Home", "adguard");
+    await searchAndSelect("Adguard Home", "adguard");
     fireEvent.change(screen.getByLabelText("Address"), {
       target: { value: "https://dns.example.com" },
     });
@@ -273,9 +273,9 @@ describe("AppEditor catalogue name autofill", () => {
 
     expect(apply).toHaveBeenCalledTimes(1);
     const saved = apply.mock.calls[0][0] as Config;
-    const added = saved.items[0].apps.find((a) => a.name === "AdGuard Home");
+    const added = saved.items[0].apps.find((a) => a.name === "Adguard Home");
     expect(added).toMatchObject({
-      name: "AdGuard Home",
+      name: "Adguard Home",
       icon: "dashboard-icons:adguard-home",
       url: "https://dns.example.com",
       col: 1,

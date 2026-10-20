@@ -14,20 +14,35 @@ import {
 } from "../../design/components";
 import {
   appendRevealCount,
-  catalogueEntries,
-  filterCatalogueEntries,
+  catalogueEntryForIcon,
+  ensureFullCatalogue,
   iconURL,
   initialRevealCount,
+  orderCatalogueEntries,
+  popularCatalogueEntries,
+  resolveArtworkSlug,
   type CatalogueEntry,
+  type IconVariant,
 } from "./appCatalogue";
 
 const DEFAULT_COLUMNS = 4;
 const DEFAULT_ROWS = 3;
 const MIN_TILE_HEIGHT = 56;
 
+const VARIANT_OPTIONS: { value: IconVariant; label: string }[] = [
+  { value: "default", label: "Default" },
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+];
+
+export type CatalogueSelection = {
+  entry: CatalogueEntry;
+  artworkSlug: string;
+};
+
 export type AppIconPickerProps = {
   selectedIcon: string;
-  onSelect: (entry: CatalogueEntry) => void;
+  onSelect: (selection: CatalogueSelection) => void;
   detailsTargetId: string;
   autoFocusSearch?: boolean;
   /** Optional catalogue override for tests (long synthetic lists). */
@@ -60,10 +75,12 @@ function measureRowsPerViewport(
 
 function TileArtwork({
   entry,
+  artworkSlug,
   failed,
   onFailed,
 }: {
   entry: CatalogueEntry;
+  artworkSlug: string;
   failed: boolean;
   onFailed: () => void;
 }) {
@@ -80,7 +97,7 @@ function TileArtwork({
       decoding="async"
       width={40}
       height={40}
-      src={iconURL(`dashboard-icons:${entry.slug}`)}
+      src={iconURL(`dashboard-icons:${artworkSlug}`)}
       alt=""
       onError={onFailed}
     />
@@ -92,28 +109,79 @@ export function AppIconPicker({
   onSelect,
   detailsTargetId,
   autoFocusSearch = false,
-  entries = catalogueEntries,
+  entries: entriesProp,
 }: AppIconPickerProps) {
   const [query, setQuery] = useState("");
+  const [variant, setVariant] = useState<IconVariant>("default");
   const [visibleCount, setVisibleCount] = useState(0);
   const [failedSlugs, setFailedSlugs] = useState<Record<string, true>>({});
+  const [loadedEntries, setLoadedEntries] = useState<readonly CatalogueEntry[]>(
+    popularCatalogueEntries,
+  );
+  const [catalogueLoading, setCatalogueLoading] = useState(!entriesProp);
+  const [catalogueError, setCatalogueError] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const queryGen = useRef(0);
   const appending = useRef(false);
+  const prevVariant = useRef(variant);
+  const entries = entriesProp ?? loadedEntries;
   const matches = useMemo(
-    () => filterCatalogueEntries(entries, query),
+    () => orderCatalogueEntries(entries, query),
     [entries, query],
   );
+
+  useEffect(() => {
+    if (entriesProp) {
+      setCatalogueLoading(false);
+      setCatalogueError(false);
+      return;
+    }
+    let cancelled = false;
+    setCatalogueLoading(true);
+    setCatalogueError(false);
+    void ensureFullCatalogue()
+      .then((full) => {
+        if (cancelled) return;
+        setLoadedEntries(full);
+        setCatalogueLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCatalogueLoading(false);
+        setCatalogueError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [entriesProp]);
   const rendered = matches.slice(0, visibleCount);
   const exhausted = matches.length === 0 || visibleCount >= matches.length;
-  const selectedSlug = selectedIcon.startsWith("dashboard-icons:")
-    ? selectedIcon.slice("dashboard-icons:".length)
+  const selectedEntry = catalogueEntryForIcon(selectedIcon, entries);
+  const selectedArtworkSlug = selectedEntry
+    ? selectedIcon.startsWith("dashboard-icons:")
+      ? selectedIcon.slice("dashboard-icons:".length)
+      : selectedEntry.slug
     : "";
-  const selectedEntry = selectedSlug
-    ? entries.find((entry) => entry.slug === selectedSlug)
-    : undefined;
+
+  const emitSelection = (entry: CatalogueEntry, nextVariant: IconVariant) => {
+    onSelect({
+      entry,
+      artworkSlug: resolveArtworkSlug(entry, nextVariant),
+    });
+  };
+
+  useEffect(() => {
+    if (prevVariant.current === variant) return;
+    prevVariant.current = variant;
+    const current = catalogueEntryForIcon(selectedIcon, entries);
+    if (!current) return;
+    onSelect({
+      entry: current,
+      artworkSlug: resolveArtworkSlug(current, variant),
+    });
+  }, [variant, selectedIcon, entries, onSelect]);
 
   const fillBuffer = (gen: number) => {
     if (gen !== queryGen.current) return;
@@ -124,7 +192,6 @@ export function AppIconPicker({
     setVisibleCount((current) => {
       if (gen !== queryGen.current) return current;
       const target = initialRevealCount(matches.length, columns, rows);
-      // Keep filling while the buffer is short of the target (resize / empty first paint).
       return Math.max(current, target);
     });
   };
@@ -149,7 +216,6 @@ export function AppIconPicker({
     appending.current = false;
     const viewport = viewportRef.current;
     if (viewport) viewport.scrollTop = 0;
-    // Synchronous first paint (defaults), then refine once tiles exist.
     const columns = measureColumns(gridRef.current);
     const rows = measureRowsPerViewport(viewport, gridRef.current);
     setVisibleCount(initialRevealCount(matches.length, columns, rows));
@@ -233,7 +299,7 @@ export function AppIconPicker({
         {selectedEntry ? (
           <>
             <span className="ui-icon-picker-summary-art" aria-hidden="true">
-              {failedSlugs[selectedEntry.slug] ? (
+              {failedSlugs[selectedArtworkSlug] ? (
                 <span className="ui-icon-picker-fallback">
                   {selectedEntry.displayName.slice(0, 2).toUpperCase()}
                 </span>
@@ -241,12 +307,12 @@ export function AppIconPicker({
                 <img
                   width={40}
                   height={40}
-                  src={iconURL(`dashboard-icons:${selectedEntry.slug}`)}
+                  src={iconURL(`dashboard-icons:${selectedArtworkSlug}`)}
                   alt=""
                   onError={() =>
                     setFailedSlugs((prev) => ({
                       ...prev,
-                      [selectedEntry.slug]: true,
+                      [selectedArtworkSlug]: true,
                     }))
                   }
                 />
@@ -267,6 +333,25 @@ export function AppIconPicker({
         )}
       </div>
       <div className="ui-icon-picker-toolbar">
+        <div
+          className="ui-icon-picker-variants"
+          role="radiogroup"
+          aria-label="Icon variant"
+        >
+          {VARIANT_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              variant="quiet"
+              className={`ui-icon-picker-variant${variant === option.value ? " selected" : ""}`}
+              role="radio"
+              aria-checked={variant === option.value}
+              onClick={() => setVariant(option.value)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
         <Button
           type="button"
           variant="quiet"
@@ -276,6 +361,26 @@ export function AppIconPicker({
           Skip to app details
         </Button>
       </div>
+      {catalogueLoading ? (
+        <Text
+          as="p"
+          variant="caption"
+          className="ui-icon-picker-catalogue-status"
+          role="status"
+        >
+          Loading full catalogue…
+        </Text>
+      ) : null}
+      {catalogueError ? (
+        <Text
+          as="p"
+          variant="caption"
+          className="ui-icon-picker-catalogue-status"
+          role="status"
+        >
+          Showing popular apps only. Full catalogue could not be loaded.
+        </Text>
+      ) : null}
       <ScrollArea
         className="ui-icon-picker-scroll"
         viewportRef={viewportRef}
@@ -283,7 +388,9 @@ export function AppIconPicker({
       >
         {matches.length === 0 ? (
           <Text as="p" variant="support" className="ui-icon-picker-empty">
-            No apps found. Try another name or use a custom icon.
+            {catalogueLoading
+              ? "Loading more apps…"
+              : "No apps found. Try another name or use a custom icon."}
           </Text>
         ) : (
           <>
@@ -294,8 +401,8 @@ export function AppIconPicker({
               aria-label="Matching apps"
             >
               {rendered.map((entry, index) => {
-                const selected =
-                  selectedIcon === `dashboard-icons:${entry.slug}`;
+                const artworkSlug = resolveArtworkSlug(entry, variant);
+                const selected = selectedEntry?.slug === entry.slug;
                 return (
                   <Button
                     key={entry.slug}
@@ -306,16 +413,17 @@ export function AppIconPicker({
                     aria-label={entry.displayName}
                     aria-pressed={selected}
                     onFocus={() => ensureAheadOnFocus(index)}
-                    onClick={() => onSelect(entry)}
+                    onClick={() => emitSelection(entry, variant)}
                   >
                     <span className="ui-icon-picker-art">
                       <TileArtwork
                         entry={entry}
-                        failed={Boolean(failedSlugs[entry.slug])}
+                        artworkSlug={artworkSlug}
+                        failed={Boolean(failedSlugs[artworkSlug])}
                         onFailed={() =>
                           setFailedSlugs((prev) => ({
                             ...prev,
-                            [entry.slug]: true,
+                            [artworkSlug]: true,
                           }))
                         }
                       />

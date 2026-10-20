@@ -242,7 +242,10 @@ describe("AppIconPicker reveal", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "App 02" }));
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: "app-02", displayName: "App 02" }),
+      expect.objectContaining({
+        entry: expect.objectContaining({ slug: "app-02", displayName: "App 02" }),
+        artworkSlug: "app-02",
+      }),
     );
 
     cleanup();
@@ -272,8 +275,69 @@ describe("AppIconPicker reveal", () => {
     fireEvent.keyDown(tile, { key: "Enter" });
     fireEvent.click(tile);
     expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: "app-03" }),
+      expect.objectContaining({
+        entry: expect.objectContaining({ slug: "app-03" }),
+        artworkSlug: "app-03",
+      }),
     );
+  });
+
+  it("switches light/dark artwork and persists the resolved slug", async () => {
+    const onSelect = vi.fn();
+    const variantCatalogue: CatalogueEntry[] = [
+      {
+        slug: "github",
+        displayName: "Github",
+        variants: { light: "github-light", dark: "github-dark" },
+      },
+      { slug: "plex", displayName: "Plex" },
+    ];
+    render(
+      <AppIconPicker
+        selectedIcon=""
+        onSelect={onSelect}
+        detailsTargetId="details"
+        entries={variantCatalogue}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Github" })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Light" }));
+    fireEvent.click(screen.getByRole("button", { name: "Github" }));
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entry: expect.objectContaining({ slug: "github" }),
+        artworkSlug: "github-light",
+      }),
+    );
+
+    cleanup();
+    onSelect.mockClear();
+    render(
+      <AppIconPicker
+        selectedIcon="dashboard-icons:github"
+        onSelect={onSelect}
+        detailsTargetId="details"
+        entries={variantCatalogue}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Github" })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entry: expect.objectContaining({ slug: "github" }),
+          artworkSlug: "github-dark",
+        }),
+      );
+    });
+    const img = screen
+      .getByRole("button", { name: "Github" })
+      .querySelector("img");
+    expect(img?.getAttribute("src")).toContain("github-dark.svg");
   });
 
   it("skips to app details without requiring every tile to be focused", async () => {
