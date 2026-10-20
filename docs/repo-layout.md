@@ -37,7 +37,7 @@ docs/                     Contracts and plans
 ### App icon catalogue
 
 - Pin lives in `web/src/features/apps/catalogue.meta.json` (`ref` = upstream git SHA).
-- `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json`, `catalogue.seed.json` (popular pins only), and updates `generatedAt` in the meta file. Commit those artefacts.
+- `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json`, `catalogue.seed.json` (popular pins only), `catalogue.png-slugs.json` (PNG-only base slugs for sync CDN paths), and updates `generatedAt` in the meta file. Commit those artefacts.
 - The dashboard entry chunk imports only the seed + helpers. Add/Edit app calls `ensureFullCatalogue()` to dynamically import `catalogueFull.ts` (full JSON). Docker import awaits the same helper before suggesting icons.
 - To bump icons: set a new `ref`, run `npm run icons`, commit. Artwork URLs use `cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@<ref>/svg/…`.
 - Empty-query pin order is `web/src/features/apps/popularSlugs.ts` (drives seed generation order).

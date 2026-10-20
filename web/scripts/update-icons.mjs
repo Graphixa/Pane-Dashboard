@@ -17,6 +17,10 @@ const seedPath = new URL(
   "../src/features/apps/catalogue.seed.json",
   import.meta.url,
 );
+const pngPath = new URL(
+  "../src/features/apps/catalogue.png-slugs.json",
+  import.meta.url,
+);
 const popularPath = new URL(
   "../src/features/apps/popularSlugs.ts",
   import.meta.url,
@@ -56,10 +60,12 @@ function entriesFromMetadata(metadata) {
       typeof colors?.light === "string" && colors.light ? colors.light : undefined;
     const dark =
       typeof colors?.dark === "string" && colors.dark ? colors.dark : undefined;
-    /** @type {{ slug: string, displayName: string, aliases?: string[], variants?: { light?: string, dark?: string } }} */
+    const base = data.base === "png" ? "png" : "svg";
+    /** @type {{ slug: string, displayName: string, format: "svg"|"png", aliases?: string[], variants?: { light?: string, dark?: string } }} */
     const entry = {
       slug,
       displayName: slugToDisplayName(slug),
+      format: base,
     };
     if (aliases.length) entry.aliases = aliases;
     if (light || dark) {
@@ -110,11 +116,16 @@ if (!seed.length) {
 }
 await writeFile(seedPath, `${JSON.stringify(seed)}\n`);
 
+const pngSlugs = entries
+  .filter((entry) => entry.format === "png")
+  .map((entry) => entry.slug);
+await writeFile(pngPath, `${JSON.stringify(pngSlugs)}\n`);
+
 await writeFile(
   metaPath,
   `${JSON.stringify({ ref, generatedAt }, null, 2)}\n`,
 );
 
 console.log(
-  `Wrote ${entries.length} catalogue entries and ${seed.length} seed pins (pin ${ref.slice(0, 12)}…). Upstream licence: Apache-2.0.`,
+  `Wrote ${entries.length} catalogue entries (${pngSlugs.length} png), ${seed.length} seed pins (pin ${ref.slice(0, 12)}…). Upstream licence: Apache-2.0.`,
 );

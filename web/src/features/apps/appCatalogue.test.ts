@@ -17,6 +17,7 @@ import {
   popularCatalogueEntries,
   resetCatalogueCacheForTests,
   resolveArtworkSlug,
+  resolveIconFormat,
   slugToDisplayName,
   suggestIcon,
 } from "./appCatalogue";
@@ -215,10 +216,15 @@ describe("applyCatalogueTileSelection", () => {
 });
 
 describe("icon helpers", () => {
-  it("builds pinned dashboard-icons CDN URLs and passes through custom URLs", () => {
+  it("builds pinned dashboard-icons CDN URLs for svg and png bases", () => {
     expect(DASHBOARD_ICONS_REF.length).toBeGreaterThan(7);
+    expect(resolveIconFormat("plex")).toBe("svg");
+    expect(resolveIconFormat("agentaia")).toBe("png");
     expect(iconURL("dashboard-icons:plex")).toBe(
       `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/svg/plex.svg`,
+    );
+    expect(iconURL("dashboard-icons:agentaia")).toBe(
+      `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/png/agentaia.png`,
     );
     expect(iconURL("https://example.com/icon.png")).toBe(
       "https://example.com/icon.png",

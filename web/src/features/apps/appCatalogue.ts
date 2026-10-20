@@ -1,11 +1,16 @@
 import catalogueMeta from "./catalogue.meta.json";
+import pngSlugList from "./catalogue.png-slugs.json";
 import seedEntries from "./catalogue.seed.json";
 import {
   mapCatalogueJson,
   type GeneratedCatalogueEntry,
+  type IconArtworkFormat,
   type MappedCatalogueEntry,
 } from "./catalogueMap";
 import { popularSlugs } from "./popularSlugs";
+
+/** PNG-only upstream icons (sync lookup for dashboard tiles before full catalogue loads). */
+const pngSlugSet = new Set(pngSlugList as string[]);
 
 /** Pinned homarr-labs/dashboard-icons git ref used for CDN artwork URLs. */
 export const DASHBOARD_ICONS_REF: string = catalogueMeta.ref;
@@ -218,10 +223,27 @@ export function applyCatalogueTileSelection<
   };
 }
 
-export const iconURL = (icon: string) =>
-  icon.startsWith("dashboard-icons:")
-    ? `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/svg/${icon.slice(16)}.svg`
-    : icon;
+/** Resolve svg vs png for a dashboard-icons artwork slug (including -light/-dark). */
+export function resolveIconFormat(
+  artworkSlug: string,
+  entries: readonly CatalogueEntry[] = getActiveCatalogue(),
+): IconArtworkFormat {
+  const entry = catalogueEntryForIcon(
+    `dashboard-icons:${artworkSlug}`,
+    entries,
+  );
+  if (entry?.format === "png" || entry?.format === "svg") return entry.format;
+  const base = artworkSlug.replace(/-(light|dark)$/, "");
+  if (pngSlugSet.has(artworkSlug) || pngSlugSet.has(base)) return "png";
+  return "svg";
+}
+
+export const iconURL = (icon: string) => {
+  if (!icon.startsWith("dashboard-icons:")) return icon;
+  const slug = icon.slice("dashboard-icons:".length);
+  const format = resolveIconFormat(slug);
+  return `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/${format}/${slug}.${format}`;
+};
 
 export function suggestIcon(name: string, image = "") {
   const entries = getActiveCatalogue();
