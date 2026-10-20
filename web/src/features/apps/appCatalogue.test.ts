@@ -1,31 +1,43 @@
-import { beforeEach, describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  alternateIconFormat,
   appendRevealCount,
   applyCatalogueTileSelection,
   catalogueEntry,
   catalogueEntryForIcon,
   catalogueMatchesQuery,
   DASHBOARD_ICONS_REF,
-  ensureFullCatalogue,
+  ensureCatalogue,
   filterCatalogueEntries,
   getActiveCatalogue,
   iconURL,
+  iconURLForFormat,
   initialRevealCount,
-  isFullCatalogueReady,
+  METADATA_URL,
   normalizeCatalogueSearch,
   orderCatalogueEntries,
   popularCatalogueEntries,
+  refreshCatalogueIfStale,
   resetCatalogueCacheForTests,
   resolveArtworkSlug,
   resolveIconFormat,
   slugToDisplayName,
   suggestIcon,
 } from "./appCatalogue";
+import {
+  CATALOGUE_CACHE_KEY,
+  CATALOGUE_CACHE_TTL_MS,
+  clearCatalogueCache,
+  readCatalogueCache,
+  writeCatalogueCache,
+} from "./catalogueCache";
 import { fullCatalogueEntries } from "./catalogueFull";
-import { popularSlugs } from "./popularSlugs";
+import { mapUpstreamMetadata } from "./mapUpstreamMetadata";
 
 beforeEach(() => {
   resetCatalogueCacheForTests();
+  clearCatalogueCache();
 });
 
 describe("catalogue metadata", () => {
@@ -38,21 +50,33 @@ describe("catalogue metadata", () => {
       ),
     ).toBe(false);
     expect(getActiveCatalogue()).toBe(popularCatalogueEntries);
-    expect(isFullCatalogueReady()).toBe(false);
   });
 
-  it("lazy-loads the full catalogue chunk once", async () => {
-    const full = await ensureFullCatalogue();
+  it("loads the release baseline via ensureCatalogue once", async () => {
+    const full = await ensureCatalogue();
     expect(full.length).toBeGreaterThan(1000);
     expect(full).toBe(fullCatalogueEntries);
-    expect(isFullCatalogueReady()).toBe(true);
     expect(getActiveCatalogue()).toBe(full);
-    expect(await ensureFullCatalogue()).toBe(full);
+    expect(await ensureCatalogue()).toBe(full);
     expect(
       full.some(
         (e) => e.slug.endsWith("-light") || e.slug.endsWith("-dark"),
       ),
     ).toBe(false);
+  });
+
+  it("uses a fresh localStorage cache before the bundled chunk", async () => {
+    const cached = [
+      {
+        slug: "cached-app",
+        displayName: "Cached App",
+        format: "svg" as const,
+      },
+    ];
+    writeCatalogueCache(cached, Date.now());
+    const full = await ensureCatalogue();
+    expect(full).toEqual(cached);
+    expect(getActiveCatalogue()).toEqual(cached);
   });
 
   it("derives display names from slug title-casing", () => {
@@ -63,7 +87,7 @@ describe("catalogue metadata", () => {
   });
 
   it("matches search against slug, display name and aliases", async () => {
-    await ensureFullCatalogue();
+    await ensureCatalogue();
     const adguard = catalogueEntry("adguard-home")!;
     expect(catalogueMatchesQuery(adguard, "")).toBe(true);
     expect(catalogueMatchesQuery(adguard, "adguard")).toBe(true);
@@ -85,9 +109,11 @@ describe("catalogue metadata", () => {
   });
 
   it("orders popular pins first then alphabetical for empty query", async () => {
-    await ensureFullCatalogue();
+    await ensureCatalogue();
     const ordered = orderCatalogueEntries(getActiveCatalogue(), "");
-    const pinsPresent = popularSlugs.filter((slug) => catalogueEntry(slug));
+    const pinsPresent = popularCatalogueEntries
+      .map((e) => e.slug)
+      .filter((slug) => catalogueEntry(slug));
     expect(ordered.slice(0, pinsPresent.length).map((e) => e.slug)).toEqual(
       pinsPresent,
     );
@@ -97,13 +123,13 @@ describe("catalogue metadata", () => {
   });
 
   it("filters then ranks popular matches first when querying", async () => {
-    await ensureFullCatalogue();
+    await ensureCatalogue();
     const catalogue = getActiveCatalogue();
     const home = orderCatalogueEntries(catalogue, "home");
     expect(home.every((e) => catalogueMatchesQuery(e, "home"))).toBe(true);
-    const pinHits = popularSlugs.filter((slug) =>
-      home.some((e) => e.slug === slug),
-    );
+    const pinHits = popularCatalogueEntries
+      .map((e) => e.slug)
+      .filter((slug) => home.some((e) => e.slug === slug));
     expect(home.slice(0, pinHits.length).map((e) => e.slug)).toEqual(pinHits);
     expect(filterCatalogueEntries(catalogue, "zzz-no-match")).toEqual([]);
   });
@@ -120,7 +146,7 @@ describe("catalogue metadata", () => {
   });
 
   it("finds base entries from variant icon references", async () => {
-    await ensureFullCatalogue();
+    await ensureCatalogue();
     const entry = getActiveCatalogue().find((e) => e.variants?.light);
     expect(entry).toBeTruthy();
     const icon = `dashboard-icons:${entry!.variants!.light}`;
@@ -132,6 +158,71 @@ describe("catalogue metadata", () => {
     expect(initialRevealCount(10, 4, 3)).toBe(10);
     expect(appendRevealCount(24, 100, 4, 3)).toBe(36);
     expect(appendRevealCount(96, 100, 4, 3)).toBe(100);
+  });
+});
+
+describe("catalogue refresh", () => {
+  it("maps upstream metadata like the icon generator", () => {
+    const entries = mapUpstreamMetadata({
+      plex: { base: "svg", aliases: ["Plex Media Server"] },
+      algo: { base: "png" },
+      "algo-light": { base: "png" },
+      "weird_slug": { base: "svg" },
+    });
+    expect(entries.map((e) => e.slug)).toEqual(["algo", "plex"]);
+    expect(entries.find((e) => e.slug === "algo")?.format).toBe("png");
+    expect(entries.find((e) => e.slug === "plex")?.aliases).toEqual([
+      "Plex Media Server",
+    ]);
+  });
+
+  it("skips refresh when the localStorage cache is fresh", async () => {
+    writeCatalogueCache(
+      [{ slug: "fresh", displayName: "Fresh", format: "svg" }],
+      Date.now(),
+    );
+    const fetchImpl = vi.fn();
+    expect(await refreshCatalogueIfStale(fetchImpl)).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(getActiveCatalogue()[0]?.slug).toBe("fresh");
+  });
+
+  it("fetches metadata when the cache is stale and updates the active catalogue", async () => {
+    writeCatalogueCache(
+      [{ slug: "old", displayName: "Old", format: "svg" }],
+      Date.now() - CATALOGUE_CACHE_TTL_MS - 1,
+    );
+    await ensureCatalogue();
+    expect(getActiveCatalogue()).toBe(fullCatalogueEntries);
+
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        refreshed: { base: "png", aliases: ["Refreshed App"] },
+        plex: { base: "svg" },
+      }),
+    })) as unknown as typeof fetch;
+
+    const now = Date.now();
+    const result = await refreshCatalogueIfStale(fetchImpl, now);
+    expect(fetchImpl).toHaveBeenCalledWith(METADATA_URL);
+    expect(result?.map((e) => e.slug)).toEqual(["plex", "refreshed"]);
+    expect(getActiveCatalogue()).toBe(result);
+    expect(resolveIconFormat("refreshed")).toBe("png");
+    const stored = readCatalogueCache(undefined, now);
+    expect(stored?.fresh).toBe(true);
+    expect(stored?.payload.fetchedAt).toBe(now);
+    expect(localStorage.getItem(CATALOGUE_CACHE_KEY)).toBeTruthy();
+  });
+
+  it("keeps the release baseline when refresh fails", async () => {
+    await ensureCatalogue();
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 503,
+    })) as unknown as typeof fetch;
+    expect(await refreshCatalogueIfStale(fetchImpl)).toBeNull();
+    expect(getActiveCatalogue()).toBe(fullCatalogueEntries);
   });
 });
 
@@ -216,15 +307,24 @@ describe("applyCatalogueTileSelection", () => {
 });
 
 describe("icon helpers", () => {
-  it("builds pinned dashboard-icons CDN URLs for svg and png bases", () => {
+  it("builds unpinned jsDelivr artwork URLs for svg and png bases", () => {
     expect(DASHBOARD_ICONS_REF.length).toBeGreaterThan(7);
     expect(resolveIconFormat("plex")).toBe("svg");
     expect(resolveIconFormat("agentaia")).toBe("png");
+    expect(resolveIconFormat("algo")).toBe("png");
+    expect(alternateIconFormat("svg")).toBe("png");
+    expect(alternateIconFormat("png")).toBe("svg");
     expect(iconURL("dashboard-icons:plex")).toBe(
-      `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/svg/plex.svg`,
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/plex.svg",
     );
     expect(iconURL("dashboard-icons:agentaia")).toBe(
-      `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/png/agentaia.png`,
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/agentaia.png",
+    );
+    expect(iconURL("dashboard-icons:algo")).toBe(
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/algo.png",
+    );
+    expect(iconURLForFormat("plex", "png")).toBe(
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/plex.png",
     );
     expect(iconURL("https://example.com/icon.png")).toBe(
       "https://example.com/icon.png",
@@ -233,7 +333,7 @@ describe("icon helpers", () => {
 
   it("suggests catalogue slug matches for Docker import after full load", async () => {
     expect(suggestIcon("Plex")).toBe("dashboard-icons:plex");
-    await ensureFullCatalogue();
+    await ensureCatalogue();
     expect(suggestIcon("", "ghcr.io/linuxserver/sonarr:latest")).toBe(
       "dashboard-icons:sonarr",
     );

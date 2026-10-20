@@ -378,7 +378,15 @@ describe("AppIconPicker reveal", () => {
     const img = tile.querySelector("img");
     expect(img).toBeTruthy();
     fireEvent.error(img!);
-    expect(tile.querySelector(".ui-icon-picker-fallback")).toBeTruthy();
+    await waitFor(() =>
+      expect(tile.querySelector("img")?.getAttribute("src")).toContain(
+        "/png/app-00.png",
+      ),
+    );
+    fireEvent.error(tile.querySelector("img")!);
+    await waitFor(() =>
+      expect(tile.querySelector(".ui-icon-picker-fallback")).toBeTruthy(),
+    );
     expect(tile.querySelector("img")).toBeNull();
     fireEvent.click(tile);
   });

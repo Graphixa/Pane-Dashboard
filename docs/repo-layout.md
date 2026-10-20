@@ -36,11 +36,11 @@ docs/                     Contracts and plans
 
 ### App icon catalogue
 
-- Pin lives in `web/src/features/apps/catalogue.meta.json` (`ref` = upstream git SHA).
+- Build pin lives in `web/src/features/apps/catalogue.meta.json` (`ref` = upstream git SHA) for `npm run icons` only.
 - `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json`, `catalogue.seed.json` (popular pins only), and `catalogue.png-slugs.json` (PNG-only base slugs for sync CDN paths). `catalogue.meta.json` holds only the pin `ref` (no timestamp). Commit those artefacts when the pin or index changes.
-- The dashboard entry chunk imports only the seed + helpers. Add/Edit app calls `ensureFullCatalogue()` to dynamically import `catalogueFull.ts` (full JSON). Docker import awaits the same helper before suggesting icons.
-- To bump icons: set a new `ref`, run `npm run icons`, commit. Artwork URLs use `cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@<ref>/svg/…`.
-- Empty-query pin order is `web/src/features/apps/popularSlugs.ts` (drives seed generation order).
+- The dashboard entry chunk imports only the seed + helpers. Runtime artwork uses unpinned jsDelivr (`…/dashboard-icons/{svg|png}/…`). `ensureCatalogue()` loads memory → fresh `localStorage` (`pane-icon-catalogue-v1`) → bundled `catalogueFull.ts`. `refreshCatalogueIfStale()` may fetch unpinned `metadata.json` when the cache is missing or older than 24h. Dashboard warms this on idle; Add/Edit app and Docker import call the same helpers.
+- To regenerate the release baseline: set a new `ref`, run `npm run icons`, commit.
+- Empty-query pin order follows `catalogue.seed.json` / `popularCatalogueEntries`; `popularSlugs.ts` is input to `npm run icons` only.
 
 ## Package boundaries
 

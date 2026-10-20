@@ -13,7 +13,8 @@ import {
   validate,
 } from "./model";
 import {
-  ensureFullCatalogue,
+  ensureCatalogue,
+  refreshCatalogueIfStale,
   suggestIcon,
 } from "./features/apps/appCatalogue";
 type Candidate = {
@@ -69,7 +70,8 @@ const [source, setSource] = useState("file"),
       if (!r.ok) throw Error(body.error);
       setEnabled(body.enabled);
       try {
-        await ensureFullCatalogue();
+        await ensureCatalogue();
+        await refreshCatalogueIfStale();
       } catch {
         /* Seed catalogue still allows common icon suggestions. */
       }

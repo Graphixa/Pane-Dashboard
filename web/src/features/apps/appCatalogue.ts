@@ -2,93 +2,140 @@ import catalogueMeta from "./catalogue.meta.json";
 import pngSlugList from "./catalogue.png-slugs.json";
 import seedEntries from "./catalogue.seed.json";
 import {
+  clearCatalogueCache,
+  readCatalogueCache,
+  writeCatalogueCache,
+} from "./catalogueCache";
+import {
   mapCatalogueJson,
+  mapUpstreamMetadata,
+  slugToDisplayName,
+  type CatalogueEntry,
   type GeneratedCatalogueEntry,
   type IconArtworkFormat,
-  type MappedCatalogueEntry,
-} from "./catalogueMap";
-import { popularSlugs } from "./popularSlugs";
+} from "./mapUpstreamMetadata";
 
-/** PNG-only upstream icons (sync lookup for dashboard tiles before full catalogue loads). */
-const pngSlugSet = new Set(pngSlugList as string[]);
+export type { CatalogueEntry, IconArtworkFormat } from "./mapUpstreamMetadata";
+export { slugToDisplayName };
 
-/** Pinned homarr-labs/dashboard-icons git ref used for CDN artwork URLs. */
+/** Build-time pin for `npm run icons` only — not used in artwork URLs. */
 export const DASHBOARD_ICONS_REF: string = catalogueMeta.ref;
+
+export const METADATA_URL =
+  "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/metadata.json";
 
 export type IconVariant = "default" | "light" | "dark";
 
-/** Dashboard Icons entry with a stable slug and UI display name. */
-export type CatalogueEntry = MappedCatalogueEntry;
+const releasePngSlugs = new Set(pngSlugList as string[]);
+let pngSlugSet = new Set(releasePngSlugs);
 
 /**
- * Inline popular seed (~80 entries). Shown immediately in Add/Edit app while the
- * full catalogue chunk loads via `ensureFullCatalogue()`.
+ * Inline popular seed. Shown immediately in Add/Edit app while the full
+ * catalogue loads via `ensureCatalogue()`.
  */
 export const popularCatalogueEntries: readonly CatalogueEntry[] =
   mapCatalogueJson(seedEntries as GeneratedCatalogueEntry[]);
 
-/** @deprecated Prefer getActiveCatalogue() — kept as the sync seed for callers. */
-export const catalogueEntries: readonly CatalogueEntry[] =
-  popularCatalogueEntries;
-
-/** Derived slug list from the active catalogue (seed until full load completes). */
-export function getCatalogueSlugs(
-  entries: readonly CatalogueEntry[] = getActiveCatalogue(),
-): readonly string[] {
-  return entries.map((entry) => entry.slug);
-}
-
-/** @deprecated Prefer getCatalogueSlugs() after ensureFullCatalogue(). */
-export const catalogue: readonly string[] = popularCatalogueEntries.map(
-  (entry) => entry.slug,
-);
+const popularPinOrder = popularCatalogueEntries.map((entry) => entry.slug);
 
 let cachedFull: readonly CatalogueEntry[] | null = null;
-let loadPromise: Promise<readonly CatalogueEntry[]> | null = null;
+let ensurePromise: Promise<readonly CatalogueEntry[]> | null = null;
+let refreshPromise: Promise<readonly CatalogueEntry[] | null> | null = null;
 
-/** Seed until the full index has been loaded at least once this session. */
+function applyCatalogue(entries: readonly CatalogueEntry[]): void {
+  cachedFull = entries;
+  pngSlugSet = new Set(
+    entries.filter((entry) => entry.format === "png").map((entry) => entry.slug),
+  );
+  if (pngSlugSet.size === 0) pngSlugSet = new Set(releasePngSlugs);
+}
+
+/** Seed until a full catalogue has been applied this session. */
 export function getActiveCatalogue(): readonly CatalogueEntry[] {
   return cachedFull ?? popularCatalogueEntries;
 }
 
-/** Whether the full catalogue chunk has been applied. */
-export function isFullCatalogueReady(): boolean {
-  return cachedFull !== null;
+/**
+ * Load the best local full catalogue without network: memory → fresh
+ * localStorage → bundled release chunk.
+ */
+export function ensureCatalogue(): Promise<readonly CatalogueEntry[]> {
+  if (cachedFull) return Promise.resolve(cachedFull);
+  if (ensurePromise) return ensurePromise;
+
+  ensurePromise = (async () => {
+    const cached = readCatalogueCache();
+    if (cached?.fresh) {
+      applyCatalogue(cached.payload.entries);
+      return cachedFull!;
+    }
+    try {
+      const mod = await import("./catalogueFull");
+      if (cachedFull) return cachedFull;
+      applyCatalogue(mod.fullCatalogueEntries);
+      return cachedFull!;
+    } catch (error) {
+      ensurePromise = null;
+      throw error;
+    }
+  })();
+
+  return ensurePromise;
 }
 
 /**
- * Dynamically import the full catalogue JSON chunk. Safe to call repeatedly;
- * resolves to the same cached list after the first success.
+ * If localStorage is missing or older than 24h, fetch upstream metadata.json,
+ * map it, persist, and update memory. Returns null when skipped or on failure.
  */
-export function ensureFullCatalogue(): Promise<readonly CatalogueEntry[]> {
-  if (cachedFull) return Promise.resolve(cachedFull);
-  if (!loadPromise) {
-    loadPromise = import("./catalogueFull")
-      .then((mod) => {
-        cachedFull = mod.fullCatalogueEntries;
-        return cachedFull;
-      })
-      .catch((error) => {
-        loadPromise = null;
-        throw error;
-      });
+export function refreshCatalogueIfStale(
+  fetchImpl: typeof fetch = fetch,
+  now = Date.now(),
+): Promise<readonly CatalogueEntry[] | null> {
+  if (refreshPromise) return refreshPromise;
+
+  const cached = readCatalogueCache(undefined, now);
+  if (cached?.fresh) {
+    if (!cachedFull) applyCatalogue(cached.payload.entries);
+    return Promise.resolve(null);
   }
-  return loadPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetchImpl(METADATA_URL);
+      if (!res.ok) throw new Error(`metadata fetch ${res.status}`);
+      const metadata = (await res.json()) as Record<string, unknown>;
+      const entries = mapUpstreamMetadata(metadata);
+      if (!entries.length) throw new Error("empty metadata catalogue");
+      writeCatalogueCache(entries, now);
+      applyCatalogue(entries);
+      return cachedFull;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
-/** Test helper: drop the lazy-load cache. */
-export function resetCatalogueCacheForTests(): void {
+/** Warm local baseline then refresh in the background when stale. */
+export async function warmIconCatalogue(): Promise<void> {
+  try {
+    await ensureCatalogue();
+  } catch {
+    /* Seed remains available. */
+  }
+  void refreshCatalogueIfStale();
+}
+
+/** Test helper: drop memory and optional localStorage cache. */
+export function resetCatalogueCacheForTests(clearStorage = true): void {
   cachedFull = null;
-  loadPromise = null;
-}
-
-/** Title-case a kebab slug for display / blank Name autofill. */
-export function slugToDisplayName(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  ensurePromise = null;
+  refreshPromise = null;
+  pngSlugSet = new Set(releasePngSlugs);
+  if (clearStorage) clearCatalogueCache();
 }
 
 export function catalogueEntry(
@@ -128,10 +175,6 @@ export function normalizeCatalogueSearch(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_\-./]+/g, "");
 }
 
-/**
- * Match displayName, slug and aliases case-insensitively, including normalised
- * forms so “AdGuard Home”, “adguard-home” and “adguardhome” hit the same entry.
- */
 export function catalogueMatchesQuery(
   entry: CatalogueEntry,
   query: string,
@@ -154,7 +197,6 @@ export function catalogueMatchesQuery(
   return haystacks.some((haystack) => haystack.includes(normalised));
 }
 
-/** Filter the full catalogue in input order; callers then order and limit rows. */
 export function filterCatalogueEntries(
   entries: readonly CatalogueEntry[],
   query: string,
@@ -162,14 +204,10 @@ export function filterCatalogueEntries(
   return entries.filter((entry) => catalogueMatchesQuery(entry, query));
 }
 
-/**
- * Filter then order: popular pin list first (stable order), then remaining
- * matches alphabetically by slug. Applies for empty and non-empty queries.
- */
 export function orderCatalogueEntries(
   entries: readonly CatalogueEntry[],
   query: string,
-  pinOrder: readonly string[] = popularSlugs,
+  pinOrder: readonly string[] = popularPinOrder,
 ): CatalogueEntry[] {
   const matched = filterCatalogueEntries(entries, query);
   const pinIndex = new Map(pinOrder.map((slug, index) => [slug, index]));
@@ -181,7 +219,6 @@ export function orderCatalogueEntries(
   });
 }
 
-/** Rows to cover the scrollport plus approximately one viewport ahead. */
 export function initialRevealCount(
   matchCount: number,
   columns: number,
@@ -192,7 +229,6 @@ export function initialRevealCount(
   return Math.min(matchCount, Math.max(cols, rows * cols));
 }
 
-/** Append approximately one viewport of complete rows. */
 export function appendRevealCount(
   current: number,
   matchCount: number,
@@ -204,10 +240,6 @@ export function appendRevealCount(
   return Math.min(matchCount, current + batch);
 }
 
-/**
- * Apply a catalogue tile selection: always set the icon; fill Name only when blank
- * (empty or whitespace-only). Preserve every other field byte-for-byte.
- */
 export function applyCatalogueTileSelection<
   T extends { name: string; icon: string },
 >(
@@ -223,7 +255,6 @@ export function applyCatalogueTileSelection<
   };
 }
 
-/** Resolve svg vs png for a dashboard-icons artwork slug (including -light/-dark). */
 export function resolveIconFormat(
   artworkSlug: string,
   entries: readonly CatalogueEntry[] = getActiveCatalogue(),
@@ -238,11 +269,24 @@ export function resolveIconFormat(
   return "svg";
 }
 
+export function alternateIconFormat(
+  format: IconArtworkFormat,
+): IconArtworkFormat {
+  return format === "png" ? "svg" : "png";
+}
+
+/** Unpinned jsDelivr artwork URL for a known format. */
+export function iconURLForFormat(
+  slug: string,
+  format: IconArtworkFormat,
+): string {
+  return `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/${format}/${slug}.${format}`;
+}
+
 export const iconURL = (icon: string) => {
   if (!icon.startsWith("dashboard-icons:")) return icon;
   const slug = icon.slice("dashboard-icons:".length);
-  const format = resolveIconFormat(slug);
-  return `https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@${DASHBOARD_ICONS_REF}/${format}/${slug}.${format}`;
+  return iconURLForFormat(slug, resolveIconFormat(slug));
 };
 
 export function suggestIcon(name: string, image = "") {

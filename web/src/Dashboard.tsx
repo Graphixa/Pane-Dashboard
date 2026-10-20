@@ -41,7 +41,8 @@ import { HeaderBrand } from "./BrandLogo";
 import Background from "./Background";
 import { appearanceStyle, normaliseGlass, uiFontFamily } from "./appearance";
 import PaneTitle from "./PaneTitle";
-import { iconURL } from "./features/apps/appCatalogue";
+import { warmIconCatalogue } from "./features/apps/appCatalogue";
+import { CatalogueIconImg } from "./features/apps/CatalogueIconImg";
 import { useConfig } from "./useConfig";
 import { AppEditor } from "./features/apps/AppEditor";
 import { PaneEditor } from "./features/panes/PaneEditor";
@@ -61,11 +62,11 @@ function Artwork({ app }: { app: App }) {
   return (
     <span className="artwork">
       {app.icon && !broken ? (
-        <img
-          src={iconURL(app.icon)}
-          alt=""
+        <CatalogueIconImg
+          icon={app.icon}
           draggable={false}
-          onError={() => setBroken(true)}
+          loading="eager"
+          onExhausted={() => setBroken(true)}
         />
       ) : (
         <span>{app.name.slice(0, 2).toUpperCase()}</span>
@@ -118,6 +119,9 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
   const [glassVisible, setGlassVisible] = useState<Set<string>>(
     () => new Set(),
   );
+  useEffect(() => {
+    void warmIconCatalogue();
+  }, []);
   const display = settingsPreview ?? config;
   const glass = normaliseGlass(display.appearance.glass ?? { mode: "solid", opacity: 15, blur: 2 });
   const glassMode = glass.mode === "glass";

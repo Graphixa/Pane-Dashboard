@@ -1,13 +1,14 @@
 import generatedEntries from "./catalogue.generated.json";
 import {
   mapCatalogueJson,
+  type CatalogueEntry,
   type GeneratedCatalogueEntry,
-  type MappedCatalogueEntry,
-} from "./catalogueMap";
+} from "./mapUpstreamMetadata";
 
 /**
- * Full native Dashboard Icons index. Import only via `ensureFullCatalogue()` so
- * the dashboard entry chunk does not embed this JSON.
+ * Full native Dashboard Icons index shipped with the release. Import only via
+ * `ensureCatalogue()` so the dashboard entry chunk does not embed this JSON.
  */
-export const fullCatalogueEntries: readonly MappedCatalogueEntry[] =
-  mapCatalogueJson(generatedEntries as GeneratedCatalogueEntry[]);
+export const fullCatalogueEntries: readonly CatalogueEntry[] = mapCatalogueJson(
+  generatedEntries as GeneratedCatalogueEntry[],
+);

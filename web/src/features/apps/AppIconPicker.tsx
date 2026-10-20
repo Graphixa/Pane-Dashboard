@@ -15,15 +15,17 @@ import {
 import {
   appendRevealCount,
   catalogueEntryForIcon,
-  ensureFullCatalogue,
-  iconURL,
+  ensureCatalogue,
+  getActiveCatalogue,
   initialRevealCount,
   orderCatalogueEntries,
   popularCatalogueEntries,
+  refreshCatalogueIfStale,
   resolveArtworkSlug,
   type CatalogueEntry,
   type IconVariant,
 } from "./appCatalogue";
+import { CatalogueIconImg } from "./CatalogueIconImg";
 
 const DEFAULT_COLUMNS = 4;
 const DEFAULT_ROWS = 3;
@@ -92,14 +94,12 @@ function TileArtwork({
     );
   }
   return (
-    <img
-      loading="lazy"
-      decoding="async"
+    <CatalogueIconImg
+      icon={`dashboard-icons:${artworkSlug}`}
       width={40}
       height={40}
-      src={iconURL(`dashboard-icons:${artworkSlug}`)}
-      alt=""
-      onError={onFailed}
+      loading="lazy"
+      onExhausted={onFailed}
     />
   );
 }
@@ -116,9 +116,11 @@ export function AppIconPicker({
   const [visibleCount, setVisibleCount] = useState(0);
   const [failedSlugs, setFailedSlugs] = useState<Record<string, true>>({});
   const [loadedEntries, setLoadedEntries] = useState<readonly CatalogueEntry[]>(
-    popularCatalogueEntries,
+    () => getActiveCatalogue(),
   );
-  const [catalogueLoading, setCatalogueLoading] = useState(!entriesProp);
+  const [catalogueLoading, setCatalogueLoading] = useState(
+    () => !entriesProp && getActiveCatalogue() === popularCatalogueEntries,
+  );
   const [catalogueError, setCatalogueError] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -139,16 +141,21 @@ export function AppIconPicker({
       return;
     }
     let cancelled = false;
-    setCatalogueLoading(true);
+    setCatalogueLoading(getActiveCatalogue() === popularCatalogueEntries);
     setCatalogueError(false);
-    void ensureFullCatalogue()
+    void ensureCatalogue()
       .then((full) => {
         if (cancelled) return;
         setLoadedEntries(full);
         setCatalogueLoading(false);
+        void refreshCatalogueIfStale().then((refreshed) => {
+          if (cancelled || !refreshed) return;
+          setLoadedEntries(refreshed);
+        });
       })
       .catch(() => {
         if (cancelled) return;
+        setLoadedEntries(getActiveCatalogue());
         setCatalogueLoading(false);
         setCatalogueError(true);
       });
@@ -304,12 +311,12 @@ export function AppIconPicker({
                   {selectedEntry.displayName.slice(0, 2).toUpperCase()}
                 </span>
               ) : (
-                <img
+                <CatalogueIconImg
+                  icon={`dashboard-icons:${selectedArtworkSlug}`}
                   width={40}
                   height={40}
-                  src={iconURL(`dashboard-icons:${selectedArtworkSlug}`)}
-                  alt=""
-                  onError={() =>
+                  loading="eager"
+                  onExhausted={() =>
                     setFailedSlugs((prev) => ({
                       ...prev,
                       [selectedArtworkSlug]: true,
