@@ -37,10 +37,10 @@ docs/                     Contracts and plans
 ### App icon catalogue
 
 - Build pin lives in `web/src/features/apps/catalogue.meta.json` (`ref` = upstream git SHA) for `npm run icons` only.
-- `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json`, `catalogue.seed.json` (popular pins only), and `catalogue.png-slugs.json` (PNG-only base slugs for sync CDN paths). `catalogue.meta.json` holds only the pin `ref` (no timestamp). Commit those artefacts when the pin or index changes.
-- The dashboard entry chunk imports only the seed + helpers. Runtime artwork uses unpinned jsDelivr (`…/dashboard-icons/{svg|png}/…`). `ensureCatalogue()` loads memory → fresh `localStorage` (`pane-icon-catalogue-v1`) → bundled `catalogueFull.ts`. `refreshCatalogueIfStale()` may fetch unpinned `metadata.json` when the cache is missing or older than 24h. Dashboard warms this on idle; Add/Edit app and Docker import call the same helpers.
+- `npm run icons` in `web` fetches `metadata.json` for that pin (or `npm run icons -- /path/to/dashboard-icons` for a local checkout) and writes `catalogue.generated.json` plus `catalogue.seed.json` (popular pins from `popularSlugs.json`). `catalogue.meta.json` holds only the pin `ref` (no timestamp). Commit those artefacts when the pin or index changes. The script and runtime share `mapUpstreamMetadata.ts`.
+- The dashboard entry chunk imports only the seed + helpers. Runtime artwork uses unpinned jsDelivr (`…/dashboard-icons/{svg|png}/…`); unknown formats default to svg and retry png once on error. `ensureCatalogue()` loads memory → fresh `localStorage` (`pane-icon-catalogue-v1`) → bundled `catalogueFull.ts`. `refreshCatalogueIfStale()` may fetch unpinned `metadata.json` when the cache is missing or older than 24h. Dashboard warms this on idle; Add/Edit app and Docker import call `ensureCatalogue()`.
 - To regenerate the release baseline: set a new `ref`, run `npm run icons`, commit.
-- Empty-query pin order follows `catalogue.seed.json` / `popularCatalogueEntries`; `popularSlugs.ts` is input to `npm run icons` only.
+- Empty-query pin order follows `catalogue.seed.json` / `popularCatalogueEntries`; `popularSlugs.json` is input to `npm run icons` only.
 
 ## Package boundaries
 

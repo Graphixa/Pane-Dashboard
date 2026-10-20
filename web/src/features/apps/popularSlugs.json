@@ -1,8 +1,4 @@
-/**
- * Empty-query pin order for the app icon picker (self-hosted favourites).
- * Remaining catalogue entries follow alphabetically by slug.
- */
-export const popularSlugs: readonly string[] = [
+[
   "adguard-home",
   "audiobookshelf",
   "authelia",
@@ -73,5 +69,5 @@ export const popularSlugs: readonly string[] = [
   "wikijs",
   "wireguard",
   "wordpress",
-  "yacht",
-];
+  "yacht"
+]

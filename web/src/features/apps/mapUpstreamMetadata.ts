@@ -41,20 +41,13 @@ export function mapCatalogueJson(
     displayName: entry.displayName,
     format: entry.format === "png" ? "png" : "svg",
     ...(entry.aliases?.length ? { aliases: entry.aliases } : {}),
-    ...(entry.variants?.light || entry.variants?.dark
-      ? {
-          variants: {
-            ...(entry.variants.light ? { light: entry.variants.light } : {}),
-            ...(entry.variants.dark ? { dark: entry.variants.dark } : {}),
-          },
-        }
-      : {}),
+    ...(entry.variants ? { variants: entry.variants } : {}),
   }));
 }
 
 /**
  * Map upstream dashboard-icons metadata.json into catalogue entries.
- * Matches web/scripts/update-icons.mjs rules.
+ * Shared by runtime refresh and `npm run icons`.
  */
 export function mapUpstreamMetadata(
   metadata: Record<string, unknown>,

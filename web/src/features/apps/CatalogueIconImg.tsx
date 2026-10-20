@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   alternateIconFormat,
   iconURL,
@@ -18,11 +18,7 @@ type CatalogueIconImgProps = {
   onExhausted?: () => void;
 };
 
-/**
- * Renders dashboard-icons artwork with a one-shot format retry (svg↔png)
- * before reporting exhaustion to the parent.
- */
-export function CatalogueIconImg({
+function CatalogueIconImgInner({
   icon,
   className,
   width,
@@ -33,14 +29,10 @@ export function CatalogueIconImg({
 }: CatalogueIconImgProps) {
   const isCatalogue = icon.startsWith("dashboard-icons:");
   const slug = isCatalogue ? icon.slice("dashboard-icons:".length) : "";
-  const initialFormat = isCatalogue ? resolveIconFormat(slug) : null;
-  const [format, setFormat] = useState<IconArtworkFormat | null>(initialFormat);
+  const [format, setFormat] = useState<IconArtworkFormat | null>(
+    isCatalogue ? resolveIconFormat(slug) : null,
+  );
   const [retried, setRetried] = useState(false);
-
-  useEffect(() => {
-    setFormat(isCatalogue ? resolveIconFormat(slug) : null);
-    setRetried(false);
-  }, [icon, isCatalogue, slug]);
 
   const src =
     isCatalogue && format
@@ -67,4 +59,12 @@ export function CatalogueIconImg({
       }}
     />
   );
+}
+
+/**
+ * Renders dashboard-icons artwork with a one-shot format retry (svg↔png)
+ * before reporting exhaustion to the parent.
+ */
+export function CatalogueIconImg(props: CatalogueIconImgProps) {
+  return <CatalogueIconImgInner key={props.icon} {...props} />;
 }

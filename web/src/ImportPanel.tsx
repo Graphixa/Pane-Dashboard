@@ -12,11 +12,7 @@ import {
   uid,
   validate,
 } from "./model";
-import {
-  ensureCatalogue,
-  refreshCatalogueIfStale,
-  suggestIcon,
-} from "./features/apps/appCatalogue";
+import { ensureCatalogue, suggestIcon } from "./features/apps/appCatalogue";
 type Candidate = {
   id: string;
   name: string;
@@ -71,7 +67,6 @@ const [source, setSource] = useState("file"),
       setEnabled(body.enabled);
       try {
         await ensureCatalogue();
-        await refreshCatalogueIfStale();
       } catch {
         /* Seed catalogue still allows common icon suggestions. */
       }

@@ -9,7 +9,6 @@ import {
   catalogueMatchesQuery,
   DASHBOARD_ICONS_REF,
   ensureCatalogue,
-  filterCatalogueEntries,
   getActiveCatalogue,
   iconURL,
   iconURLForFormat,
@@ -131,7 +130,7 @@ describe("catalogue metadata", () => {
       .map((e) => e.slug)
       .filter((slug) => home.some((e) => e.slug === slug));
     expect(home.slice(0, pinHits.length).map((e) => e.slug)).toEqual(pinHits);
-    expect(filterCatalogueEntries(catalogue, "zzz-no-match")).toEqual([]);
+    expect(orderCatalogueEntries(catalogue, "zzz-no-match")).toEqual([]);
   });
 
   it("resolves artwork variants with base fallback", () => {
@@ -307,27 +306,30 @@ describe("applyCatalogueTileSelection", () => {
 });
 
 describe("icon helpers", () => {
-  it("builds unpinned jsDelivr artwork URLs for svg and png bases", () => {
+  it("builds unpinned jsDelivr artwork URLs for svg and png bases", async () => {
     expect(DASHBOARD_ICONS_REF.length).toBeGreaterThan(7);
     expect(resolveIconFormat("plex")).toBe("svg");
-    expect(resolveIconFormat("agentaia")).toBe("png");
-    expect(resolveIconFormat("algo")).toBe("png");
     expect(alternateIconFormat("svg")).toBe("png");
     expect(alternateIconFormat("png")).toBe("svg");
+    // Unknown / not-yet-loaded slugs prefer svg; CatalogueIconImg retries png.
+    expect(resolveIconFormat("agentaia")).toBe("svg");
     expect(iconURL("dashboard-icons:plex")).toBe(
       "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/plex.svg",
-    );
-    expect(iconURL("dashboard-icons:agentaia")).toBe(
-      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/agentaia.png",
-    );
-    expect(iconURL("dashboard-icons:algo")).toBe(
-      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/algo.png",
     );
     expect(iconURLForFormat("plex", "png")).toBe(
       "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/plex.png",
     );
     expect(iconURL("https://example.com/icon.png")).toBe(
       "https://example.com/icon.png",
+    );
+    await ensureCatalogue();
+    expect(resolveIconFormat("agentaia")).toBe("png");
+    expect(resolveIconFormat("algo")).toBe("png");
+    expect(iconURL("dashboard-icons:agentaia")).toBe(
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/agentaia.png",
+    );
+    expect(iconURL("dashboard-icons:algo")).toBe(
+      "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/algo.png",
     );
   });
 

@@ -115,9 +115,7 @@ export function AppIconPicker({
   const [variant, setVariant] = useState<IconVariant>("default");
   const [visibleCount, setVisibleCount] = useState(0);
   const [failedSlugs, setFailedSlugs] = useState<Record<string, true>>({});
-  const [loadedEntries, setLoadedEntries] = useState<readonly CatalogueEntry[]>(
-    () => getActiveCatalogue(),
-  );
+  const [, setCatalogueEpoch] = useState(0);
   const [catalogueLoading, setCatalogueLoading] = useState(
     () => !entriesProp && getActiveCatalogue() === popularCatalogueEntries,
   );
@@ -127,8 +125,8 @@ export function AppIconPicker({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const queryGen = useRef(0);
   const appending = useRef(false);
-  const prevVariant = useRef(variant);
-  const entries = entriesProp ?? loadedEntries;
+  // Epoch bump re-renders so getActiveCatalogue() is re-read after ensure/refresh.
+  const entries = entriesProp ?? getActiveCatalogue();
   const matches = useMemo(
     () => orderCatalogueEntries(entries, query),
     [entries, query],
@@ -144,18 +142,18 @@ export function AppIconPicker({
     setCatalogueLoading(getActiveCatalogue() === popularCatalogueEntries);
     setCatalogueError(false);
     void ensureCatalogue()
-      .then((full) => {
+      .then(() => {
         if (cancelled) return;
-        setLoadedEntries(full);
+        setCatalogueEpoch((n) => n + 1);
         setCatalogueLoading(false);
         void refreshCatalogueIfStale().then((refreshed) => {
           if (cancelled || !refreshed) return;
-          setLoadedEntries(refreshed);
+          setCatalogueEpoch((n) => n + 1);
         });
       })
       .catch(() => {
         if (cancelled) return;
-        setLoadedEntries(getActiveCatalogue());
+        setCatalogueEpoch((n) => n + 1);
         setCatalogueLoading(false);
         setCatalogueError(true);
       });
@@ -172,23 +170,15 @@ export function AppIconPicker({
       : selectedEntry.slug
     : "";
 
-  const emitSelection = (entry: CatalogueEntry, nextVariant: IconVariant) => {
-    onSelect({
-      entry,
-      artworkSlug: resolveArtworkSlug(entry, nextVariant),
-    });
-  };
-
-  useEffect(() => {
-    if (prevVariant.current === variant) return;
-    prevVariant.current = variant;
+  const selectVariant = (next: IconVariant) => {
+    setVariant(next);
     const current = catalogueEntryForIcon(selectedIcon, entries);
     if (!current) return;
     onSelect({
       entry: current,
-      artworkSlug: resolveArtworkSlug(current, variant),
+      artworkSlug: resolveArtworkSlug(current, next),
     });
-  }, [variant, selectedIcon, entries, onSelect]);
+  };
 
   const fillBuffer = (gen: number) => {
     if (gen !== queryGen.current) return;
@@ -353,7 +343,7 @@ export function AppIconPicker({
               className={`ui-icon-picker-variant${variant === option.value ? " selected" : ""}`}
               role="radio"
               aria-checked={variant === option.value}
-              onClick={() => setVariant(option.value)}
+              onClick={() => selectVariant(option.value)}
             >
               {option.label}
             </Button>
@@ -420,7 +410,12 @@ export function AppIconPicker({
                     aria-label={entry.displayName}
                     aria-pressed={selected}
                     onFocus={() => ensureAheadOnFocus(index)}
-                    onClick={() => emitSelection(entry, variant)}
+                    onClick={() =>
+                      onSelect({
+                        entry,
+                        artworkSlug: resolveArtworkSlug(entry, variant),
+                      })
+                    }
                   >
                     <span className="ui-icon-picker-art">
                       <TileArtwork

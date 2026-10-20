@@ -1,5 +1,4 @@
 import catalogueMeta from "./catalogue.meta.json";
-import pngSlugList from "./catalogue.png-slugs.json";
 import seedEntries from "./catalogue.seed.json";
 import {
   clearCatalogueCache,
@@ -26,9 +25,6 @@ export const METADATA_URL =
 
 export type IconVariant = "default" | "light" | "dark";
 
-const releasePngSlugs = new Set(pngSlugList as string[]);
-let pngSlugSet = new Set(releasePngSlugs);
-
 /**
  * Inline popular seed. Shown immediately in Add/Edit app while the full
  * catalogue loads via `ensureCatalogue()`.
@@ -44,10 +40,6 @@ let refreshPromise: Promise<readonly CatalogueEntry[] | null> | null = null;
 
 function applyCatalogue(entries: readonly CatalogueEntry[]): void {
   cachedFull = entries;
-  pngSlugSet = new Set(
-    entries.filter((entry) => entry.format === "png").map((entry) => entry.slug),
-  );
-  if (pngSlugSet.size === 0) pngSlugSet = new Set(releasePngSlugs);
 }
 
 /** Seed until a full catalogue has been applied this session. */
@@ -134,7 +126,6 @@ export function resetCatalogueCacheForTests(clearStorage = true): void {
   cachedFull = null;
   ensurePromise = null;
   refreshPromise = null;
-  pngSlugSet = new Set(releasePngSlugs);
   if (clearStorage) clearCatalogueCache();
 }
 
@@ -197,19 +188,12 @@ export function catalogueMatchesQuery(
   return haystacks.some((haystack) => haystack.includes(normalised));
 }
 
-export function filterCatalogueEntries(
-  entries: readonly CatalogueEntry[],
-  query: string,
-): CatalogueEntry[] {
-  return entries.filter((entry) => catalogueMatchesQuery(entry, query));
-}
-
 export function orderCatalogueEntries(
   entries: readonly CatalogueEntry[],
   query: string,
   pinOrder: readonly string[] = popularPinOrder,
 ): CatalogueEntry[] {
-  const matched = filterCatalogueEntries(entries, query);
+  const matched = entries.filter((entry) => catalogueMatchesQuery(entry, query));
   const pinIndex = new Map(pinOrder.map((slug, index) => [slug, index]));
   return [...matched].sort((a, b) => {
     const ai = pinIndex.has(a.slug) ? pinIndex.get(a.slug)! : Number.POSITIVE_INFINITY;
@@ -255,6 +239,7 @@ export function applyCatalogueTileSelection<
   };
 }
 
+/** Preferred artwork format from the active catalogue; defaults to svg. */
 export function resolveIconFormat(
   artworkSlug: string,
   entries: readonly CatalogueEntry[] = getActiveCatalogue(),
@@ -263,10 +248,7 @@ export function resolveIconFormat(
     `dashboard-icons:${artworkSlug}`,
     entries,
   );
-  if (entry?.format === "png" || entry?.format === "svg") return entry.format;
-  const base = artworkSlug.replace(/-(light|dark)$/, "");
-  if (pngSlugSet.has(artworkSlug) || pngSlugSet.has(base)) return "png";
-  return "svg";
+  return entry?.format === "png" ? "png" : "svg";
 }
 
 export function alternateIconFormat(
