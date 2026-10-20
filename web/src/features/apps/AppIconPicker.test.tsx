@@ -15,6 +15,7 @@ import type { CatalogueEntry } from "./appCatalogue";
 const longCatalogue: CatalogueEntry[] = Array.from({ length: 60 }, (_, i) => ({
   slug: `app-${String(i).padStart(2, "0")}`,
   displayName: `App ${String(i).padStart(2, "0")}`,
+  format: "svg",
   aliases: i === 40 ? ["forty"] : undefined,
 }));
 
@@ -288,9 +289,10 @@ describe("AppIconPicker reveal", () => {
       {
         slug: "github",
         displayName: "Github",
+        format: "svg",
         variants: { light: "github-light", dark: "github-dark" },
       },
-      { slug: "plex", displayName: "Plex" },
+      { slug: "plex", displayName: "Plex", format: "svg" },
     ];
     render(
       <AppIconPicker

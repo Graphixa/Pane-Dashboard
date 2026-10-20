@@ -100,7 +100,6 @@ if (localRoot) {
 const entries = entriesFromMetadata(metadata);
 if (!entries.length) throw new Error("No catalogue entries generated from metadata");
 
-const generatedAt = new Date().toISOString();
 await writeFile(outPath, `${JSON.stringify(entries)}\n`);
 
 const popularSource = await readFile(popularPath, "utf8");
@@ -121,10 +120,7 @@ const pngSlugs = entries
   .map((entry) => entry.slug);
 await writeFile(pngPath, `${JSON.stringify(pngSlugs)}\n`);
 
-await writeFile(
-  metaPath,
-  `${JSON.stringify({ ref, generatedAt }, null, 2)}\n`,
-);
+await writeFile(metaPath, `${JSON.stringify({ ref }, null, 2)}\n`);
 
 console.log(
   `Wrote ${entries.length} catalogue entries (${pngSlugs.length} png), ${seed.length} seed pins (pin ${ref.slice(0, 12)}…). Upstream licence: Apache-2.0.`,
