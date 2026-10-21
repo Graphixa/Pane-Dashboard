@@ -26,14 +26,21 @@ import {
   Pane,
   canPresent,
   clone,
+  duplicateSpace,
+  getSpace,
   minimum,
   moveApp,
   newPane,
+  resolvePaneApps,
+  spaceNameKey,
   tileSize,
   frame,
   slotsFromFrame,
+  uid,
+  updateSpace,
   GRID,
   MAX_ROWS,
+  MAX_SPACES,
   SNAP,
 } from "./model";
 import { tileResize, gridWidth, paneSnap } from "./layout";
@@ -47,14 +54,22 @@ import { useConfig } from "./useConfig";
 import { AppEditor } from "./features/apps/AppEditor";
 import { PaneEditor } from "./features/panes/PaneEditor";
 import Settings from "./features/settings/Settings";
+import { SpacesStrip } from "./features/spaces/SpacesStrip";
+import { ManageSpaces } from "./features/spaces/ManageSpaces";
+import {
+  readRememberedSpace,
+  resolveActiveSpace,
+  writeRememberedSpace,
+} from "./features/spaces/spacePrefs";
 import GlassPaneLayers from "./GlassPaneLayers";
 import { useGlassQuality } from "./useGlassQuality";
 import { flushPendingRecentWallpaper, reconcileRecentWallpapers } from "./wallpaperRecent";
 const compactor = getCompactor(null, false, true);
 type Editor =
-  | { type: "app"; paneId: string; app?: App; col: number; row: number }
-  | { type: "pane"; pane: Pane }
+  | { type: "app"; spaceId: string; paneId: string; app?: App; col: number; row: number }
+  | { type: "pane"; spaceId: string; pane: Pane }
   | { type: "settings" }
+  | { type: "spaces" }
   | null;
 function Artwork({ app }: { app: App }) {
   const [broken, setBroken] = useState(false);
@@ -119,10 +134,68 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
   const [glassVisible, setGlassVisible] = useState<Set<string>>(
     () => new Set(),
   );
+  const [activeSpaceId, setActiveSpaceId] = useState(() =>
+    resolveActiveSpace(
+      config.spaces,
+      readRememberedSpace(config.dashboardId),
+      config.defaultSpaceId,
+    ),
+  );
+  const [scrollBySpace] = useState(() => new Map<string, number>());
   useEffect(() => {
     void warmIconCatalogue();
   }, []);
+  useEffect(() => {
+    const next = resolveActiveSpace(
+      config.spaces,
+      activeSpaceId,
+      config.defaultSpaceId,
+    );
+    if (next !== activeSpaceId) setActiveSpaceId(next);
+  }, [config.spaces, config.defaultSpaceId, activeSpaceId]);
   const display = settingsPreview ?? config;
+  const spaceId = resolveActiveSpace(
+    display.spaces,
+    activeSpaceId,
+    display.defaultSpaceId,
+  );
+  const spaceItems = getSpace(display, spaceId).items;
+  const requestSpaceSwitch = (id: string) => {
+    if (id === spaceId) return;
+    if (glassInteracting || dragged) return;
+    scrollBySpace.set(spaceId, window.scrollY);
+    setActiveSpaceId(id);
+    writeRememberedSpace(config.dashboardId, id);
+    setSelected("");
+    setDragged(null);
+    setPreview(null);
+    setGlassVisible(new Set());
+    requestAnimationFrame(() => {
+      const y = scrollBySpace.get(id) ?? 0;
+      window.scrollTo(0, y);
+    });
+  };
+  const createSpace = (duplicate: boolean) => {
+    attempt(() => {
+      if (config.spaces.length >= MAX_SPACES)
+        throw Error(`At most ${MAX_SPACES} spaces are supported.`);
+      const n = clone(config);
+      let name = duplicate ? `${getSpace(n, spaceId).name} copy` : "New space";
+      let i = 2;
+      while (n.spaces.some((s) => spaceNameKey(s.name) === spaceNameKey(name))) {
+        name = duplicate
+          ? `${getSpace(config, spaceId).name} copy ${i++}`
+          : `New space ${i++}`;
+      }
+      const space = duplicate
+        ? duplicateSpace(getSpace(n, spaceId), name)
+        : { id: uid(), name, items: [] };
+      n.spaces.push(space);
+      apply(n);
+      requestSpaceSwitch(space.id);
+      setEdit(true);
+    });
+  };
   const glass = normaliseGlass(display.appearance.glass ?? { mode: "solid", opacity: 15, blur: 2 });
   const glassMode = glass.mode === "glass";
   const onGlassVisible = useCallback((id: string, visible: boolean) => {
@@ -149,7 +222,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
     !!config &&
     ((display.dashboard.widthMode === "fixed" && availableWidth < width) ||
       availableWidth < 768 ||
-      !canPresent(config, width));
+      !canPresent(config, width, spaceId));
   const editing = edit && !mobile && status !== "Conflict";
   useEffect(() => {
     if (mobile) {
@@ -198,9 +271,14 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
     attempt(() => {
       const n = clone(config);
       if (n.dashboard.widthMode === "full") n.dashboard.width = width;
-      const pane = newPane(n);
-      n.items.push(pane);
-      apply(n);
+      const space = getSpace(n, spaceId);
+      const pane = newPane(space.items, n.dashboard.width);
+      apply(
+        updateSpace(n, spaceId, (s) => ({
+          ...s,
+          items: [...s.items, pane],
+        })),
+      );
       setEdit(true);
       setSelected(pane.id);
       setAddMenu(false);
@@ -209,19 +287,32 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
     setPreview(null);
     if (!editing) return;
     attempt(() => {
-      const n = clone(config);
-      for (const p of n.items) {
-        const l = layout.find((l) => l.i === p.id);
-        if (l) p.layout = slotsFromFrame({ x: l.x, y: l.y, w: l.w, h: l.h });
-      }
-      if (JSON.stringify(n) !== JSON.stringify(config)) apply(n);
+      const next = updateSpace(config, spaceId, (space) => {
+        const items = space.items.map((p) => {
+          const l = layout.find((x) => x.i === p.id);
+          if (!l) return p;
+          return {
+            ...p,
+            layout: slotsFromFrame({ x: l.x, y: l.y, w: l.w, h: l.h }),
+          };
+        });
+        return { ...space, items };
+      });
+      if (JSON.stringify(next) !== JSON.stringify(config)) apply(next);
     });
   };
   const openApp = (p: Pane, a: App) =>
-    setEditor({ type: "app", paneId: p.id, app: a, col: a.col, row: a.row });
+    setEditor({
+      type: "app",
+      spaceId,
+      paneId: p.id,
+      app: a,
+      col: a.col,
+      row: a.row,
+    });
   const tile = (p: Pane, a: App) => (
     <div
-      key={a.id}
+      key={a.placementId}
       className="app-tile"
       style={mobile ? undefined : { gridColumn: a.col + 1, gridRow: a.row + 1 }}
       draggable={editing}
@@ -231,8 +322,8 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
           return;
         }
         e.stopPropagation();
-        setDragged(a.id);
-        e.dataTransfer.setData("text/plain", a.id);
+        setDragged(a.placementId);
+        e.dataTransfer.setData("text/plain", a.placementId);
         e.dataTransfer.effectAllowed = "move";
       }}
       onDragEnd={() => setDragged(null)}
@@ -297,17 +388,24 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                 if (!delta[e.key]) return;
                 e.preventDefault();
                 attempt(() => {
-                  const n = clone(config);
-                  const target = n.items.find((x) => x.id === p.id)!;
-                  const [dx, dy] = delta[e.key];
-                  // Move to the next 16px line, including older half-grid positions.
-                  const nudge = (v: number, d: number) =>
-                    d > 0
-                      ? (Math.floor(v / SNAP) + 1) * SNAP
-                      : (Math.ceil(v / SNAP) - 1) * SNAP;
-                  if (dx) target.layout.x = nudge(target.layout.x, dx);
-                  if (dy) target.layout.y = nudge(target.layout.y, dy);
-                  apply(n);
+                  apply(
+                    updateSpace(config, spaceId, (space) => ({
+                      ...space,
+                      items: space.items.map((x) => {
+                        if (x.id !== p.id) return x;
+                        const [dx, dy] = delta[e.key];
+                        // Move to the next 16px line, including older half-grid positions.
+                        const nudge = (v: number, d: number) =>
+                          d > 0
+                            ? (Math.floor(v / SNAP) + 1) * SNAP
+                            : (Math.ceil(v / SNAP) - 1) * SNAP;
+                        const layout = { ...x.layout };
+                        if (dx) layout.x = nudge(layout.x, dx);
+                        if (dy) layout.y = nudge(layout.y, dy);
+                        return { ...x, layout };
+                      }),
+                    })),
+                  );
                 });
               }}
             >
@@ -319,12 +417,14 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             editable={editing}
             save={(title) =>
               attempt(() =>
-                apply({
-                  ...config,
-                  items: config.items.map((x) =>
-                    x.id === p.id ? { ...x, title } : x,
-                  ),
-                }),
+                apply(
+                  updateSpace(config, spaceId, (space) => ({
+                    ...space,
+                    items: space.items.map((x) =>
+                      x.id === p.id ? { ...x, title } : x,
+                    ),
+                  })),
+                ),
               )
             }
           />
@@ -332,7 +432,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             <Button variant="surface"
               className="icon-button pane-controls"
               aria-label={`Edit ${p.title || "untitled pane"}`}
-              onClick={() => setEditor({ type: "pane", pane: p })}
+              onClick={() => setEditor({ type: "pane", spaceId, pane: p })}
             >
               <Ellipsis size={20} />
             </Button>
@@ -372,7 +472,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                     aria-label={`Add app at column ${col + 1}, row ${row + 1}`}
                     style={{ gridColumn: col + 1, gridRow: row + 1 }}
                     onClick={() =>
-                      setEditor({ type: "app", paneId: p.id, col, row })
+                      setEditor({ type: "app", spaceId, paneId: p.id, col, row })
                     }
                     onDragOver={(e) => {
                       if (dragged) {
@@ -385,7 +485,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                       e.stopPropagation();
                       if (dragged)
                         attempt(() =>
-                          apply(moveApp(config, dragged, p.id, col, row)),
+                          apply(moveApp(config, spaceId, dragged, p.id, col, row)),
                         );
                       setDragged(null);
                     }}
@@ -396,7 +496,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                   </Button>
                 );
               })}
-            {[...p.apps]
+            {resolvePaneApps(display, p)
               .sort((a, b) => a.row - b.row || a.col - b.col)
               .map((a) => tile(p, a))}
           </div>
@@ -493,6 +593,14 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
           </div>
         </div>
       </header>
+      <SpacesStrip
+        spaces={display.spaces}
+        activeId={spaceId}
+        editing={editing}
+        onSelect={requestSpaceSwitch}
+        onNew={() => createSpace(false)}
+        onManage={() => setEditor({ type: "spaces" })}
+      />
       <main>
         {(error || message) && (
           <Notice tone="error" banner>
@@ -522,7 +630,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
           ref={containerRef}
           className={`workspace ${editing ? "editing-grid" : ""}`}
         >
-          {!config.items.length ? (
+          {!spaceItems.length ? (
             <div className="empty-dashboard">
               <span className="empty-symbol">
                 <LayoutGrid size={36} />
@@ -548,7 +656,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             mounted &&
             (mobile ? (
               <div className="mobile-panes">
-                {[...config.items]
+                {[...spaceItems]
                   .sort(
                     (a, b) =>
                       a.layout.y - b.layout.y || a.layout.x - b.layout.x,
@@ -564,7 +672,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                   // top/left — CSS transforms on grid items isolate backdrop-filter
                   // from the page background, so glass frost/refraction cannot sample it.
                   positionStrategy={absoluteStrategy}
-                  layout={config.items.map((p) => ({
+                  layout={spaceItems.map((p) => ({
                     i: p.id,
                     ...frame(p.layout),
                     minW: frame({ ...p.layout, ...minimum(p) }).w,
@@ -604,7 +712,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
                     updateLayout(layout);
                   }}
                 >
-                  {config.items.map((p) => (
+                  {spaceItems.map((p) => (
                     <div
                       key={p.id}
                       className={`pane-grid-item ${editing && selected === p.id ? "is-selected" : ""}`}
@@ -623,7 +731,7 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             ))
           )}
         </div>
-        {mobile && config.items.length > 0 && (
+        {mobile && spaceItems.length > 0 && (
           <p className="mobile-note">
             Read-only presentation · Your desktop layout is preserved
           </p>
@@ -645,13 +753,16 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
             setEditor(null);
           }}
           readOnly={availableWidth < 768 || (config.dashboard.widthMode === "fixed" && availableWidth < config.dashboard.width) || !canPresent(config, gridWidth(config.dashboard.widthMode === "full" ? availableWidth : config.dashboard.width))}
+          activeSpaceId={spaceId}
         />
       )}
       {editor?.type === "pane" && editing && (
         <PaneEditor
           config={config}
+          spaceId={editor.spaceId}
           pane={
-            config.items.find((p) => p.id === editor.pane.id) || editor.pane
+            getSpace(config, editor.spaceId).items.find((p) => p.id === editor.pane.id) ||
+            editor.pane
           }
           apply={apply}
           close={() => setEditor(null)}
@@ -662,6 +773,15 @@ const { width: availableWidth, containerRef, mounted } = useContainerWidth();
           config={config}
           {...editor}
           apply={apply}
+          close={() => setEditor(null)}
+        />
+      )}
+      {editor?.type === "spaces" && editing && (
+        <ManageSpaces
+          config={config}
+          activeSpaceId={spaceId}
+          apply={apply}
+          onSelect={requestSpaceSwitch}
           close={() => setEditor(null)}
         />
       )}

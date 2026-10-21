@@ -3,13 +3,14 @@ import { Button, FieldGroup, Label, Input, Checkbox, Select, SelectOption, Notic
 import { useState } from "react";
 import { parse } from "yaml";
 import {
-  App,
+  AppDefinition,
   Config,
-  Pane,
   clone,
   freePosition,
+  getSpace,
   importApps,
   uid,
+  updateSpace,
   validate,
 } from "./model";
 import { ensureCatalogue, suggestIcon } from "./features/apps/appCatalogue";
@@ -37,20 +38,33 @@ function address(host: string, port: number) {
   const bracketed = h.includes(":") && !h.startsWith("[") ? `[${h}]` : h;
   return `http://${bracketed}:${port}`;
 }
+function countPlacements(c: Config) {
+  return c.spaces.reduce(
+    (n, s) => n + s.items.reduce((m, p) => m + p.apps.length, 0),
+    0,
+  );
+}
 export default function ImportPanel({
   config,
   imported,
   disabled = false,
+  activeSpaceId,
 }: {
   config: Config;
   imported: (c: Config, id?: string) => void;
   disabled?: boolean;
+  activeSpaceId?: string;
 }) {
   const { confirm, confirmation } = useConfirmation();
-const [source, setSource] = useState("file"),
+  const spaceId = activeSpaceId && config.spaces.some((s) => s.id === activeSpaceId)
+    ? activeSpaceId
+    : config.defaultSpaceId;
+  const spaceItems = getSpace(config, spaceId).items;
+  const [source, setSource] = useState("file"),
     [error, setError] = useState(""),
     [preview, setPreview] = useState<Config | null>(null),
     [replacement, setReplacement] = useState(false),
+    [templatePaneId, setTemplatePaneId] = useState<string | undefined>(),
     [host, setHost] = useState(window.location.hostname),
     [apps, setApps] = useState<Selection[]>([]),
     [busy, setBusy] = useState(false),
@@ -86,6 +100,8 @@ const [source, setSource] = useState("file"),
   };
   const patch = (i: number, update: Partial<Selection>) =>
     setApps(apps.map((a, j) => (j === i ? { ...a, ...update } : a)));
+  const sourceExists = (dockerId: string) =>
+    config.apps.some((a) => a.source?.provider === "docker" && a.source.id === dockerId);
   return (
     <> {confirmation} <FieldGroup disabled={disabled}><div className="import-panel">
       <div
@@ -120,6 +136,7 @@ const [source, setSource] = useState("file"),
               accept=".yaml,.yml,.json"
               onChange={async (e) => {
                 setPreview(null);
+                setTemplatePaneId(undefined);
                 setError("");
                 const f = e.target.files?.[0];
                 if (!f) return;
@@ -129,48 +146,88 @@ const [source, setSource] = useState("file"),
                   const data = parse(await f.text(), { maxAliasCount: 0 });
                   if (data?.type === "pane-layout") {
                     if (
-                      ![1, 2].includes(data.version) ||
+                      ![1, 2, 3, 4].includes(data.version) ||
                       Object.keys(data).some(
                         (k) =>
                           ![
                             "type",
                             "version",
                             "pane",
+                            "apps",
                             "appSize",
                             "width",
                           ].includes(k),
                       )
                     )
                       throw Error("Unsupported pane template.");
-                    const test = await previewConfig({
-                      ...config,
-                      version: data.version,
-                      dashboard: { ...config.dashboard, width: data.width },
-                      appearance: {
-                        ...config.appearance,
-                        ...(data.version === 1
-                          ? { appSize: data.appSize }
-                          : {}),
+                    const idMap = new Map<string, string>();
+                    const defs: AppDefinition[] = [];
+                    if (data.version === 4 && Array.isArray(data.apps)) {
+                      for (const a of data.apps) {
+                        const nextId = uid();
+                        idMap.set(a.id, nextId);
+                        defs.push({
+                          id: nextId,
+                          name: a.name || "App",
+                          url: "",
+                          icon: a.icon || "",
+                          openInNewTab: a.openInNewTab !== false,
+                        });
+                      }
+                    } else if (Array.isArray(data.pane?.apps)) {
+                      for (const a of data.pane.apps) {
+                        const nextId = uid();
+                        idMap.set(a.id || uid(), nextId);
+                        defs.push({
+                          id: nextId,
+                          name: a.name || "App",
+                          url: "",
+                          icon: a.icon || "",
+                          openInNewTab: a.openInNewTab !== false,
+                        });
+                      }
+                    }
+                    const placements = (data.pane?.apps || []).map(
+                      (a: { id?: string; appId?: string; col: number; row: number }, i: number) => {
+                        const oldId = data.version === 4 ? a.appId : a.id;
+                        const appId = (oldId && idMap.get(oldId)) || defs[i]?.id;
+                        if (!appId) throw Error("Pane template is missing app definitions.");
+                        return {
+                          id: uid(),
+                          appId,
+                          col: a.col ?? 0,
+                          row: a.row ?? 0,
+                        };
                       },
-                      items: [data.pane],
-                    });
-                    const p: Pane = clone(test.items[0]);
-                    p.id = uid();
-                    p.apps = p.apps.map((a) => ({
-                      ...a,
+                    );
+                    const pane = {
                       id: uid(),
-                      source: undefined,
-                    }));
-                    p.layout = freePosition(
-                      config.items,
-                      p.layout.w,
-                      p.layout.h,
+                      type: "pane" as const,
+                      title: data.pane?.title || "",
+                      layout: {
+                        x: 0,
+                        y: 0,
+                        w: data.pane?.layout?.w || 4,
+                        h: data.pane?.layout?.h || 1,
+                      },
+                      apps: placements,
+                    };
+                    pane.layout = freePosition(
+                      spaceItems,
+                      pane.layout.w,
+                      pane.layout.h,
                       config.dashboard.width,
                     );
-                    const n = clone(config);
-                    n.items.push(p);
-                    validate(n);
+                    let n = clone(config);
+                    for (const d of defs) {
+                      if (!n.apps.some((a) => a.id === d.id)) n.apps.push(d);
+                    }
+                    n = updateSpace(n, spaceId, (space) => ({
+                      ...space,
+                      items: [...space.items, pane],
+                    }));
                     setPreview(n);
+                    setTemplatePaneId(pane.id);
                     setReplacement(false);
                   } else {
                     setPreview(await previewConfig(data));
@@ -186,16 +243,17 @@ const [source, setSource] = useState("file"),
             <Notice>
               <Text as="h4" variant="label">{replacement ? "Replace dashboard" : "Add shared pane"}</Text>
               <Text variant="support">
-                {preview.items.length} panes ·{" "}
-                {preview.items.reduce((n, p) => n + p.apps.length, 0)} apps
-                after import
+                {preview.spaces.reduce((n, s) => n + s.items.length, 0)} panes ·{" "}
+                {countPlacements(preview)} placements after import
               </Text>
               <ul>
-                {preview.items.map((p) => (
-                  <li key={p.id}>
-                    {p.title || "Untitled pane"} — {p.apps.length} apps
-                  </li>
-                ))}
+                {preview.spaces.flatMap((s) =>
+                  s.items.map((p) => (
+                    <li key={p.id}>
+                      {s.name}: {p.title || "Untitled pane"} — {p.apps.length} apps
+                    </li>
+                  )),
+                )}
               </ul>
               <Text variant="support">
                 Imported icon addresses will be contacted by your browser. Only
@@ -218,7 +276,7 @@ const [source, setSource] = useState("file"),
                         return;
                       imported(
                         preview,
-                        replacement ? undefined : preview.items.at(-1)?.id,
+                        replacement ? undefined : templatePaneId,
                       );
                     } catch (e) {
                       setError((e as Error).message);
@@ -270,9 +328,7 @@ const [source, setSource] = useState("file"),
           {enabled && !apps.length && <p>No running containers found.</p>}
           <div className="discovery-list">
             {apps.map((a, i) => {
-              const exists = config.items.some((p) =>
-                p.apps.some((x) => x.source?.id === a.id),
-              );
+              const exists = sourceExists(a.id);
               return (
                 <article key={a.id}>
                   <Label className="check">
@@ -356,7 +412,7 @@ const [source, setSource] = useState("file"),
                 onValueChange={(value) => setDestination(value)}
               >
                 <SelectOption value="new">Create new pane</SelectOption>
-                {config.items.map((p) => (
+                {spaceItems.map((p) => (
                   <SelectOption value={p.id} key={p.id}>
                     {p.title || "Untitled pane"}
                   </SelectOption>
@@ -374,7 +430,7 @@ const [source, setSource] = useState("file"),
                 variant="primary"
                 onClick={() => {
                   try {
-                    const selected: App[] = apps
+                    const selected: AppDefinition[] = apps
                       .filter((a) => a.selected)
                       .map((a) => {
                         if (!a.url)
@@ -384,14 +440,13 @@ const [source, setSource] = useState("file"),
                           name: a.name,
                           url: a.url,
                           icon: a.icon,
-                          col: 0,
-                          row: 0,
                           openInNewTab: true,
-                          source: { provider: "docker", id: a.id },
+                          source: { provider: "docker" as const, id: a.id },
                         };
                       });
                     const result = importApps(
                       config,
+                      spaceId,
                       selected,
                       destination,
                       title,

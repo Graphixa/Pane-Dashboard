@@ -4,10 +4,11 @@ import {
   Text,
   TextField,
 } from "../../design/components";
-import type { Config } from "../../model";
+import { getSpace, type Config } from "../../model";
 
 export type AppPlacementFieldsProps = {
   config: Config;
+  spaceId: string;
   destination: string;
   col: number;
   row: number;
@@ -19,6 +20,7 @@ export type AppPlacementFieldsProps = {
 /** Destination pane and 1-based column/row fields for Add/Edit app. */
 export function AppPlacementFields({
   config,
+  spaceId,
   destination,
   col,
   row,
@@ -26,7 +28,8 @@ export function AppPlacementFields({
   onColChange,
   onRowChange,
 }: AppPlacementFieldsProps) {
-  const destinationPane = config.items.find((p) => p.id === destination);
+  const items = getSpace(config, spaceId).items;
+  const destinationPane = items.find((p) => p.id === destination);
   const placementSummary = `${destinationPane?.title || "Untitled pane"} · column ${col + 1}, row ${row + 1}`;
 
   return (
@@ -40,7 +43,7 @@ export function AppPlacementFields({
           value={destination}
           onValueChange={onDestinationChange}
         >
-          {config.items.map((p) => (
+          {items.map((p) => (
             <SelectOption key={p.id} value={p.id}>
               {p.title || "Untitled pane"}
             </SelectOption>

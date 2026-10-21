@@ -35,7 +35,18 @@ export function settingsTarget(issue: ValidationIssue): {
   focusable: boolean;
 } {
   const { path } = issue;
-  if (!path || path === "version" || path === "items" || path.startsWith("items."))
+  if (
+    !path ||
+    path === "version" ||
+    path === "items" ||
+    path.startsWith("items.") ||
+    path === "spaces" ||
+    path.startsWith("spaces.") ||
+    path === "apps" ||
+    path.startsWith("apps.") ||
+    path === "dashboardId" ||
+    path === "defaultSpaceId"
+  )
     return { page: null, disclosure: null, focusable: false };
   if (path.startsWith("dashboard."))
     return { page: "general", disclosure: null, focusable: true };

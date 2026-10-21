@@ -1,13 +1,13 @@
-# Background media contracts (schema 3)
+# Background media contracts (schema 4)
 
-Status: active contract for schema 3 background media.
+Status: active contract for schema 4 background media (unchanged from schema 3 shapes).
 Agreed: 9 October 2026.
 
 **Path A (prototype):** no production migration from schema 1/2 backgrounds. Schema 3 is the only supported configuration shape. Old configs fail to load with a clear error (delete or replace `pane.yaml`); missing config still creates defaults. Do not transform legacy overlays, embedded data URIs or dynamic scenes.
 
 ## Schema version
 
-- Runtime schema is **3** only.
+- Runtime schema is **4** (Spaces); background fields remain under global `appearance`.
 - Layout coordinates remain schema-2 geometry (8 px x/y, app-column w/h). There is no v1 layout loader in the Path A rewrite.
 - Stale PUT with `version` other than 3 is rejected with a reload/replace instruction.
 - Configuration never stores image/video bytes.

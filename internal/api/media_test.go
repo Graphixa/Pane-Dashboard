@@ -111,7 +111,7 @@ func TestMediaUploadEndpointDoesNotTouchConfig(t *testing.T) {
 		t.Fatal("upload mutated configuration revision")
 	}
 	after, _ := os.ReadFile(cfg)
-	if !bytes.Contains(after, []byte("version: 3")) {
+	if !bytes.Contains(after, []byte("version: 4")) {
 		t.Fatal("config rewritten unexpectedly")
 	}
 }

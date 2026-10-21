@@ -1,25 +1,25 @@
 # Spaces: phased implementation plan
 
-Status: exploratory proposal, not an implemented feature  
+Status: implemented on `feature/spaces` (exploratory — merge only after acceptance)
+
+### Widget boundary (documented, not shipped)
+
+`SpaceItem` is currently `PaneItem` only. Future widgets join that union with their own validators, geometry adapters and lifecycle rules. Inactive spaces must not keep hidden timers or pollers; space duplication must not imply shared live widget subscriptions. Do not accept placeholder widget types in production backups.  
 Issue: [#16 — Feature: explore Spaces for multiple dashboard layouts](https://github.com/Graphixa/Pane-Dashboard/issues/16)  
 Prepared: 11 October 2026  
-Reviewed baseline: `dynamic-backgrounds` at `4b24f1b01846e7fc64a40f061d731ef31468288c`
+Implementation baseline: `main` at `c571ec320b218572970901ec3d6e10f38ce58b55` (dynamic-backgrounds already merged)
 
 ## 1. Delivery boundary
 
-This document belongs on the current branch so the team can review it. Develop and evaluate the feature on a **new `feature/spaces` branch** from the latest agreed integration head. Do not implement Spaces directly on `dynamic-backgrounds` or main. This issue is an exploration, not permission to merge an unfinished schema change.
-
-After checking that local work is committed or safely preserved:
+Develop and evaluate Spaces on **`feature/spaces`** created from latest `main`. Do not land unfinished schema 4 on main. This issue is an exploration until explicitly accepted.
 
 ```sh
-git switch dynamic-backgrounds
+git switch main
 git pull --ff-only
 git switch -c feature/spaces
 ```
 
-If the integration branch has changed by implementation time, use that agreed branch instead. Read its current AGENTS.md, SPEC.md and DESIGN.md before applying this plan. Reconcile intervening changes, especially #12 and #15, rather than copying stale source snippets. Do not reset other work.
-
-All snippets below are **proposed shapes or focused examples**, not drop-in patches. Names such as ConfigV4 and validateV4 do not exist today. Add the production types/helpers and meaningful tests before wiring consumers.
+Read AGENTS.md, SPEC.md and DESIGN.md on the feature branch before continuing. All snippets below are target shapes; production types live in `web/src/model.ts` and `internal/config`.
 
 ## 2. Product contract
 
@@ -44,19 +44,19 @@ Selecting a tab never saves config. Structural edits use the existing edit autos
 
 | File | Existing behaviour and required adaptation |
 | --- | --- |
-| `web/src/model.ts` | Config version 3 contains one `items: Pane[]`; App embeds details and col/row. Split definitions/placements and scope geometry helpers to a space. |
-| `internal/config` | Go schema and strict validation mirror the single list. Validate all spaces and references, while comparing overlaps only within each space. |
-| `web/src/Dashboard.tsx` | Owns the grid, responsive presentation, editors, selection, drag and glass visibility. Extract an active-space canvas; keep global background/header outside it. |
-| `web/src/layout.ts` | Grid constraints preserve Pane geometry. Reuse them. |
-| `web/src/Editors.tsx` | Edits embedded app data and uses `config.items`. Separate shared details from placement; carry space ID in editor context. |
-| `web/src/useConfig.ts` | Whole-config change API, 450 ms autosave, serialised saves and If-Match; a conflict blocks further mutation. Preserve these semantics. |
-| `web/src/Settings.tsx` | Applies dashboard/appearance from its draft over the current config. Preserve all current spaces/catalogue when applying. |
-| `web/src/ImportPanel.tsx` | Uses global items and scans panes for Docker duplicates. Destination must include space; deduplicate shared app definitions by source identity. |
-| `internal/config/store.go`, `cmd/pane`, `internal/api` | Atomic config replacement and revision checks. Introduce version conversion at explicit load/import boundaries, not in ordinary PUT. |
-| `internal/archive`, `internal/config/background.go` | Portable backups and asset-reference collection. Keep every referenced global media asset; audit traversal as the schema evolves. |
-| `web/src/design/components.tsx`, `controls.tsx`, `ComponentReference.tsx` | Shared entry point, Radix Tabs and reference examples. Extend shared primitives only if needed. |
+| `web/src/model.ts` | Schema 4: shared `apps` catalogue + `spaces[]` with placements. Scope geometry helpers to one space. |
+| `internal/config` | Go schema and strict validation mirror TypeScript. Overlaps only within each space. |
+| `web/src/Dashboard.tsx` | Extract ActiveSpaceCanvas; keep global background/header outside it. |
+| `web/src/layout.ts` | Grid constraints preserve pane geometry. Reuse them. |
+| `web/src/features/apps/AppEditor.tsx`, `web/src/features/panes/PaneEditor.tsx` | Separate shared details from placement; carry space ID in editor context. |
+| `web/src/useConfig.ts` | Whole-config change API (functional updater), 450 ms autosave, serialised saves and If-Match. |
+| `web/src/features/settings/Settings.tsx` | Applies dashboard/appearance from its draft. Preserve spaces/catalogue/`dashboardId`/`defaultSpaceId`. |
+| `web/src/ImportPanel.tsx` | Destination includes space; deduplicate shared app definitions by source identity. |
+| `internal/config/store.go`, `cmd/pane`, `internal/api` | Conversion at load/import boundaries; ordinary PUT accepts schema 4 only. |
+| `internal/archive`, `internal/config/background.go` | Portable backups and asset-reference collection across all spaces and the catalogue. |
+| `web/src/design/components.tsx`, `controls.tsx`, `ComponentReference.tsx` | Shared entry point, Radix Tabs and Spaces strip reference examples. |
 
-Current schema 3 rejects older prototype configurations. `internal/config/migration.go` is only a retired stub. Import code still has legacy pane-template branches; do not assume that wrapping schema 1/2 content in a new config provides working compatibility. Include template-format reconciliation explicitly.
+Schema 1/2 remain rejected. Schema 3 converts explicitly to schema 4 (one Home space) with an original-bytes backup. Pane-template interchange is reconciled to schema 4.
 
 No widget renderer exists today. Do not make Spaces depend on one.
 

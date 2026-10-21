@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -34,8 +35,33 @@ type Store struct {
 
 func revision(c Config) string { b, _ := json.Marshal(c); return fmt.Sprintf(`"%x"`, sha256.Sum256(b)) }
 
+func peekConfigVersion(data []byte) int {
+	var peek struct {
+		Version int `yaml:"version" json:"version"`
+	}
+	_ = yaml.Unmarshal(data, &peek)
+	return peek.Version
+}
+
+func backupOriginal(path string, original []byte) (string, error) {
+	dir := filepath.Dir(path)
+	base := filepath.Base(path)
+	name := fmt.Sprintf("%s.schema3-backup-%s", base, time.Now().UTC().Format("20060102T150405Z"))
+	dest := filepath.Join(dir, name)
+	if _, err := os.Stat(dest); err == nil {
+		return "", fmt.Errorf("backup already exists: %s", dest)
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+	if err := os.WriteFile(dest, original, 0600); err != nil {
+		return "", err
+	}
+	return dest, nil
+}
+
 // Open loads the configuration beside the given path, creating defaults when the
-// file is missing. Invalid existing files are never rewritten (Path A).
+// file is missing. Schema 3 files are converted to schema 4 after a unique backup
+// of the original bytes. Invalid existing files are never rewritten.
 func Open(path string) (*Store, error) {
 	s := &Store{path: path}
 	b, e := os.ReadFile(path)
@@ -47,10 +73,18 @@ func Open(path string) (*Store, error) {
 	} else if e != nil {
 		return nil, e
 	} else {
+		ver := peekConfigVersion(b)
 		s.config, e = DecodeYAML(b)
 		if e != nil {
-			// Path A: do not migrate or rewrite older prototype schemas.
 			return nil, fmt.Errorf("refusing to replace invalid %s: %w", path, e)
+		}
+		if ver == 3 {
+			if _, err := backupOriginal(path, b); err != nil {
+				return nil, fmt.Errorf("refusing to convert %s without backup: %w", path, err)
+			}
+			if err := s.write(s.config); err != nil {
+				return nil, fmt.Errorf("converted configuration could not be written (original preserved in backup): %w", err)
+			}
 		}
 	}
 	s.revision = revision(s.config)

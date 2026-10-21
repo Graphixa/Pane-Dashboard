@@ -2,14 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { useConfig } from "./useConfig";
-import type { Config } from "./model";
+import { testConfig } from "./testConfig";
 
-const base = (): Config => ({
-  version: 3,
-  dashboard: { title: "Pane", widthMode: "fixed", width: 960 },
-  appearance: { theme: "dark", showAppLabels: true, showButtonLabels: true },
-  items: [],
-});
+const base = () =>
+  testConfig({
+    dashboard: { title: "Pane", widthMode: "fixed", width: 960 },
+  });
 
 type Deferred<T> = {
   promise: Promise<T>;
@@ -64,13 +62,19 @@ describe("useConfig settings transactions", () => {
     act(() => {
       result.current.change({
         ...initial,
-        items: [
+        spaces: [
           {
-            id: "pane1",
-            type: "pane",
-            title: "Media",
-            layout: { x: 0, y: 0, w: 4, h: 1 },
-            apps: [],
+            id: "home",
+            name: "Home",
+            items: [
+              {
+                id: "pane1",
+                type: "pane",
+                title: "Media",
+                layout: { x: 0, y: 0, w: 4, h: 1 },
+                apps: [],
+              },
+            ],
           },
         ],
       });
@@ -107,7 +111,7 @@ describe("useConfig settings transactions", () => {
     expect(outcome.status).toBe("saved");
     if (outcome.status === "saved") {
       expect(outcome.config.dashboard.title).toBe("Settings title");
-      expect(outcome.config.items).toHaveLength(1);
+      expect(outcome.config.spaces[0].items).toHaveLength(1);
     }
   });
 

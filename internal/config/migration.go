@@ -1,5 +1,4 @@
 package config
 
-// Path A: no schema migration. Older prototype configs are rejected by Validate().
-// This file remains only so historical references in docs stay findable; upgrade
-// helpers were removed intentionally.
+// Schema 3 → 4 conversion lives in convert.go and runs at store Open / import preview.
+// Schema 1/2 remain rejected without rewrite.

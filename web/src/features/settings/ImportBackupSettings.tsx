@@ -17,6 +17,7 @@ export default function ImportBackupSettings({
   readOnly,
   imported,
   close,
+  activeSpaceId,
 }: {
   config: Config;
   blocked: boolean;
@@ -24,6 +25,7 @@ export default function ImportBackupSettings({
   readOnly: boolean;
   imported: (c: Config, id?: string) => void;
   close: () => void;
+  activeSpaceId?: string;
 }) {
   return (
     <>
@@ -79,6 +81,7 @@ export default function ImportBackupSettings({
               <ImportPanel
                 config={config}
                 disabled={blocked || busy}
+                activeSpaceId={activeSpaceId}
                 imported={(c, id) => {
                   imported(c, id);
                   close();

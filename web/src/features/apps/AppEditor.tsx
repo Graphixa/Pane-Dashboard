@@ -7,16 +7,28 @@ import {
   Modal,
   Notice,
   SwitchRow,
+  Text,
   TextField,
   useConfirmation,
 } from "../../design/components";
 import { applyCatalogueTileSelection } from "./appCatalogue";
-import { App, Config, clone, moveApp, uid, validate } from "../../model";
+import {
+  App,
+  AppDefinition,
+  Config,
+  clone,
+  moveApp,
+  placementCount,
+  uid,
+  updateSpace,
+  validate,
+} from "../../model";
 
 const APP_DETAILS_NAME_ID = "app-editor-name";
 
 export function AppEditor({
   config,
+  spaceId,
   paneId,
   app,
   col,
@@ -25,6 +37,7 @@ export function AppEditor({
   close,
 }: {
   config: Config;
+  spaceId: string;
   paneId: string;
   app?: App;
   col: number;
@@ -38,6 +51,7 @@ export function AppEditor({
       ? clone(app)
       : {
           id: uid(),
+          placementId: uid(),
           name: "",
           url: "",
           icon: "",
@@ -51,6 +65,7 @@ export function AppEditor({
   const [destination, setDestination] = useState(paneId);
   const [error, setError] = useState("");
   const formId = "app-editor-form";
+  const sharedCount = app ? placementCount(config, app.id) : 0;
 
   const dirty =
     JSON.stringify(draft) !== JSON.stringify(initialDraft.current) ||
@@ -70,17 +85,44 @@ export function AppEditor({
     }
   };
 
+  const definitionFromDraft = (d: App): AppDefinition => ({
+    id: d.id,
+    name: d.name,
+    url: d.url,
+    icon: d.icon,
+    openInNewTab: d.openInNewTab,
+    ...(d.source ? { source: { ...d.source } } : {}),
+  });
+
   const save = () => {
     try {
       let n = clone(config);
+      const def = definitionFromDraft(draft);
       if (app) {
-        n.items.find((p) => p.id === paneId)!.apps = n.items
-          .find((p) => p.id === paneId)!
-          .apps.map((a) =>
-            a.id === app.id ? { ...draft, col: app.col, row: app.row } : a,
-          );
-        n = moveApp(n, app.id, destination, draft.col, draft.row);
-      } else n.items.find((p) => p.id === destination)!.apps.push(draft);
+        n.apps = n.apps.map((a) => (a.id === app.id ? def : a));
+        n = moveApp(n, spaceId, app.placementId, destination, draft.col, draft.row);
+      } else {
+        if (!n.apps.some((a) => a.id === def.id)) n.apps.push(def);
+        n = updateSpace(n, spaceId, (space) => ({
+          ...space,
+          items: space.items.map((p) =>
+            p.id === destination
+              ? {
+                  ...p,
+                  apps: [
+                    ...p.apps,
+                    {
+                      id: draft.placementId,
+                      appId: def.id,
+                      col: draft.col,
+                      row: draft.row,
+                    },
+                  ],
+                }
+              : p,
+          ),
+        }));
+      }
       validate(n);
       apply(n);
       close();
@@ -112,6 +154,15 @@ export function AppEditor({
           save();
         }}
       >
+        <Text as="p" variant="support">
+          App details (shared)
+        </Text>
+        {sharedCount > 1 && (
+          <Notice>
+            This app appears in {sharedCount} places. Changing name, address or
+            icon updates every placement.
+          </Notice>
+        )}
         <AppIconPicker
           selectedIcon={draft.icon}
           detailsTargetId={APP_DETAILS_NAME_ID}
@@ -153,9 +204,40 @@ export function AppEditor({
             placeholder="dashboard-icons:plex"
           />
         </Disclosure>
+        {!app && config.apps.length > 0 && (
+          <Disclosure title="Existing app">
+            <Text as="p" variant="support">
+              Reuse a shared app definition instead of creating another.
+            </Text>
+            <div className="reference-actions" style={{ flexWrap: "wrap" }}>
+              {config.apps.map((existing) => (
+                <Button
+                  key={existing.id}
+                  type="button"
+                  variant="quiet"
+                  aria-pressed={draft.id === existing.id}
+                  onClick={() =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      id: existing.id,
+                      name: existing.name,
+                      url: existing.url,
+                      icon: existing.icon,
+                      openInNewTab: existing.openInNewTab,
+                      source: existing.source,
+                    }))
+                  }
+                >
+                  {existing.name}
+                </Button>
+              ))}
+            </div>
+          </Disclosure>
+        )}
         <Disclosure title="Placement">
           <AppPlacementFields
             config={config}
+            spaceId={spaceId}
             destination={destination}
             col={draft.col}
             row={draft.row}
@@ -173,22 +255,32 @@ export function AppEditor({
               onClick={async () => {
                 if (
                   await confirm({
-                    title: "Delete app?",
-                    description: `Delete ${app.name}? This removes it from the pane and cannot be undone.`,
+                    title: "Remove app?",
+                    description: `Remove ${app.name} from this pane? The shared app definition is kept if it is used elsewhere.`,
                     cancelLabel: "Cancel",
-                    actionLabel: "Delete app",
+                    actionLabel: "Remove placement",
                   })
                 ) {
-                  const n = clone(config);
-                  n.items.find((p) => p.id === paneId)!.apps = n.items
-                    .find((p) => p.id === paneId)!
-                    .apps.filter((a) => a.id !== app.id);
-                  apply(n);
+                  apply(
+                    updateSpace(config, spaceId, (space) => ({
+                      ...space,
+                      items: space.items.map((p) =>
+                        p.id === paneId
+                          ? {
+                              ...p,
+                              apps: p.apps.filter(
+                                (a) => a.id !== app.placementId,
+                              ),
+                            }
+                          : p,
+                      ),
+                    })),
+                  );
                   close();
                 }
               }}
             >
-              Delete app
+              Remove from pane
             </Button>
           </div>
         )}

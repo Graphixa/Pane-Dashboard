@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Config, validate } from "./model";
+import { Config, parseConfig, validate } from "./model";
 
 export type SaveOutcome =
   | { status: "saved"; config: Config }
   | { status: "failed"; error: string }
   | { status: "conflict"; error: string };
+
+export type ConfigChange = Config | ((current: Config) => Config);
 
 type Waiter = {
   body: string;
@@ -109,8 +111,8 @@ export function useConfig(options?: {
     fetch("/api/config", { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw Error("Could not load configuration");
-        const c: unknown = await res.json();
-        validate(c);
+        const raw: unknown = await res.json();
+        const c = parseConfig(raw);
         revision.current = res.headers.get("ETag") || "";
         current.current = c;
         saved.current = JSON.stringify(c);
@@ -144,11 +146,13 @@ export function useConfig(options?: {
     return () => window.removeEventListener("beforeunload", before);
   }, []);
 
-  const change = (next: Config) => {
+  const change = (update: ConfigChange) => {
     if (blocked.current)
       throw Error(
         "Reload to resolve the save conflict before making further changes.",
       );
+    if (!current.current) throw Error("Configuration is still loading.");
+    const next = typeof update === "function" ? update(current.current) : update;
     validate(next);
     current.current = next;
     setConfig(next);
@@ -198,7 +202,7 @@ export function useConfig(options?: {
 
   /**
    * After discarding a failed Settings draft: restore last acknowledged
-   * dashboard/appearance, keep current items, and drop abandoned waiters.
+   * dashboard/appearance, keep current spaces/catalogue, and drop abandoned waiters.
    */
   const discardSettings = () => {
     if (!current.current || !saved.current) return;
@@ -206,7 +210,10 @@ export function useConfig(options?: {
     const abandoned = JSON.stringify(current.current);
     const restored: Config = {
       ...acknowledged,
-      items: current.current.items,
+      spaces: current.current.spaces,
+      apps: current.current.apps,
+      dashboardId: current.current.dashboardId,
+      defaultSpaceId: current.current.defaultSpaceId,
     };
     rejectWaiters(
       (body) => body === abandoned,

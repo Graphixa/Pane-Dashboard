@@ -24,6 +24,7 @@ export default function ComponentReference() {
   const [blur, setBlur] = useState(16);
   const [opacity, setOpacity] = useState(40);
   const [openLinks, setOpenLinks] = useState("new");
+  const [spaceDemo, setSpaceDemo] = useState("home");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -88,6 +89,39 @@ export default function ComponentReference() {
           <TabsContent value="static"><Text variant="support">Static shelf example.</Text></TabsContent>
           <TabsContent value="animated"><Text variant="support">Animated shelf example.</Text></TabsContent>
         </Tabs>
+      </Section>
+      <Section title="Spaces strip" description="Quiet underline tabs under the dashboard header. Sample data only — no configuration writes. Hide the strip in read mode while a single space exists; Edit still exposes New space and Manage spaces.">
+        <Text variant="support">One space (edit affordances only — strip hidden in read mode).</Text>
+        <div className="reference-actions" style={{ marginBottom: "var(--space-3)" }}>
+          <Button variant="quiet">New space</Button>
+          <Button variant="quiet">Manage spaces</Button>
+        </div>
+        <Text variant="support">Three spaces with an active underline.</Text>
+        <Tabs value={spaceDemo} onValueChange={setSpaceDemo} className="space-tabs">
+          <TabsList aria-label="Spaces">
+            <TabsTrigger value="home">Home</TabsTrigger>
+            <TabsTrigger value="work">Work</TabsTrigger>
+            <TabsTrigger value="media">Media</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Long names truncate; accessible names stay complete.</Text>
+        <Tabs defaultValue="long" className="space-tabs">
+          <TabsList aria-label="Spaces with long names">
+            <TabsTrigger value="long" title="Home lab services and monitoring">Home lab services and monitoring</TabsTrigger>
+            <TabsTrigger value="work" title="Work projects and internal tools">Work projects and internal tools</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Twelve spaces — horizontal overflow, active tab remains reachable.</Text>
+        <Tabs defaultValue="s3" className="space-tabs">
+          <TabsList aria-label="Many spaces">
+            {Array.from({ length: 12 }, (_, i) => (
+              <TabsTrigger key={i} value={`s${i + 1}`}>{i === 0 ? "Home" : `Space ${i + 1}`}</TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Empty space guidance (edit mode).</Text>
+        <Notice>Create spaces to organise your panes and widgets into different layouts. Add a pane to get started.</Notice>
+        <div className="reference-actions"><Button variant="primary">Add pane</Button></div>
       </Section>
       <Section title="Fields and validation">
         <div className="reference-grid">

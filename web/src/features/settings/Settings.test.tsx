@@ -3,16 +3,15 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Settings from "./Settings";
-import { Config } from "../../model";
+import type { Config } from "../../model";
+import { testConfig } from "../../testConfig";
 import { LIVE_HOVER_PREVIEW_MS } from "../../wallpaperChooser";
 import { RECENT_WALLPAPER_KEY, recordRecentWallpaper, loadRecentWallpapers, flushPendingRecentWallpaper, queueRecentWallpaperOnSave } from "../../wallpaperRecent";
 import { clearVideoStillCache } from "../../videoStillCache";
-const config = (): Config => ({
-  version: 3,
-  dashboard: { title: "Akira", widthMode: "fixed", width: 960 },
-  appearance: { theme: "dark", showAppLabels: true, showButtonLabels: true },
-  items: [],
-});
+const config = () =>
+  testConfig({
+    dashboard: { title: "Akira", widthMode: "fixed", width: 960 },
+  });
 beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, "load").mockImplementation(() => {});
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
@@ -602,7 +601,7 @@ describe("settings navigation and draft safety", () => {
     expect(apply).not.toHaveBeenCalled();
     const live = preview.mock.calls.at(-1)?.[0] as Config;
     expect(live.appearance.theme).toBe("light");
-    expect(live.items).toEqual([]);
+    expect(live.spaces[0].items).toEqual([]);
     page("Apply settings");
     await act(async () => { await Promise.resolve(); });
     expect(apply).toHaveBeenCalledOnce();

@@ -254,6 +254,16 @@ pin list first. Custom icon and Placement are `Disclosure` sections. Picker artw
 fixed 80 px artwork. Do not add a Load more button or a second component library for
 this browser.
 
+## Spaces navigation strip
+
+Spaces use a quiet horizontal tab strip beneath the dashboard header, aligned to the
+dashboard content width. Build it from shared `Tabs` / `TabsList` / `TabsTrigger` with
+the `space-tabs` class (left-aligned, underline active state, no pill track). Tabs show
+only the space name; keep full accessible names when labels truncate. Control targets
+stay at least the shared 40 px height. Do not add browser-style close buttons, counts or
+card chrome behind the strip. Component Reference includes one-, three- and twelve-space
+examples plus overflow and empty-state copy.
+
 ## Verification and adoption
 
 Run `npm ci && npm test && npm run build` in `web`, copy `web/dist` to `internal/ui/dist`,

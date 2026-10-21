@@ -40,7 +40,14 @@ func testMinimalWebM(t *testing.T) []byte {
 
 func populated() config.Config {
 	c := config.DefaultConfig()
-	c.Items = []config.Pane{{ID: "media", Type: "pane", Title: "Media", Layout: config.Geometry{W: 4, H: 1}, Apps: []config.App{{ID: "plex", Name: "Plex", URL: "https://plex.example.com", Icon: "dashboard-icons:plex", Col: 3, Row: 0, OpenInNewTab: true}}}}
+	c.Apps = []config.AppDefinition{{
+		ID: "plex", Name: "Plex", URL: "https://plex.example.com",
+		Icon: "dashboard-icons:plex", OpenInNewTab: true,
+	}}
+	c.Spaces[0].Items = []config.Pane{{
+		ID: "media", Type: "pane", Title: "Media", Layout: config.Geometry{W: 4, H: 1},
+		Apps: []config.AppPlacement{{ID: "plc-plex", AppID: "plex", Col: 3, Row: 0}},
+	}}
 	return c
 }
 
@@ -74,7 +81,7 @@ func TestStoreAndConflict(t *testing.T) {
 		t.Fatal("missing revision accepted")
 	}
 	reload, e := config.Open(p)
-	if e != nil || len(reload.Get().Items) != 1 {
+	if e != nil || len(reload.Get().Spaces[0].Items) != 1 {
 		t.Fatal("save did not persist", e)
 	}
 	before, _ := os.ReadFile(p)
@@ -117,7 +124,7 @@ func TestOldSchemaPutRejected(t *testing.T) {
 	}
 }
 
-func TestImportPreviewSchema3Only(t *testing.T) {
+func TestImportPreviewConvertsSchema3(t *testing.T) {
 	s, _ := config.Open(filepath.Join(t.TempDir(), "pane.yaml"))
 	h := Handler(s, nil, nil)
 	ok := populated()
@@ -128,6 +135,24 @@ func TestImportPreviewSchema3Only(t *testing.T) {
 	h.ServeHTTP(w, r)
 	if w.Code != 200 {
 		t.Fatal(w.Body.String())
+	}
+	v3 := map[string]any{
+		"version": 3,
+		"dashboard": map[string]any{"title": "Home", "widthMode": "fixed", "width": 960},
+		"appearance": map[string]any{"showAppLabels": true, "showButtonLabels": true, "theme": "dark"},
+		"items": []any{},
+	}
+	b, _ = json.Marshal(v3)
+	w = httptest.NewRecorder()
+	r = httptest.NewRequest("POST", "/api/import/preview", bytes.NewReader(b))
+	r.Header.Set("Content-Type", "application/json")
+	h.ServeHTTP(w, r)
+	if w.Code != 200 {
+		t.Fatal("schema 3 import preview should convert", w.Body.String())
+	}
+	var out config.Config
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil || out.Version != 4 {
+		t.Fatal("expected converted schema 4 preview")
 	}
 	legacy := populated()
 	legacy.Version = 1

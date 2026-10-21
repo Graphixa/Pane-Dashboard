@@ -15,6 +15,39 @@
 .ui-tabs-content[hidden],
 .ui-tabs-content[data-state="inactive"] { display: none; }
 
+/* Spaces strip: quiet underline tabs under the dashboard header. */
+.ui-tabs.space-tabs { gap: 0; }
+.ui-tabs.space-tabs .ui-tabs-list {
+  justify-content: flex-start;
+  gap: var(--space-1);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.ui-tabs.space-tabs .ui-tabs-trigger {
+  flex: 0 0 auto;
+  max-width: 12rem;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: var(--weight-regular);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ui-tabs.space-tabs .ui-tabs-trigger[data-state="active"] {
+  background: transparent;
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  border-bottom-color: var(--accent);
+}
+.ui-tabs.space-tabs .ui-tabs-content { display: none; }
+
 /* The single Pane control system. Feature CSS may arrange controls, not redefine tokens. */
 :where(.ui-button, .ui-input, .ui-select, .ui-switch, .ui-checkbox, .ui-disclosure-trigger, .ui-menu-item) {
   font-family: inherit;

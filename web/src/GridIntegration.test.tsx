@@ -9,6 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import Dashboard from "./Dashboard";
+import { populatedConfig, testApp } from "./testConfig";
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -19,41 +20,15 @@ it("measures the real grid after asynchronous config loading and locks narrow la
   const measure = vi
     .spyOn(HTMLElement.prototype, "clientWidth", "get")
     .mockImplementation(() => width);
+  const fixture = populatedConfig();
+  fixture.apps = [testApp({ url: "https://example.com", icon: "" })];
   vi.stubGlobal(
     "fetch",
     vi.fn(
       async () =>
-        new Response(
-          JSON.stringify({
-            version: 3,
-            dashboard: { title: "Home", widthMode: "fixed", width: 960 },
-            appearance: {
-              showAppLabels: true,
-              showButtonLabels: true,
-              theme: "dark",
-            },
-            items: [
-              {
-                id: "media",
-                type: "pane",
-                title: "Media",
-                layout: { x: 0, y: 0, w: 4, h: 1 },
-                apps: [
-                  {
-                    id: "plex",
-                    name: "Plex",
-                    url: "https://example.com",
-                    icon: "",
-                    col: 3,
-                    row: 0,
-                    openInNewTab: true,
-                  },
-                ],
-              },
-            ],
-          }),
-          { headers: { ETag: '"one"' } },
-        ),
+        new Response(JSON.stringify(fixture), {
+          headers: { ETag: '"one"' },
+        }),
     ),
   );
   const result = render(<Dashboard />);

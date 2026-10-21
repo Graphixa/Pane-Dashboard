@@ -54,6 +54,41 @@ body {
   display: flex;
   flex-direction: column;
 }
+.spaces-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: min(100%, var(--workspace-width, 960px));
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+}
+.spaces-strip .space-tabs { flex: 1; min-width: 0; }
+.spaces-strip-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+.spaces-manage-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.spaces-manage-list li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--line);
+}
 .topbar {
   flex-shrink: 0;
   height: 112px;

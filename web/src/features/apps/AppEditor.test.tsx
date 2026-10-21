@@ -3,36 +3,17 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AppEditor } from "./AppEditor";
-import { Config } from "../../model";
+import { resolvePlacement, type Config } from "../../model";
+import { populatedConfig, testPane } from "../../testConfig";
 
-const baseConfig = (): Config => ({
-  version: 3,
-  dashboard: { title: "Home", widthMode: "fixed", width: 960 },
-  appearance: {
-    showAppLabels: true,
-    showButtonLabels: true,
-    theme: "dark",
-  },
-  items: [
-    {
-      id: "media",
-      type: "pane",
-      title: "Media",
-      layout: { x: 0, y: 0, w: 4, h: 1 },
-      apps: [
-        {
-          id: "plex",
-          name: "Plex",
-          url: "https://plex.example.com",
-          icon: "dashboard-icons:plex",
-          col: 0,
-          row: 0,
-          openInNewTab: true,
-        },
-      ],
-    },
-  ],
-});
+const baseConfig = () => {
+  const c = populatedConfig();
+  c.spaces[0].items = [testPane({ apps: [{ id: "plc-plex", appId: "plex", col: 0, row: 0 }] })];
+  return c;
+};
+
+const editApp = (config = baseConfig()) =>
+  resolvePlacement(config, config.spaces[0].items[0].apps[0]);
 
 beforeEach(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
@@ -89,6 +70,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -119,6 +101,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -144,6 +127,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -170,6 +154,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -197,6 +182,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -216,10 +202,11 @@ describe("AppEditor catalogue name autofill", () => {
     const apply = vi.fn();
     const close = vi.fn();
     const config = baseConfig();
-    const app = config.items[0].apps[0];
+    const app = editApp(config);
     render(
       <AppEditor
         config={config}
+        spaceId="home"
         paneId="media"
         app={app}
         col={app.col}
@@ -257,6 +244,7 @@ describe("AppEditor catalogue name autofill", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -273,14 +261,16 @@ describe("AppEditor catalogue name autofill", () => {
 
     expect(apply).toHaveBeenCalledTimes(1);
     const saved = apply.mock.calls[0][0] as Config;
-    const added = saved.items[0].apps.find((a) => a.name === "Adguard Home");
-    expect(added).toMatchObject({
+    const def = saved.apps.find((a) => a.name === "Adguard Home");
+    expect(def).toMatchObject({
       name: "Adguard Home",
       icon: "dashboard-icons:adguard-home",
       url: "https://dns.example.com",
-      col: 1,
-      row: 0,
     });
+    const placement = saved.spaces[0].items[0].apps.find(
+      (a) => a.appId === def?.id,
+    );
+    expect(placement).toMatchObject({ col: 1, row: 0 });
   });
 });
 
@@ -290,6 +280,7 @@ describe("AppEditor workflow", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={2}
         row={0}
@@ -319,8 +310,12 @@ describe("AppEditor workflow", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Add app" }));
     const saved = apply.mock.calls[0][0] as Config;
-    const added = saved.items[0].apps.find((a) => a.url === "https://plex.local");
-    expect(added).toMatchObject({ col: 2, row: 0, icon: "dashboard-icons:plex" });
+    const def = saved.apps.find((a) => a.url === "https://plex.local");
+    expect(def).toMatchObject({ icon: "dashboard-icons:plex" });
+    const placement = saved.spaces[0].items[0].apps.find(
+      (a) => a.appId === def?.id,
+    );
+    expect(placement).toMatchObject({ col: 2, row: 0 });
   });
 
   it("does not prompt discard when only searching or scrolling", async () => {
@@ -328,6 +323,7 @@ describe("AppEditor workflow", () => {
     render(
       <AppEditor
         config={baseConfig()}
+        spaceId="home"
         paneId="media"
         col={1}
         row={0}
@@ -348,10 +344,11 @@ describe("AppEditor workflow", () => {
     const apply = vi.fn();
     const close = vi.fn();
     const config = baseConfig();
-    const app = config.items[0].apps[0];
+    const app = editApp(config);
     render(
       <AppEditor
         config={config}
+        spaceId="home"
         paneId="media"
         app={app}
         col={app.col}
@@ -371,17 +368,16 @@ describe("AppEditor workflow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
     expect(apply).toHaveBeenCalledTimes(1);
-    expect(apply.mock.calls[0][0].items[0].apps[0].url).toBe(
-      "https://plex.changed",
-    );
+    expect(apply.mock.calls[0][0].apps[0].url).toBe("https://plex.changed");
   });
 
-  it("keeps delete separate from the primary save action", () => {
+  it("keeps remove separate from the primary save action", () => {
     const config = baseConfig();
-    const app = config.items[0].apps[0];
+    const app = editApp(config);
     render(
       <AppEditor
         config={config}
+        spaceId="home"
         paneId="media"
         app={app}
         col={app.col}
@@ -390,7 +386,7 @@ describe("AppEditor workflow", () => {
         close={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Delete app" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Remove from pane" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Save app" })).toBeNull();
   });

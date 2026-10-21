@@ -14,20 +14,12 @@ import {
   type MediaRef,
 } from "./appearance";
 import BackgroundScene from "./Background";
-import { Config, validate } from "./model";
+import { type Config, validate } from "./model";
+import { testConfig } from "./testConfig";
 
-const base: Config = {
-  version: 3,
-  dashboard: { title: "pane.", widthMode: "fixed", width: 960 },
-  appearance: {
-    showAppLabels: true,
-    showButtonLabels: true,
-    theme: "dark",
-  },
-  items: [],
-};
+const base = testConfig();
 
-describe("schema 3 background media", () => {
+describe("schema 4 background media", () => {
   it("normalises defaults and theme overlay paint", () => {
     const b = normaliseBackground(undefined);
     expect(b.wallpaper.kind).toBe("none");

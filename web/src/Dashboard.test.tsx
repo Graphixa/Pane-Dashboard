@@ -9,7 +9,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import Dashboard from "./Dashboard";
-import { Config } from "./model";
+import { populatedConfig, testApp, testConfig, testPane } from "./testConfig";
 
 vi.mock("react-grid-layout", () => ({
   default: ({ children }: { children: React.ReactNode }) => (
@@ -28,34 +28,8 @@ vi.mock("./design/components", async () => {
     DropdownMenu: ({ trigger, items }: { trigger: React.ReactElement; items: {label: string; disabled?: boolean; onSelect?: () => void}[] }) => <>{trigger}<div role="menu">{items.map(item => <button key={item.label} role="menuitem" disabled={item.disabled} onClick={item.onSelect}>{item.label}</button>)}</div></>,
   };
 });
-const initial = (): Config => ({
-  version: 3,
-  dashboard: { title: "Home", widthMode: "fixed", width: 960 },
-  appearance: {
-    showAppLabels: true,
-    showButtonLabels: true,
-    theme: "dark",
-  },
-  items: [
-    {
-      id: "media",
-      type: "pane",
-      title: "Media",
-      layout: { x: 0, y: 0, w: 4, h: 1 },
-      apps: [
-        {
-          id: "plex",
-          name: "Plex",
-          url: "https://plex.example.com",
-          icon: "",
-          col: 3,
-          row: 0,
-          openInNewTab: true,
-        },
-      ],
-    },
-  ],
-});
+const initial = () =>
+  populatedConfig();
 beforeEach(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
@@ -149,7 +123,7 @@ describe("interaction boundary", () => {
   });
   it("keeps addressless apps non-launching with a useful tooltip", async () => {
     const c = initial();
-    c.items[0].apps[0].url = "";
+    c.apps[0].url = "";
     vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify(c)));
     const result = render(<Dashboard />);
     await screen.findByRole("link", { name: "Home home" });

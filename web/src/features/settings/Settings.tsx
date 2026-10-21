@@ -53,6 +53,7 @@ export default function Settings({
   close,
   readOnly,
   onPreview,
+  activeSpaceId,
 }: {
   config: Config;
   commitSettings: (settings: {
@@ -64,6 +65,7 @@ export default function Settings({
   close: () => void;
   readOnly: boolean;
   onPreview?: (draft: Config | null) => void;
+  activeSpaceId?: string;
 }) {
   const { confirm, confirmation } = useConfirmation();
   const [page, setPage] = useState<SettingsNavPage>("general");
@@ -463,6 +465,7 @@ export default function Settings({
               readOnly={readOnly}
               imported={imported}
               close={close}
+              activeSpaceId={activeSpaceId}
             />
           )}
           {page === "about" && <AboutSettings />}

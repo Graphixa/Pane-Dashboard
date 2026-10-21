@@ -6,16 +6,24 @@ import {
   TextField,
   useConfirmation,
 } from "../../design/components";
-import { Config, Pane, clone, validate } from "../../model";
+import {
+  Config,
+  Pane,
+  clone,
+  getAppDefinition,
+  updateSpace,
+} from "../../model";
 import { download } from "../../utils/download";
 
 export function PaneEditor({
   config,
+  spaceId,
   pane,
   apply,
   close,
 }: {
   config: Config;
+  spaceId: string;
   pane: Pane;
   apply: (c: Config) => void;
   close: () => void;
@@ -30,10 +38,12 @@ export function PaneEditor({
         onSubmit={(e) => {
           e.preventDefault();
           try {
-            const n = clone(config);
-            n.items = n.items.map((p) => (p.id === pane.id ? draft : p));
-            validate(n);
-            apply(n);
+            apply(
+              updateSpace(config, spaceId, (space) => ({
+                ...space,
+                items: space.items.map((p) => (p.id === pane.id ? draft : p)),
+              })),
+            );
             close();
           } catch (e) {
             setError((e as Error).message);
@@ -72,15 +82,37 @@ export function PaneEditor({
           <Button
             type="button"
             onClick={() => {
-              const p = clone(draft);
-              p.apps.forEach((a) => {
-                a.url = "";
-                delete a.source;
+              const apps = draft.apps.map((placement) => {
+                const def = getAppDefinition(config, placement.appId);
+                return {
+                  ...def,
+                  url: "",
+                  source: undefined,
+                  id: placement.appId,
+                };
               });
+              const uniqueDefs = apps.filter(
+                (a, i, list) => list.findIndex((x) => x.id === a.id) === i,
+              );
               download("pane-template.yaml", {
                 type: "pane-layout",
-                version: 3,
-                pane: p,
+                version: 4,
+                pane: {
+                  title: draft.title,
+                  layout: draft.layout,
+                  apps: draft.apps.map((p) => ({
+                    appId: p.appId,
+                    col: p.col,
+                    row: p.row,
+                  })),
+                },
+                apps: uniqueDefs.map(({ id, name, icon, openInNewTab }) => ({
+                  id,
+                  name,
+                  icon,
+                  openInNewTab,
+                  url: "",
+                })),
                 width: config.dashboard.width,
               });
             }}
@@ -94,15 +126,17 @@ export function PaneEditor({
               if (
                 await confirm({
                   title: "Delete pane?",
-                  description: `Delete this pane and its ${pane.apps.length} apps? This cannot be undone.`,
+                  description: `Delete this pane and its ${pane.apps.length} placements? Shared app definitions are kept. This cannot be undone.`,
                   cancelLabel: "Cancel",
                   actionLabel: "Delete pane",
                 })
               ) {
-                apply({
-                  ...config,
-                  items: config.items.filter((p) => p.id !== pane.id),
-                });
+                apply(
+                  updateSpace(config, spaceId, (space) => ({
+                    ...space,
+                    items: space.items.filter((p) => p.id !== pane.id),
+                  })),
+                );
                 close();
               }
             }}

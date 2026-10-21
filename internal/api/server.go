@@ -61,13 +61,9 @@ func Handler(s *config.Store, d *docker.DockerProvider, store *media.MediaStore)
 		if !ok {
 			return
 		}
-		c, e := config.DecodeJSON(b)
+		c, e := config.DecodeJSONStrictV4(b)
 		if e != nil {
 			apiError(w, 400, e.Error())
-			return
-		}
-		if c.Version != 3 {
-			apiError(w, 400, "Unsupported configuration version. Schema 3 is required; replace or delete pane.yaml (older prototypes are not migrated).")
 			return
 		}
 		rev, err := s.SaveWithRevision(r.Header.Get("If-Match"), c, func(cc config.Config) error {

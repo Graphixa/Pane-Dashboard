@@ -175,9 +175,9 @@ export function Tabs({
 export function TabsList({ className = '', children, 'aria-label': ariaLabel }: { className?: string; children: ReactNode; 'aria-label'?: string }) {
   return <TabsPrimitive.List className={`ui-tabs-list ${className}`} aria-label={ariaLabel}>{children}</TabsPrimitive.List>;
 }
-export function TabsTrigger({ value, className = '', children, disabled }: { value: string; className?: string; children: ReactNode; disabled?: boolean }) {
+export function TabsTrigger({ value, className = '', children, disabled, title }: { value: string; className?: string; children: ReactNode; disabled?: boolean; title?: string }) {
   const groupDisabled = useContext(DisabledContext);
-  return <TabsPrimitive.Trigger value={value} disabled={disabled || groupDisabled} className={`ui-tabs-trigger ${className}`}>{children}</TabsPrimitive.Trigger>;
+  return <TabsPrimitive.Trigger value={value} disabled={disabled || groupDisabled} className={`ui-tabs-trigger ${className}`} title={title}>{children}</TabsPrimitive.Trigger>;
 }
 export function TabsContent({ value, className = '', children }: { value: string; className?: string; children: ReactNode }) {
   return <TabsPrimitive.Content value={value} className={`ui-tabs-content ${className}`}>{children}</TabsPrimitive.Content>;
