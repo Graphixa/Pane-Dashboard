@@ -25,7 +25,7 @@ func main() {
 	if e != nil {
 		log.Fatal(e)
 	}
-	d, e := docker.NewProvider(os.Getenv("PANE_DOCKER_ENDPOINT"))
+	d, e := docker.NewProvider(os.Getenv("DOCKER_HOST"))
 	if e != nil {
 		log.Fatal(e)
 	}
@@ -38,10 +38,10 @@ func main() {
 }
 
 // listenAddr defaults to loopback so local runs do not open inbound LAN sockets
-// (and so Windows Firewall is not prompted). Containers set PANE_LISTEN=:8080.
+// (and so Windows Firewall is not prompted). Containers set PANE_LISTEN=:7775.
 func listenAddr() string {
 	if addr := os.Getenv("PANE_LISTEN"); addr != "" {
 		return addr
 	}
-	return "127.0.0.1:8080"
+	return "127.0.0.1:7775"
 }

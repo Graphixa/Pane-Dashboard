@@ -19,11 +19,13 @@ COPY --from=frontend /src/web/dist ./internal/ui/dist
 RUN go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /pane ./cmd/pane
 
 FROM alpine:3.23
-RUN apk add --no-cache ca-certificates && addgroup -g 10001 pane && adduser -D -u 10001 -G pane pane && mkdir /config && chown pane:pane /config
+RUN apk add --no-cache ca-certificates su-exec \
+	&& mkdir /config
 COPY --from=backend /pane /usr/local/bin/pane
-USER 10001:10001
-ENV PANE_LISTEN=:8080
-EXPOSE 8080
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENV PANE_LISTEN=:7775
+EXPOSE 7775
 VOLUME ["/config"]
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -q -O - http://127.0.0.1:8080/api/health || exit 1
-ENTRYPOINT ["/usr/local/bin/pane"]
+HEALTHCHECK --interval=30s --timeout=3s CMD wget -q -O - http://127.0.0.1:7775/api/health || exit 1
+ENTRYPOINT ["/entrypoint.sh"]
