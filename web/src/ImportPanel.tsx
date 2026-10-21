@@ -263,8 +263,8 @@ const [source, setSource] = useState("file"),
           </Button>
           {enabled === false && (
             <Notice>
-              Discovery is disabled. Configure PANE_DOCKER_ENDPOINT on the
-              server; see README.md.
+              Discovery is disabled. Configure DOCKER_HOST on the server; see
+              README.md.
             </Notice>
           )}
           {enabled && !apps.length && <p>No running containers found.</p>}

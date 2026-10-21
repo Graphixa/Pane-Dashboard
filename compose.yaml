@@ -1,14 +1,15 @@
 services:
   pane:
     build: .
+    image: pane:local
+    container_name: pane
     ports:
-      - "8080:8080"
+      - 7775:7775
     volumes:
-      - pane-config:/config
+      - ./config:/config # Make sure your local config directory exists
+      # - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For Docker import
+    environment:
+      PUID: 1000 # match your host user: id -u
+      PGID: 1000 # match your host group: id -g
+      # DOCKER_HOST: unix:///var/run/docker.sock # required if the socket volume above is enabled
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-volumes:
-  pane-config:
