@@ -1,4 +1,4 @@
-import { Tabs, TabsList, TabsTrigger, Button } from "../../design/components";
+import { Tabs, TabsList, TabsTrigger, Button, ScrollArea } from "../../design/components";
 import type { Space } from "../../model";
 
 export function SpacesStrip({
@@ -26,13 +26,15 @@ export function SpacesStrip({
           onValueChange={onSelect}
           className="space-tabs"
         >
-          <TabsList aria-label="Spaces">
-            {spaces.map((s) => (
-              <TabsTrigger key={s.id} value={s.id} title={s.name}>
-                {s.name}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <ScrollArea orientation="horizontal" type="hover" className="space-tabs-scroll">
+            <TabsList aria-label="Spaces">
+              {spaces.map((s) => (
+                <TabsTrigger key={s.id} value={s.id} title={s.name}>
+                  {s.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </ScrollArea>
         </Tabs>
       ) : null}
       {editing && (

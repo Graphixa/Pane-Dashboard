@@ -17,14 +17,18 @@
 
 /* Spaces strip: quiet underline tabs under the dashboard header. */
 .ui-tabs.space-tabs { gap: 0; }
+.ui-tabs.space-tabs .space-tabs-scroll {
+  width: 100%;
+  min-width: 0;
+}
 .ui-tabs.space-tabs .ui-tabs-list {
   justify-content: flex-start;
   gap: var(--space-1);
-  padding: 0;
+  /* Keep the underline clear of the themed horizontal thumb. */
+  padding: 0 0 calc(var(--scrollbar-size, 10px) + 2px);
   border-radius: 0;
   background: transparent;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  width: max-content;
 }
 .ui-tabs.space-tabs .ui-tabs-trigger {
   flex: 0 0 auto;

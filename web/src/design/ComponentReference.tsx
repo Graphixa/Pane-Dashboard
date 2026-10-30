@@ -98,26 +98,32 @@ export default function ComponentReference() {
         </div>
         <Text variant="support">Three spaces with an active underline.</Text>
         <Tabs value={spaceDemo} onValueChange={setSpaceDemo} className="space-tabs">
-          <TabsList aria-label="Spaces">
-            <TabsTrigger value="home">Home</TabsTrigger>
-            <TabsTrigger value="work">Work</TabsTrigger>
-            <TabsTrigger value="media">Media</TabsTrigger>
-          </TabsList>
+          <ScrollArea orientation="horizontal" type="hover" className="space-tabs-scroll">
+            <TabsList aria-label="Spaces">
+              <TabsTrigger value="home">Home</TabsTrigger>
+              <TabsTrigger value="work">Work</TabsTrigger>
+              <TabsTrigger value="media">Media</TabsTrigger>
+            </TabsList>
+          </ScrollArea>
         </Tabs>
         <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Long names truncate; accessible names stay complete.</Text>
         <Tabs defaultValue="long" className="space-tabs">
-          <TabsList aria-label="Spaces with long names">
-            <TabsTrigger value="long" title="Home lab services and monitoring">Home lab services and monitoring</TabsTrigger>
-            <TabsTrigger value="work" title="Work projects and internal tools">Work projects and internal tools</TabsTrigger>
-          </TabsList>
+          <ScrollArea orientation="horizontal" type="hover" className="space-tabs-scroll">
+            <TabsList aria-label="Spaces with long names">
+              <TabsTrigger value="long" title="Home lab services and monitoring">Home lab services and monitoring</TabsTrigger>
+              <TabsTrigger value="work" title="Work projects and internal tools">Work projects and internal tools</TabsTrigger>
+            </TabsList>
+          </ScrollArea>
         </Tabs>
         <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Twelve spaces — horizontal overflow, active tab remains reachable.</Text>
         <Tabs defaultValue="s3" className="space-tabs">
-          <TabsList aria-label="Many spaces">
-            {Array.from({ length: 12 }, (_, i) => (
-              <TabsTrigger key={i} value={`s${i + 1}`}>{i === 0 ? "Home" : `Space ${i + 1}`}</TabsTrigger>
-            ))}
-          </TabsList>
+          <ScrollArea orientation="horizontal" type="hover" className="space-tabs-scroll">
+            <TabsList aria-label="Many spaces">
+              {Array.from({ length: 12 }, (_, i) => (
+                <TabsTrigger key={i} value={`s${i + 1}`}>{i === 0 ? "Home" : `Space ${i + 1}`}</TabsTrigger>
+              ))}
+            </TabsList>
+          </ScrollArea>
         </Tabs>
         <Text variant="support" style={{ marginTop: "var(--space-3)" }}>Empty space guidance (edit mode).</Text>
         <Notice>Create spaces to organise your panes and widgets into different layouts. Add a pane to get started.</Notice>

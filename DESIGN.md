@@ -258,11 +258,12 @@ this browser.
 
 Spaces use a quiet horizontal tab strip beneath the dashboard header, aligned to the
 dashboard content width. Build it from shared `Tabs` / `TabsList` / `TabsTrigger` with
-the `space-tabs` class (left-aligned, underline active state, no pill track). Tabs show
-only the space name; keep full accessible names when labels truncate. Control targets
-stay at least the shared 40 px height. Do not add browser-style close buttons, counts or
-card chrome behind the strip. Component Reference includes one-, three- and twelve-space
-examples plus overflow and empty-state copy.
+the `space-tabs` class (left-aligned, underline active state, no pill track). Wrap the
+list in shared `ScrollArea` (`orientation="horizontal"`) for overflow — never a raw
+`overflow-x` scrollbar. Tabs show only the space name; keep full accessible names when
+labels truncate. Control targets stay at least the shared 40 px height. Do not add
+browser-style close buttons, counts or card chrome behind the strip. Component Reference
+includes one-, three- and twelve-space examples plus overflow and empty-state copy.
 
 ## Verification and adoption
 
